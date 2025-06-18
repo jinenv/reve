@@ -1,0 +1,69 @@
+{
+  "faded_echo": {
+    "name": "Faded Echo",
+    "description": "A common echo whose contents grow stronger with your experience.",
+    "level_brackets": {
+      "1-50": {
+        "pools": [
+          { "tier": 1, "weight": 69 },
+          { "tier": 2, "weight": 29 },
+          { "tier": 3, "weight": 2 }
+        ]
+      },
+      "51-100": {
+        "pools": [
+          { "tier": 2, "weight": 69 },
+          { "tier": 3, "weight": 29 },
+          { "tier": 4, "weight": 2 }
+        ]
+      },
+      "101-150": {
+        "pools": [
+          { "tier": 3, "weight": 69 },
+          { "tier": 4, "weight": 29 },
+          { "tier": 5, "weight": 2 }
+        ]
+      }
+    }
+  },
+  "vivid_echo": {
+    "name": "Vivid Echo",
+    "description": "A strong echo, resonating with significant power.",
+    "level_brackets": {
+      "1-100": {
+        "pools": [
+          { "tier": 3, "weight": 60 },
+          { "tier": 4, "weight": 30 },
+          { "tier": 5, "weight": 10 }
+        ]
+      },
+      "101-200": {
+        "pools": [
+          { "tier": 4, "weight": 60 },
+          { "tier": 5, "weight": 30 },
+          { "tier": 6, "weight": 10 }
+        ]
+      }
+    }
+  },
+  "brilliant_echo": {
+    "name": "Brilliant Echo",
+    "description": "An echo of immense power, pulsing with legendary energy.",
+    "level_brackets": {
+      "1-200": {
+        "pools": [
+          { "tier": 5, "weight": 65 },
+          { "tier": 6, "weight": 30 },
+          { "tier": 7, "weight": 5 }
+        ]
+      },
+      "201-400": {
+        "pools": [
+          { "tier": 6, "weight": 65 },
+          { "tier": 7, "weight": 30 },
+          { "tier": 8, "weight": 5 }
+        ]
+      }
+    }
+  }
+}

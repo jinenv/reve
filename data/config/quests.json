@@ -1,0 +1,42 @@
+{
+  "area_1": {
+    "name": "The Whispering Glade",
+    "level_requirement": 1,
+    "completion_rewards": {
+      "rank_1": { "nyxies": 5000, "experience": 50 },
+      "rank_2": { "nyxies": 10000, "experience": 100 },
+      "rank_3": { "items": {"faded_echo": 1}, "experience": 200 }
+    },
+    "capturable_tiers": [1, 2],
+    "quests": [
+      { "id": "1-1", "name": "First Steps into the Mist", "energy_cost": 5, "nyxies_reward": [50, 150], "xp_reward": 5 },
+      { "id": "1-2", "name": "Disturbing the Undergrowth", "energy_cost": 5, "nyxies_reward": [60, 180], "xp_reward": 5 },
+      { "id": "1-3", "name": "A Faint Glow", "energy_cost": 6, "nyxies_reward": [100, 300], "xp_reward": 6 },
+      { "id": "1-4", "name": "Confront the Angry Sprites", "energy_cost": 6, "nyxies_reward": [140, 420], "xp_reward": 8 },
+      { "id": "1-5", "name": "Follow the Echo", "energy_cost": 7, "nyxies_reward": [180, 540], "xp_reward": 9 },
+      { "id": "1-6", "name": "The Source of the Whispers", "energy_cost": 7, "nyxies_reward": [195, 585], "xp_reward": 8 },
+      { "id": "1-7", "name": "Calm the Ancient Tree", "energy_cost": 8, "nyxies_reward": [210, 630], "xp_reward": 9 },
+      { "id": "1-8", "name": "Guardian of the Glade", "energy_cost": 8, "nyxies_reward": [250, 750], "xp_reward": 15, "is_boss": true }
+    ]
+  },
+  "area_2": {
+    "name": "The Sunken Grotto",
+    "level_requirement": 11,
+    "completion_rewards": {
+      "rank_1": { "nyxies": 15000, "experience": 100 },
+      "rank_2": { "nyxies": 30000, "experience": 200 },
+      "rank_3": { "items": {"fusion_booster": 1}, "experience": 400 }
+    },
+    "capturable_tiers": [1, 2, 3],
+    "quests": [
+        { "id": "2-1", "name": "Decipher the Water-logged Map", "energy_cost": 8, "nyxies_reward": [200, 600], "xp_reward": 6 },
+        { "id": "2-2", "name": "Investigate the Coral Caves", "energy_cost": 8, "nyxies_reward": [275, 825], "xp_reward": 8 },
+        { "id": "2-3", "name": "The Lure of the Siren's Song", "energy_cost": 9, "nyxies_reward": [360, 1080], "xp_reward": 9 },
+        { "id": "2-4", "name": "Defeat the Grotto's Guardians", "energy_cost": 9, "nyxies_reward": [355, 1065], "xp_reward": 9 },
+        { "id": "2-5", "name": "Search the Sunken Ship", "energy_cost": 10, "nyxies_reward": [350, 1050], "xp_reward": 8 },
+        { "id": "2-6", "name": "A Treasure's Gleam", "energy_cost": 10, "nyxies_reward": [455, 1365], "xp_reward": 9 },
+        { "id": "2-7", "name": "The Kraken's Wake", "energy_cost": 11, "nyxies_reward": [560, 1680], "xp_reward": 11 },
+        { "id": "2-8", "name": "Abyssal Horror", "energy_cost": 11, "nyxies_reward": [730, 2190], "xp_reward": 20, "is_boss": true }
+    ]
+  }
+}

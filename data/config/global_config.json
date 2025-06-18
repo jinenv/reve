@@ -1,0 +1,16 @@
+{
+  "player_progression": {
+    "xp_formula": {
+      "base": 100,
+      "exponent": 1.5
+    },
+    "team_cost_formula": {
+      "base": 100,
+      "multiplier": 5
+    }
+  },
+  "fusion_rules": {
+    "fragment_pity_threshold": 10,
+    "awakening_bonus_per_star": 0.10
+  }
+}

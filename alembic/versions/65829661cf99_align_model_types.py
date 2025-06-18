@@ -1,8 +1,8 @@
-"""create player table
+"""Align model types
 
-Revision ID: e8afe7058afa
-Revises: 
-Create Date: 2025-06-17 16:03:24.260305
+Revision ID: 65829661cf99
+Revises: 25786711e7ad
+Create Date: 2025-06-18 07:09:09.563993
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'e8afe7058afa'
-down_revision: Union[str, Sequence[str], None] = None
+revision: str = '65829661cf99'
+down_revision: Union[str, Sequence[str], None] = '25786711e7ad'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

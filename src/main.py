@@ -1,28 +1,44 @@
 # src/main.py
+import os
 import logging
 from dotenv import load_dotenv
+
+# We can run the bot from here directly now
+from src.bot import bot, run_bot 
+from src.utils.database_service import DatabaseService
+from src.utils.redis_service import RedisService
 from src.utils.config_manager import ConfigManager
-from src.bot import run_bot
-import os
 
-def setup_logging():
-    os.makedirs("logs", exist_ok=True)  # Ensure log folder exists
+# --- Basic Logging Setup ---
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s')
+logger = logging.getLogger(__name__)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s] %(levelname)s: %(message)s',
-        handlers=[
-            logging.FileHandler("logs/bot.log", encoding="utf-8"),
-            logging.StreamHandler()
-        ]
-    )
-    logging.getLogger("ConfigManager").setLevel(logging.INFO)
 
 def main():
-    load_dotenv()              # Load .env file (DISCORD_TOKEN, DATABASE_URL, etc.)
-    setup_logging()            # Set up logging to both console and file
-    ConfigManager.load_all()   # Load all JSON config files from data/config/
-    run_bot()                  # Start the Discord bot
+    """The main entry point for the bot."""
+    load_dotenv()
+    logger.info("Starting up Nyxa...")
+
+    # --- Initialize Services ---
+    # This is the crucial step that was missing.
+    # We call the init methods without arguments and without await.
+    
+    logger.info("Initializing services...")
+    
+    # Initialize the configuration manager first
+    ConfigManager.load_all()
+    logger.info("ConfigManager loaded.")
+    
+    # Initialize the database service
+    DatabaseService.init()
+    
+    # Initialize the Redis service
+    RedisService.init()
+    
+    # --- Run the Bot ---
+    # This function from bot.py will now be called AFTER services are ready.
+    run_bot()
+
 
 if __name__ == "__main__":
     main()

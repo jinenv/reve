@@ -1,0 +1,20 @@
+{
+  "collection_1": {
+    "name": "Guardians of the Glade",
+    "description": "The first spirits a new master will encounter.",
+    "required_esprits": ["Faeling", "Treant", "Sylph"],
+    "rewards": {
+      "nyxies": 50000,
+      "erythl": 10
+    }
+  },
+  "collection_2": {
+    "name": "The First Four Dragons",
+    "description": "Harness the primordial draconic elements.",
+    "required_esprits": ["Flame Drake", "Aqua Drake", "Terra Drake", "Zephyr Drake"],
+    "rewards": {
+      "erythl": 50,
+      "items": { "vivid_echo": 1 }
+    }
+  }
+}
