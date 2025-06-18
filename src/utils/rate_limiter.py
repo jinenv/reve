@@ -1,6 +1,6 @@
-# src/utils/redis_service.py
+# src/utils/rate_limiter.py
 import redis.asyncio as redis
-from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
 from typing import Optional
 from .logger import get_logger
 from dotenv import load_dotenv

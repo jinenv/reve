@@ -1,3 +1,4 @@
+# src/utils/config_manager.py
 import json
 from pathlib import Path
 from typing import Any, Optional
@@ -11,9 +12,7 @@ class ConfigManager:
 
     @classmethod
     def load_all(cls) -> None:
-        """
-        Loads all .json files in the config directory into memory.
-        """
+        """Loads all .json files in the config directory into memory."""
         if not cls._base_path.exists():
             logger.error(f"Config directory '{cls._base_path}' not found.")
             return
@@ -33,9 +32,11 @@ class ConfigManager:
 
     @classmethod
     def get(cls, key: str) -> Optional[Any]:
+        """Get config data."""
         return cls._configs.get(key)
 
     @classmethod
     def reload(cls) -> None:
+        """Reload all config files."""
         logger.info("Reloading config files...")
         cls.load_all()

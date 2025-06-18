@@ -1,3 +1,4 @@
+# src/utils/database_service.py
 from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -5,15 +6,16 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
 )
+from sqlalchemy.exc import IntegrityError, OperationalError
 import os
 from typing import Optional
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 from src.utils.logger import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
-
 
 class DatabaseService:
     _engine: Optional[AsyncEngine] = None
@@ -53,10 +55,31 @@ class DatabaseService:
         return cls._session_factory
 
     @classmethod
+    @asynccontextmanager
+    async def get_session(cls):
+        """Context manager for database sessions."""
+        session_factory = cls.get_session_factory()
+        async with session_factory() as session:
+            try:
+                yield session
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
+
+    @classmethod
+    @asynccontextmanager
+    async def get_transaction(cls):
+        """Context manager for database transactions."""
+        async with cls.get_session() as session:
+            async with session.begin():
+                yield session
+
+    @classmethod
     async def create_all_tables(cls):
         if cls._engine is None:
             raise RuntimeError("DatabaseService not initialized.")
         async with cls._engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
         logger.info("All tables created.")
-
