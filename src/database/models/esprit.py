@@ -8,6 +8,7 @@ import math
 import random
 
 from src.utils.config_manager import ConfigManager
+from src.utils.redis_service import RedisService
 
 if TYPE_CHECKING:
     from src.database.models import EspritBase
@@ -81,7 +82,7 @@ class Esprit(SQLModel, table=True):
             "power": individual["power"] * self.quantity
         }
     
-    def get_awakening_cost(self) -> Dict[str, int]:
+    def get_awakening_cost(self) -> Dict[str, any]:
         """
         Get cost to awaken this stack to next level.
         1st star: 1 copy, 2nd: 2 copies, etc.
@@ -121,6 +122,10 @@ class Esprit(SQLModel, table=True):
         player = (await session.execute(player_stmt)).scalar_one()
         player.total_awakenings += 1
         
+        # Invalidate cache
+        if RedisService.is_available():
+            await RedisService.invalidate_player_cache(player.id)
+        
         # Recalculate total power
         await player.recalculate_total_power(session)
         
@@ -136,7 +141,7 @@ class Esprit(SQLModel, table=True):
         """
         Fuses two stacks following MW fusion rules.
         Returns the resulting Esprit stack if successful, None if failed.
-        Fragments guarantee a specific tier monster, not just success.
+        Fragments guarantee success, not just specific tier monsters.
         """
         from src.database.models import Player, EspritBase
         
@@ -144,12 +149,12 @@ class Esprit(SQLModel, table=True):
         if self.tier != other_stack.tier:
             return None
             
-        # Need at least 2 copies total (1 from each stack minimum)
+        # Need at least 1 copy from each stack
         if self.quantity < 1 or other_stack.quantity < 1:
             return None
             
         # Get player for costs and fragments
-        player_stmt = select(Player).where(Player.id == self.owner_id)
+        player_stmt = select(Player).where(Player.id == self.owner_id).with_for_update()
         player = (await session.execute(player_stmt)).scalar_one()
         
         # Get fusion cost from tiers.json
@@ -198,6 +203,12 @@ class Esprit(SQLModel, table=True):
         fusion_bonus = leader_bonuses.get("element_bonuses", {}).get("fusion_bonus", 0)
         final_success_rate = min(base_success_rate * (1 + fusion_bonus), 0.95)
         
+        # Use fragments for guaranteed success
+        if use_fragments and fragments_amount >= 10:
+            if player.get_fragment_count(result_element.lower()) >= 10:
+                player.consume_element_fragments(result_element.lower(), 10)
+                final_success_rate = 1.0  # Guarantee success
+        
         # Deduct cost
         if fusion_cost:
             player.jijies -= fusion_cost
@@ -207,51 +218,21 @@ class Esprit(SQLModel, table=True):
         
         # Consume materials first
         self.quantity -= 1
-        other_stack.quantity -= 1
+        if other_stack.id != self.id:  # Different stacks
+            other_stack.quantity -= 1
         
-        # Check if using fragments
-        if use_fragments and fragments_amount > 0:
-            target_tier = self.tier + 1
-            fragments_needed = self._calculate_fragments_needed(target_tier)
-            
-            if player.get_tier_fragment_count(target_tier) >= fragments_needed:
-                # Consume fragments and guarantee specific tier monster
-                player.consume_tier_fragments(target_tier, fragments_needed)
-                
-                # Find a random Esprit of the target tier (any element)
-                base_stmt = select(EspritBase).where(
-                    EspritBase.base_tier == target_tier
-                )
-                possible_bases = (await session.execute(base_stmt)).scalars().all()
-                
-                if possible_bases:
-                    result_base = random.choice(list(possible_bases))
-                    
-                    # Add guaranteed result
-                    result_stack = await Esprit.add_to_collection(
-                        session=session,
-                        owner_id=self.owner_id,
-                        base=result_base,
-                        quantity=1
-                    )
-                    
-                    player.successful_fusions += 1
-                    
-                    # Clean up empty stacks
-                    await self._cleanup_empty_stacks(session, other_stack)
-                    
-                    # Update player stats
-                    await player.recalculate_space(session)
-                    await player.recalculate_total_power(session)
-                    player.last_fusion = datetime.utcnow()
-                    
-                    return result_stack
-        
-        # Normal fusion attempt
+        # Check fusion success
         if random.random() > final_success_rate:
-            # Fusion failed - produce fragments
-            fragments_gained = self._calculate_fragment_drops(self.tier)
-            player.add_tier_fragments(self.tier, fragments_gained)
+            # Fusion failed - produce element fragments
+            fragments_gained = max(1, self.tier // 2)
+            
+            # Add fragments for the result element (or random if multiple possible)
+            if result_element in ["Multiple possible", "Random"]:
+                fragment_element = random.choice([self.element, other_stack.element])
+            else:
+                fragment_element = result_element
+                
+            player.add_element_fragments(fragment_element.lower(), fragments_gained)
             
             # Clean up empty stacks
             await self._cleanup_empty_stacks(session, other_stack)
@@ -259,6 +240,10 @@ class Esprit(SQLModel, table=True):
             # Update player stats
             await player.recalculate_space(session)
             await player.recalculate_total_power(session)
+            
+            # Invalidate cache
+            if RedisService.is_available():
+                await RedisService.invalidate_player_cache(player.id)
             
             return None
         
@@ -274,11 +259,15 @@ class Esprit(SQLModel, table=True):
         possible_bases = (await session.execute(base_stmt)).scalars().all()
         
         if not possible_bases:
-            # No Esprit exists at this tier/element - fusion fails
-            fragments_gained = self._calculate_fragment_drops(self.tier)
-            player.add_tier_fragments(self.tier, fragments_gained)
+            # No Esprit exists at this tier/element - give fragments instead
+            fragments_gained = max(1, self.tier // 2)
+            player.add_element_fragments(result_element.lower(), fragments_gained)
             
             await self._cleanup_empty_stacks(session, other_stack)
+            
+            # Invalidate cache
+            if RedisService.is_available():
+                await RedisService.invalidate_player_cache(player.id)
             return None
             
         result_base = random.choice(list(possible_bases))
@@ -299,20 +288,11 @@ class Esprit(SQLModel, table=True):
         await player.recalculate_total_power(session)
         player.last_fusion = datetime.utcnow()
         
+        # Invalidate cache
+        if RedisService.is_available():
+            await RedisService.invalidate_player_cache(player.id)
+        
         return result_stack
-    
-    def _calculate_fragment_drops(self, tier: int) -> int:
-        """Calculate fragments dropped on fusion failure"""
-        tiers_config = ConfigManager.get("tiers") or {}
-        tier_data = tiers_config.get(str(tier), {})
-        fragments_range = tier_data.get("fragments_on_fail", [1, 3])
-        return random.randint(fragments_range[0], fragments_range[1])
-    
-    def _calculate_fragments_needed(self, tier: int) -> int:
-        """Calculate fragments needed to guarantee a tier monster"""
-        tiers_config = ConfigManager.get("tiers") or {}
-        tier_data = tiers_config.get(str(tier), {})
-        return tier_data.get("fragment_cost", 10)
     
     async def _cleanup_empty_stacks(self, session: AsyncSession, other_stack: "Esprit"):
         """Clean up empty stacks after fusion"""
@@ -342,11 +322,11 @@ class Esprit(SQLModel, table=True):
         if tier is None:
             tier = base.base_tier
             
-        # Check if stack already exists
+        # Check if stack already exists with lock
         existing_stmt = select(cls).where(
             cls.owner_id == owner_id,
             cls.esprit_base_id == base.id
-        )
+        ).with_for_update()
         existing_stack = (await session.execute(existing_stmt)).scalar_one_or_none()
         
         if existing_stack:
@@ -378,6 +358,12 @@ class Esprit(SQLModel, table=True):
         player_id: int
     ) -> Dict[str, any]:
         """Get collection statistics for a player"""
+        # Try cache first
+        if RedisService.is_available():
+            cached = await RedisService.get_json(f"collection_stats:{player_id}")
+            if cached:
+                return cached
+        
         # Total unique Esprits
         unique_stmt = select(func.count(cls.id)).where(cls.owner_id == player_id)
         unique_count = (await session.execute(unique_stmt)).scalar() or 0
@@ -397,7 +383,7 @@ class Esprit(SQLModel, table=True):
         
         element_results = (await session.execute(element_stmt)).all()
         element_stats = {
-            row[0]: {"unique": row[1], "total": row[2]}
+            row[0].lower(): {"unique": row[1], "total": row[2]}
             for row in element_results
         }
         
@@ -432,10 +418,16 @@ class Esprit(SQLModel, table=True):
             for row in awakened_results
         }
         
-        return {
+        stats = {
             "unique_esprits": unique_count,
             "total_quantity": total_quantity,
             "by_element": element_stats,
             "by_tier": tier_stats,
             "awakened": awakened_stats
         }
+        
+        # Cache for 15 minutes
+        if RedisService.is_available():
+            await RedisService.set_json(f"collection_stats:{player_id}", stats, 900)
+        
+        return stats

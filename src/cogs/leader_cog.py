@@ -1,4 +1,4 @@
-# src/cogs/leader_cog.py
+# src/cogs/leader_cog.py (FIXED VERSION)
 import disnake
 from disnake.ext import commands
 from sqlmodel import select
@@ -9,6 +9,9 @@ from src.utils.database_service import DatabaseService
 from src.utils.config_manager import ConfigManager
 from src.utils.logger import get_logger
 from src.utils.rate_limiter import ratelimit
+from src.utils.constants import ElementConstants, TypeConstants
+from src.utils.embed_colors import EmbedColors
+from src.utils.redis_service import RedisService
 
 logger = get_logger(__name__)
 
@@ -77,7 +80,7 @@ class LeaderSelectionView(disnake.ui.View):
         selected_stack_id = int(inter.values[0])
         
         async with DatabaseService.get_transaction() as session:
-            # Update player's leader
+            # Update player's leader with lock
             player_stmt = select(Player).where(Player.id == self.player.id).with_for_update()
             player = (await session.execute(player_stmt)).scalar_one()
             
@@ -89,6 +92,9 @@ class LeaderSelectionView(disnake.ui.View):
             
             base_stmt = select(EspritBase).where(EspritBase.id == stack.esprit_base_id)
             base = (await session.execute(base_stmt)).scalar_one()
+            
+            # Invalidate cache
+            await RedisService.invalidate_player_cache(player.id)
         
         # Create confirmation embed
         embed = disnake.Embed(
@@ -107,7 +113,7 @@ class LeaderSelectionView(disnake.ui.View):
             element_desc = ConfigManager.get("elements")["bonuses"][stack.element.lower()]["description"]
             bonus_text.append(f"**Element ({stack.element}):** {element_desc}")
         if type_bonuses:
-            type_desc = ConfigManager.get("esprit_types")["bonuses"][base.type]["description"]
+            type_desc = TypeConstants.get_description(base.type)
             bonus_text.append(f"**Type ({base.type.title()}):** {type_desc}")
         
         if bonus_text:
@@ -168,23 +174,25 @@ class LeaderCog(commands.Cog):
                 embed = disnake.Embed(
                     title="No Leader Set",
                     description="You haven't set a leader Esprit yet!\n\nUse `/leader set` to choose your leader.",
-                    color=0x2c2d31
+                    color=EmbedColors.DEFAULT
                 )
                 await inter.edit_original_response(embed=embed)
                 return
 
-            # Get leader stack and base
-            stack_stmt = select(Esprit).where(Esprit.id == player.leader_esprit_stack_id)
-            stack = (await session.execute(stack_stmt)).scalar_one_or_none()
+            # Get leader stack and base in single query
+            stack_stmt = select(Esprit, EspritBase).join(
+                EspritBase, Esprit.esprit_base_id == EspritBase.id
+            ).where(Esprit.id == player.leader_esprit_stack_id)
+            
+            result = (await session.execute(stack_stmt)).first()
 
-            if not stack:
+            if not result:
                 # Leader was deleted somehow
                 player.leader_esprit_stack_id = None
                 await inter.edit_original_response("Your leader Esprit no longer exists. Please set a new one.")
                 return
 
-            base_stmt = select(EspritBase).where(EspritBase.id == stack.esprit_base_id)
-            base = (await session.execute(base_stmt)).scalar_one()
+            stack, base = result
 
             # Get bonuses
             bonuses = await player.get_leader_bonuses(session)
@@ -223,7 +231,7 @@ class LeaderCog(commands.Cog):
         
         # Type bonuses
         if type_bonuses:
-            type_desc = ConfigManager.get("esprit_types")["bonuses"][base.type]["description"]
+            type_desc = TypeConstants.get_description(base.type)
             bonus_lines.append(f"**{base.type.title()} Type:** {type_desc}")
         
         if bonus_lines:
@@ -289,7 +297,7 @@ class LeaderCog(commands.Cog):
                 "Your leader provides passive bonuses based on their element and type.\n"
                 "Leaders don't count toward your space limit!"
             ),
-            color=0x2c2d31
+            color=EmbedColors.DEFAULT
         )
 
         view = LeaderSelectionView(inter.author, player, stacks)
@@ -317,11 +325,14 @@ class LeaderCog(commands.Cog):
             
             # Recalculate space (leader might have been excluded)
             await player.recalculate_space(session)
+            
+            # Invalidate cache
+            await RedisService.invalidate_player_cache(player.id)
 
         embed = disnake.Embed(
             title="Leader Removed",
             description="Your leader has been removed. You no longer receive leader bonuses.",
-            color=0xff9900
+            color=EmbedColors.WARNING
         )
         
         await inter.edit_original_response(embed=embed)
@@ -335,21 +346,13 @@ class LeaderCog(commands.Cog):
         embed = disnake.Embed(
             title="Leader Bonus Guide",
             description="Leaders provide passive bonuses based on their element and type.",
-            color=0x2c2d31
+            color=EmbedColors.INFO
         )
 
         # Element bonuses
         element_lines = []
         for element, data in elements_config["bonuses"].items():
-            emoji = {
-                "inferno": "🔥",
-                "verdant": "🌿",
-                "abyssal": "🌊",
-                "tempest": "🌪️",
-                "umbral": "🌑",
-                "radiant": "✨"
-            }.get(element, "🔮")
-            
+            emoji = ElementConstants.get_emoji(element)
             element_lines.append(f"{emoji} **{element.title()}:** {data['description']}")
         
         embed.add_field(
@@ -361,14 +364,7 @@ class LeaderCog(commands.Cog):
         # Type bonuses
         type_lines = []
         for type_name, data in types_config["bonuses"].items():
-            emoji = {
-                "warrior": "⚔️",
-                "guardian": "🛡️",
-                "scout": "🏹",
-                "mystic": "📜",
-                "titan": "🗿"
-            }.get(type_name, "❓")
-            
+            emoji = TypeConstants.get_emoji(type_name)
             type_lines.append(f"{emoji} **{type_name.title()}:** {data['description']}")
         
         embed.add_field(

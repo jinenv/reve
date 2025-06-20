@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, date
 import random
 
 from src.utils.config_manager import ConfigManager
+from src.utils.redis_service import RedisService
 
 if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
@@ -48,16 +49,17 @@ class Player(SQLModel, table=True):
     erythl: int = Field(default=0)  # Premium currency
     inventory: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     
-    # --- Tier Fragments (MW Style) ---
-    # Fragments are tier-specific, not element-specific
+    # --- Tier Fragments (MW Style) AND Element Fragments ---
     tier_fragments: Dict[str, int] = Field(default_factory=dict, sa_column=Column(JSON))
-    # Format: {"1": 0, "2": 0, ... "18": 0}
+    element_fragments: Dict[str, int] = Field(default_factory=dict, sa_column=Column(JSON))
+    # Format: {"1": 0, "2": 0, ... "18": 0} and {"inferno": 0, "verdant": 0, ...}
     
     # --- Daily/Weekly Systems ---
     daily_quest_streak: int = Field(default=0)
     last_daily_reset: date = Field(default_factory=date.today)
     weekly_points: int = Field(default=0)
     last_weekly_reset: date = Field(default_factory=date.today)
+    last_daily_echo: Optional[date] = Field(default=None)
     
     # --- Battle & Achievement Stats ---
     total_battles: int = Field(default=0)
@@ -65,6 +67,7 @@ class Player(SQLModel, table=True):
     total_fusions: int = Field(default=0)
     successful_fusions: int = Field(default=0)
     total_awakenings: int = Field(default=0)
+    total_echoes_opened: int = Field(default=0)
     
     # --- Collection & Social Systems ---
     collections_completed: int = Field(default=0)
@@ -115,24 +118,28 @@ class Player(SQLModel, table=True):
 
     async def get_leader_bonuses(self, session: AsyncSession) -> Dict[str, Any]:
         """Get all bonuses from the leader Esprit including awakening boosts"""
+        # Try cache first
+        if RedisService.is_available() and self.id is not None:
+            cached = await RedisService.get_cached_leader_bonuses(self.id)
+
+            if cached:
+                return cached
+        
         if not self.leader_esprit_stack_id:
             return {}
         
         from src.database.models import Esprit, EspritBase
         
-        # Get leader stack
-        leader_stmt = select(Esprit).where(Esprit.id == self.leader_esprit_stack_id)
-        leader_stack = (await session.execute(leader_stmt)).scalar_one_or_none()
+        # Get leader stack and base in single query using JOIN
+        leader_stmt = select(Esprit, EspritBase).join(
+            EspritBase, onclause=(Esprit.esprit_base_id == EspritBase.id)
+        ).where(Esprit.id == self.leader_esprit_stack_id)
         
-        if not leader_stack:
+        result = (await session.execute(leader_stmt)).first()
+        if not result:
             return {}
         
-        # Get base info
-        base_stmt = select(EspritBase).where(EspritBase.id == leader_stack.esprit_base_id)
-        base = (await session.execute(base_stmt)).scalar_one_or_none()
-        
-        if not base:
-            return {}
+        leader_stack, base = result
         
         # Get element bonuses
         elements_config = ConfigManager.get("elements") or {}
@@ -160,7 +167,7 @@ class Player(SQLModel, table=True):
             else:
                 scaled_type_bonuses[key] = value
         
-        return {
+        bonuses = {
             "element": leader_stack.element,
             "type": base.type,
             "element_bonuses": scaled_element_bonuses,
@@ -169,14 +176,29 @@ class Player(SQLModel, table=True):
             "awakening_multiplier": awakening_multiplier,
             "tier": leader_stack.tier
         }
+        
+        # Cache the result
+        if RedisService.is_available() and self.id is not None:
+            cached = await RedisService.get_cached_player_power(self.id)
+        return bonuses
 
     async def recalculate_total_power(self, session: AsyncSession) -> Dict[str, int]:
         """Recalculate total combat power from ALL owned Esprits"""
+        # Try cache first
+        if RedisService.is_available():
+            cached = await RedisService.get_cached_player_power(self.id)
+            if cached:
+                # Update model fields with cached values
+                self.total_attack_power = cached["atk"]
+                self.total_defense_power = cached["def"]
+                self.total_hp = cached["hp"]
+                return cached
+        
         from src.database.models import Esprit, EspritBase
         
-        # Get all player's Esprits with their bases
+        # Single query with JOIN for better performance
         stacks_stmt = select(Esprit, EspritBase).join(
-            EspritBase, onclause=(Esprit.esprit_base_id == EspritBase.id)
+            EspritBase, Esprit.esprit_base_id == EspritBase.id
         ).where(Esprit.owner_id == self.id)
         
         results = (await session.execute(stacks_stmt)).all()
@@ -197,18 +219,23 @@ class Player(SQLModel, table=True):
         self.total_defense_power = total_def
         self.total_hp = total_hp
         
-        return {
+        power_data = {
             "atk": total_atk,
             "def": total_def,
             "hp": total_hp,
             "total": total_atk + total_def + (total_hp // 10)
         }
+        
+        # Cache the result
+        if RedisService.is_available():
+            await RedisService.cache_player_power(self.id, power_data)
+        return power_data
 
     async def recalculate_space(self, session: AsyncSession) -> int:
         """Recalculate current space usage from all owned Esprits"""
         from src.database.models import Esprit
         
-        # Get all player's Esprits
+        # Single query to get total space
         stacks_stmt = select(Esprit).where(Esprit.owner_id == self.id)
         stacks = (await session.execute(stacks_stmt)).scalars().all()
         
@@ -243,12 +270,18 @@ class Player(SQLModel, table=True):
             
         return leveled_up
 
+    # --- FRAGMENT METHODS (FIXED) ---
+    
     def get_tier_fragment_count(self, tier: int) -> int:
         """Get fragment count for specific tier"""
+        if self.tier_fragments is None:
+            self.tier_fragments = {}
         return self.tier_fragments.get(str(tier), 0)
 
     def add_tier_fragments(self, tier: int, amount: int):
         """Add fragments for specific tier"""
+        if self.tier_fragments is None:
+            self.tier_fragments = {}
         tier_str = str(tier)
         if tier_str not in self.tier_fragments:
             self.tier_fragments[tier_str] = 0
@@ -261,9 +294,56 @@ class Player(SQLModel, table=True):
         if current < amount:
             return False
         
+        if self.tier_fragments is None:
+            self.tier_fragments = {}
         self.tier_fragments[str(tier)] -= amount
         flag_modified(self, "tier_fragments")
         return True
+
+    def get_fragment_count(self, element: str) -> int:
+        """Get fragment count for specific element (MISSING METHOD FIXED)"""
+        if self.element_fragments is None:
+            self.element_fragments = {}
+        return self.element_fragments.get(element.lower(), 0)
+
+    def add_element_fragments(self, element: str, amount: int):
+        """Add fragments for specific element"""
+        if self.element_fragments is None:
+            self.element_fragments = {}
+        element_key = element.lower()
+        if element_key not in self.element_fragments:
+            self.element_fragments[element_key] = 0
+        self.element_fragments[element_key] += amount
+        flag_modified(self, "element_fragments")
+
+    def consume_element_fragments(self, element: str, amount: int) -> bool:
+        """Consume element fragments if available"""
+        current = self.get_fragment_count(element)
+        if current < amount:
+            return False
+        
+        if self.element_fragments is None:
+            self.element_fragments = {}
+        self.element_fragments[element.lower()] -= amount
+        flag_modified(self, "element_fragments")
+        return True
+
+    # --- DAILY ECHO SYSTEM ---
+    
+    def can_claim_daily_echo(self) -> bool:
+        """Check if player can claim daily echo"""
+        today = date.today()
+        return self.last_daily_echo != today
+
+    def claim_daily_echo(self) -> bool:
+        """Claim daily echo if available"""
+        if not self.can_claim_daily_echo():
+            return False
+        
+        self.last_daily_echo = date.today()
+        return True
+
+    # --- QUEST SYSTEM ---
 
     def can_access_area(self, area_id: str) -> bool:
         """Check if player meets level requirement for an area."""
@@ -349,7 +429,9 @@ class Player(SQLModel, table=True):
                         quantity=1
                     )
                     
-                    # Update space usage and total power
+                    # Invalidate cache and update stats
+                    if RedisService.is_available():
+                        await RedisService.invalidate_player_cache(self.id)
                     await self.recalculate_space(session)
                     await self.recalculate_total_power(session)
                     
@@ -358,6 +440,8 @@ class Player(SQLModel, table=True):
 
     def record_quest_completion(self, area_id: str, quest_id: str):
         """Records a quest as completed for the player."""
+        if self.quest_progress is None:
+            self.quest_progress = {}
         if area_id not in self.quest_progress:
             self.quest_progress[area_id] = []
         if quest_id not in self.quest_progress[area_id]:
@@ -366,6 +450,8 @@ class Player(SQLModel, table=True):
 
     def get_completed_quests(self, area_id: str) -> List[str]:
         """Get list of completed quest IDs for an area."""
+        if self.quest_progress is None:
+            return []
         return self.quest_progress.get(area_id, [])
 
     def get_next_available_quest(self, area_id: str) -> Optional[dict]:
@@ -393,6 +479,8 @@ class Player(SQLModel, table=True):
         completed_quests = len(self.get_completed_quests(area_id))
         
         return completed_quests >= total_quests
+
+    # --- DAILY/WEEKLY RESETS ---
 
     def check_daily_reset(self):
         """Check and perform daily reset if needed"""
@@ -513,4 +601,8 @@ class Player(SQLModel, table=True):
             raise ValueError(f"No Esprits found for tier {selected_tier}")
             
         selected_base = random.choice(valid_bases)
+        
+        # Update echo counter
+        self.total_echoes_opened += 1
+        
         return None, selected_base, selected_tier

@@ -1,4 +1,4 @@
-# src/cogs/fusion_cog.py
+# src/cogs/fusion_cog.py (FIXED VERSION)
 import disnake
 from disnake.ext import commands
 from sqlmodel import select
@@ -10,6 +10,9 @@ from src.utils.database_service import DatabaseService
 from src.utils.config_manager import ConfigManager
 from src.utils.logger import get_logger
 from src.utils.rate_limiter import ratelimit
+from src.utils.constants import ElementConstants, TierConstants
+from src.utils.embed_colors import EmbedColors
+from src.utils.redis_service import RedisService
 
 logger = get_logger(__name__)
 
@@ -33,7 +36,7 @@ class FusionSelectionView(disnake.ui.View):
         self.clear_items()
         
         # Filter stacks that can fuse (have 2+ quantity or different stacks)
-        fuseable_stacks = [(s, b) for s, b in self.stacks if s.quantity >= 2 or s.tier < 12]
+        fuseable_stacks = [(s, b) for s, b in self.stacks if s.quantity >= 2 or s.tier < 18]
         
         if not fuseable_stacks:
             return
@@ -112,12 +115,12 @@ class FusionSelectionView(disnake.ui.View):
                 else:
                     result_element = fusion_result.title() if fusion_result else "Unknown"
             
-            # Fragment toggle button
+            # Fragment toggle button (for element fragments)
             fragments_needed = 10
             current_fragments = self.player.get_fragment_count(result_element.lower()) if result_element not in ["Multiple possible", "Random", "Unknown"] else 0
             
             fragment_button = disnake.ui.Button(
-                label=f"Use Fragments ({current_fragments}/{fragments_needed})" if not self.use_fragments else f"Using Fragments ✓",
+                label=f"Use Element Fragments ({current_fragments}/{fragments_needed})" if not self.use_fragments else f"Using Fragments ✓",
                 style=disnake.ButtonStyle.secondary if not self.use_fragments else disnake.ButtonStyle.success,
                 disabled=current_fragments < fragments_needed,
                 custom_id="toggle_fragments"
@@ -186,9 +189,9 @@ class FusionSelectionView(disnake.ui.View):
         
         await inter.response.defer()
         
-        # Perform the fusion
+        # Perform the fusion with proper ACID compliance
         async with DatabaseService.get_transaction() as session:
-            # Re-fetch everything with locks
+            # Re-fetch everything with locks (ACID compliance)
             player_stmt = select(Player).where(Player.id == self.player.id).with_for_update()
             player = (await session.execute(player_stmt)).scalar_one()
             
@@ -202,7 +205,15 @@ class FusionSelectionView(disnake.ui.View):
                 second_stack = (await session.execute(second_stmt)).scalar_one()
             
             # Perform fusion
-            result = await first_stack.perform_fusion(second_stack, session, self.use_fragments)
+            result = await first_stack.perform_fusion(
+                second_stack, 
+                session, 
+                self.use_fragments,
+                10 if self.use_fragments else 0
+            )
+            
+            # Invalidate cache
+            await RedisService.invalidate_player_cache(player.id)
             
             if result:
                 # Get result base info
@@ -213,7 +224,7 @@ class FusionSelectionView(disnake.ui.View):
                 embed = disnake.Embed(
                     title="⚗️ Fusion Successful!",
                     description=f"You created **{result_base.name}**!",
-                    color=0x00ff00
+                    color=EmbedColors.FUSION_SUCCESS
                 )
                 
                 info = result.get_individual_power(result_base)
@@ -241,7 +252,7 @@ class FusionSelectionView(disnake.ui.View):
                 embed = disnake.Embed(
                     title="💥 Fusion Failed!",
                     description="The fusion was unsuccessful, but you gained fragments.",
-                    color=0xff0000
+                    color=EmbedColors.FUSION_FAIL
                 )
                 
                 embed.add_field(
@@ -267,7 +278,7 @@ class FusionSelectionView(disnake.ui.View):
         embed = disnake.Embed(
             title="Fusion Cancelled",
             description="No Esprits were consumed.",
-            color=0xff9900
+            color=EmbedColors.WARNING
         )
         await inter.response.edit_message(embed=embed, view=None)
 
@@ -275,7 +286,7 @@ class FusionSelectionView(disnake.ui.View):
         """Create embed showing fusion preview"""
         embed = disnake.Embed(
             title="⚗️ Esprit Fusion",
-            color=0x2c2d31
+            color=EmbedColors.DEFAULT
         )
         
         if not self.selected_first:
@@ -331,10 +342,8 @@ class FusionSelectionView(disnake.ui.View):
             
             base_success = fusion_config["fusion_success_rates"]["different_element"].get(str(first_stack.tier), 0.4)
         
-        # Apply leader bonus
-        leader_bonuses = {}  # Would need async context to get actual bonuses
-        fusion_bonus = leader_bonuses.get("element_bonuses", {}).get("fusion_bonus", 0)
-        final_success = min(base_success * (1 + fusion_bonus), 0.95)
+        # Apply leader bonus (would need async context to get actual bonuses)
+        final_success = min(base_success, 0.95)
         
         if self.use_fragments:
             final_success = 1.0
@@ -352,7 +361,7 @@ class FusionSelectionView(disnake.ui.View):
             fragments_on_fail = max(1, first_stack.tier // 2)
             cost_lines.append(f"• On failure: +{fragments_on_fail} fragments")
         if self.use_fragments:
-            cost_lines.append(f"• Using 10 fragments for guaranteed success")
+            cost_lines.append(f"• Using 10 element fragments for guaranteed success")
         
         embed.add_field(
             name="Cost",
@@ -393,7 +402,7 @@ class FusionCog(commands.Cog):
                 EspritBase, Esprit.esprit_base_id == EspritBase.id
             ).where(
                 Esprit.owner_id == player.id,
-                Esprit.tier < 12  # Can't fuse max tier
+                Esprit.tier < 18  # Can't fuse max tier
             ).order_by(
                 Esprit.tier.desc(),
                 Esprit.quantity.desc()
@@ -409,7 +418,7 @@ class FusionCog(commands.Cog):
         embed = disnake.Embed(
             title="⚗️ Esprit Fusion",
             description="Select two Esprits of the same tier to fuse them into a higher tier.",
-            color=0x2c2d31
+            color=EmbedColors.DEFAULT
         )
 
         view = FusionSelectionView(inter.author, player, stacks)
@@ -424,23 +433,14 @@ class FusionCog(commands.Cog):
         embed = disnake.Embed(
             title="Element Fusion Chart",
             description="Results when fusing different elements:",
-            color=0x2c2d31
+            color=EmbedColors.INFO
         )
-        
-        # Element emojis
-        emojis = {
-            "inferno": "🔥",
-            "verdant": "🌿",
-            "abyssal": "🌊",
-            "tempest": "🌪️",
-            "umbral": "🌑",
-            "radiant": "✨"
-        }
         
         # Same element fusions
         same_lines = []
-        for element in ["inferno", "verdant", "abyssal", "tempest", "umbral", "radiant"]:
-            same_lines.append(f"{emojis[element]} + {emojis[element]} = {emojis[element]} (Higher rate)")
+        for element in ElementConstants.ELEMENTS:
+            emoji = ElementConstants.get_emoji(element)
+            same_lines.append(f"{emoji} + {emoji} = {emoji} (Higher rate)")
         
         embed.add_field(
             name="Same Element Fusions",
@@ -464,14 +464,19 @@ class FusionCog(commands.Cog):
             if elem1 == elem2:
                 continue
             
+            emoji1 = ElementConstants.get_emoji(elem1)
+            emoji2 = ElementConstants.get_emoji(elem2)
+            
             if isinstance(result, list):
-                result_text = f"{emojis[result[0]]} or {emojis[result[1]]}"
+                result_emoji1 = ElementConstants.get_emoji(result[0])
+                result_emoji2 = ElementConstants.get_emoji(result[1])
+                result_text = f"{result_emoji1} or {result_emoji2}"
             elif result == "random":
                 result_text = "🎲 Random"
             else:
-                result_text = emojis.get(result, "?")
+                result_text = ElementConstants.get_emoji(result)
             
-            different_lines.append(f"{emojis[elem1]} + {emojis[elem2]} = {result_text}")
+            different_lines.append(f"{emoji1} + {emoji2} = {result_text}")
         
         # Split into columns
         mid = len(different_lines) // 2
@@ -506,38 +511,29 @@ class FusionCog(commands.Cog):
         embed = disnake.Embed(
             title=f"{inter.author.display_name}'s Fragments",
             description="Fragments are gained from failed fusions. Collect 10 to guarantee a fusion!",
-            color=0x2c2d31
+            color=EmbedColors.INFO
         )
         
-        # Element emojis
-        emojis = {
-            "inferno": "🔥",
-            "verdant": "🌿",
-            "abyssal": "🌊",
-            "tempest": "🌪️",
-            "umbral": "🌑",
-            "radiant": "✨"
-        }
-        
-        # Fragment counts
+        # Element fragments
         fragment_lines = []
         total_fragments = 0
         
-        for element in ["inferno", "verdant", "abyssal", "tempest", "umbral", "radiant"]:
-            count = player.get_fragment_count(element)
+        for element in ElementConstants.ELEMENTS:
+            count = player.get_fragment_count(element.lower())
             total_fragments += count
             
             bar_length = 10
             filled = min(count, 10)
             bar = "█" * filled + "░" * (bar_length - filled)
+            emoji = ElementConstants.get_emoji(element)
             
             fragment_lines.append(
-                f"{emojis[element]} **{element.title()}:** {count}/10\n"
+                f"{emoji} **{element}:** {count}/10\n"
                 f"└─ [{bar}]"
             )
         
         embed.add_field(
-            name="Fragment Collection",
+            name="Element Fragment Collection",
             value="\n".join(fragment_lines),
             inline=False
         )
@@ -553,13 +549,13 @@ class FusionCog(commands.Cog):
     async def fusion_rates(self, inter: disnake.ApplicationCommandInteraction):
         """Display fusion success rates"""
         fusion_config = ConfigManager.get("elements") or {}
-        same_rates = fusion_config["fusion_success_rates"]["same_element"]
-        diff_rates = fusion_config["fusion_success_rates"]["different_element"]
+        same_rates = fusion_config.get("fusion_success_rates", {}).get("same_element", {})
+        diff_rates = fusion_config.get("fusion_success_rates", {}).get("different_element", {})
         
         embed = disnake.Embed(
             title="Fusion Success Rates",
             description="Base success rates before leader bonuses:",
-            color=0x2c2d31
+            color=EmbedColors.INFO
         )
         
         # Create rate table
@@ -587,8 +583,8 @@ class FusionCog(commands.Cog):
                 "• Same element fusions have higher success rates\n"
                 "• Higher tiers are harder to fuse\n"
                 "• Radiant leaders provide +10% fusion success\n"
-                "• Use 10 fragments to guarantee success\n"
-                "• Failed fusions produce fragments"
+                "• Use 10 element fragments to guarantee success\n"
+                "• Failed fusions produce element fragments"
             ),
             inline=False
         )

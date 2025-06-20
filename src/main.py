@@ -1,4 +1,4 @@
-# src/main.py
+# src/main.py (UPDATED VERSION)
 import os
 import logging
 import asyncio
@@ -28,10 +28,13 @@ async def main():
     DatabaseService.init()
     logger.info("DatabaseService initialized.")
     
-    # Initialize Redis (optional)
+    # Initialize Redis (optional - gracefully handle unavailability)
     try:
         RedisService.init()
-        logger.info("RedisService initialized.")
+        if await RedisService.ping():
+            logger.info("RedisService initialized and connected.")
+        else:
+            logger.warning("Redis connection failed, continuing without cache.")
     except Exception as e:
         logger.warning(f"Redis not available, continuing without cache: {e}")
     

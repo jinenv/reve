@@ -98,3 +98,36 @@ class EmbedColors:
             "collection": cls.DEFAULT,
             "leader_set": cls.INFO
         }
+        
+        # Handle special cases with kwargs
+        if context == "element" and "element" in kwargs:
+            return cls.get_element_color(kwargs["element"])
+        elif context == "tier" and "tier" in kwargs:
+            return cls.get_tier_color(kwargs["tier"])
+        
+        return context_map.get(context, cls.DEFAULT)
+    
+    @classmethod
+    def get_rarity_color_by_name(cls, rarity: str) -> int:
+        """Get color by rarity name"""
+        rarity_map = {
+            "common": cls.COMMON,
+            "uncommon": cls.UNCOMMON,
+            "rare": cls.RARE,
+            "arcane": cls.EPIC,
+            "mythic": cls.MYTHIC,
+            "celestial": cls.LEGENDARY,
+            "divine": cls.DIVINE,
+            "primal": cls.COSMIC,
+            "sovereign": cls.COSMIC,
+            "astral": cls.COSMIC,
+            "ethereal": cls.COSMIC,
+            "transcendent": cls.COSMIC,
+            "empyrean": cls.COSMIC,
+            "absolute": cls.COSMIC,
+            "genesis": cls.COSMIC,
+            "apocryphal": cls.COSMIC,
+            "void": cls.COSMIC,
+            "singularity": cls.COSMIC
+        }
+        return rarity_map.get(rarity.lower(), cls.DEFAULT)
