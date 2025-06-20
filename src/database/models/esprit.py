@@ -1,6 +1,6 @@
 # src/database/models/esprit.py
 from typing import Optional, Dict, List, TYPE_CHECKING, Any
-from sqlmodel import SQLModel, Field, select, func
+from sqlmodel import SQLModel, Field, select, func, col 
 from sqlalchemy import Column, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
@@ -11,6 +11,8 @@ from src.utils.redis_service import RedisService
 
 if TYPE_CHECKING:
     from src.database.models import EspritBase
+    from src.database.models.player import Player
+    from src.database.models.esprit_base import EspritBase
 
 class Esprit(SQLModel, table=True):
     """Universal Stack System - Each row represents ALL copies of an Esprit type a player owns"""
@@ -369,7 +371,7 @@ class Esprit(SQLModel, table=True):
         from src.database.models.esprit import Esprit
         
         # Total unique Esprits
-        unique_stmt = select(func.count(Esprit.id)).where(Esprit.owner_id == player_id)
+        unique_stmt = select(func.count()).select_from(Esprit).where(Esprit.owner_id == player_id)
         unique_count = (await session.execute(unique_stmt)).scalar() or 0
         
         # Total quantity
@@ -379,46 +381,46 @@ class Esprit(SQLModel, table=True):
         # By element
         element_stmt = select(
             Esprit.element,
-            func.count(Esprit.id),
-            func.sum(Esprit.quantity)
-        ).where(
+            func.count().label('unique_count'),
+            func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
+        ).select_from(Esprit).where(
             Esprit.owner_id == player_id
         ).group_by(Esprit.element)
         
         element_results = (await session.execute(element_stmt)).all()
         element_stats = {
-            row[0].lower(): {"unique": row[1], "total": row[2]}
+            row.element.lower(): {"unique": row.unique_count, "total": row.total_quantity}
             for row in element_results
         }
         
         # By tier
         tier_stmt = select(
             Esprit.tier,
-            func.count(Esprit.id),
-            func.sum(Esprit.quantity)
-        ).where(
+            func.count().label('unique_count'),
+            func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
+        ).select_from(Esprit).where(
             Esprit.owner_id == player_id
-        ).group_by(Esprit.tier).order_by(Esprit.tier)
-        
+        ).group_by(col(Esprit.tier)).order_by(col(Esprit.tier))  # FIX: Wrap Esprit.tier with col()
+
         tier_results = (await session.execute(tier_stmt)).all()
         tier_stats = {
-            f"tier_{row[0]}": {"unique": row[1], "total": row[2]}
+            f"tier_{row.tier}": {"unique": row.unique_count, "total": row.total_quantity}
             for row in tier_results
         }
         
         # Awakened stacks
         awakened_stmt = select(
             Esprit.awakening_level,
-            func.count(Esprit.id),
-            func.sum(Esprit.quantity)
-        ).where(
+            func.count().label('stack_count'),
+            func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
+        ).select_from(Esprit).where(
             Esprit.owner_id == player_id,
             Esprit.awakening_level > 0
-        ).group_by(Esprit.awakening_level)
+        ).group_by(col(Esprit.awakening_level))
         
         awakened_results = (await session.execute(awakened_stmt)).all()
         awakened_stats = {
-            f"star_{row[0]}": {"stacks": row[1], "total": row[2]}
+            f"star_{row.awakening_level}": {"stacks": row.stack_count, "total": row.total_quantity}
             for row in awakened_results
         }
         
