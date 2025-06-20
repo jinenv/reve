@@ -1,5 +1,5 @@
 # src/database/models/player.py
-from typing import List, Optional, Dict, Any, TYPE_CHECKING
+from typing import List, Optional, Dict, Any, TYPE_CHECKING, Tuple
 from sqlmodel import SQLModel, Field, Column, select, col
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm.attributes import flag_modified
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
 
 class Player(SQLModel, table=True):
+    __tablename__ = "player"
     # --- Core Identity & Progression ---
     id: Optional[int] = Field(default=None, primary_key=True)
     discord_id: int = Field(unique=True, index=True)
@@ -121,7 +122,6 @@ class Player(SQLModel, table=True):
         # Try cache first
         if RedisService.is_available() and self.id is not None:
             cached = await RedisService.get_cached_leader_bonuses(self.id)
-
             if cached:
                 return cached
         
@@ -132,9 +132,8 @@ class Player(SQLModel, table=True):
         
         # Get leader stack and base in single query using JOIN
         leader_stmt = select(Esprit, EspritBase).join(
-            EspritBase, onclause=(Esprit.esprit_base_id == EspritBase.id)
+            EspritBase, Esprit.esprit_base_id == EspritBase.id
         ).where(Esprit.id == self.leader_esprit_stack_id)
-        
         result = (await session.execute(leader_stmt)).first()
         if not result:
             return {}
@@ -179,7 +178,7 @@ class Player(SQLModel, table=True):
         
         # Cache the result
         if RedisService.is_available() and self.id is not None:
-            cached = await RedisService.get_cached_player_power(self.id)
+            await RedisService.cache_leader_bonuses(self.id, bonuses)
         return bonuses
 
     async def recalculate_total_power(self, session: AsyncSession) -> Dict[str, int]:
@@ -301,7 +300,7 @@ class Player(SQLModel, table=True):
         return True
 
     def get_fragment_count(self, element: str) -> int:
-        """Get fragment count for specific element (MISSING METHOD FIXED)"""
+        """Get fragment count for specific element"""
         if self.element_fragments is None:
             self.element_fragments = {}
         return self.element_fragments.get(element.lower(), 0)

@@ -6,14 +6,13 @@ from datetime import datetime
 from src.utils.constants import ElementConstants, TypeConstants, TierConstants
 
 class EspritBase(SQLModel, table=True):
+    __tablename__ = "esprit_base"  # Explicitly set table name
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     element: str = Field(index=True)  # inferno, verdant, abyssal, tempest, umbral, radiant
     type: str = Field(default="warrior", index=True)  # warrior, guardian, scout, mystic, titan
     base_tier: int = Field(index=True)
-
-    class Meta:
-        table = "esprit_base"
     
     # Base stats (before tier/awakening multipliers)
     base_atk: int

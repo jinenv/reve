@@ -1,12 +1,11 @@
 # src/database/models/esprit.py
 from typing import Optional, Dict, List, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, select, func, col, Column
-from sqlalchemy.dialects.postgresql import JSON
+from sqlmodel import SQLModel, Field, select, func
+from sqlalchemy import Column, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
-import math
 import random
-
+from sqlalchemy import select as sa_select
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
 
@@ -15,6 +14,7 @@ if TYPE_CHECKING:
 
 class Esprit(SQLModel, table=True):
     """Universal Stack System - Each row represents ALL copies of an Esprit type a player owns"""
+    __tablename__ = "esprit"
     
     id: Optional[int] = Field(default=None, primary_key=True)
     esprit_base_id: int = Field(foreign_key="esprit_base.id", index=True)
@@ -24,15 +24,15 @@ class Esprit(SQLModel, table=True):
     quantity: int = Field(default=1)  # Total copies in this stack (can be thousands)
     tier: int = Field(default=1)      # ALL copies share this tier
     awakening_level: int = Field(default=0, ge=0, le=5)  # 0-5 stars
-    element: str                      # Cached from base for quick access
+    element: str = Field(sa_column=Column(String))  # Cached from base for quick access
     
     # Space System (MW Style)
     space_per_unit: int = Field(default=1)  # Space value per copy
     total_space: int = Field(default=1)     # Total space this stack uses
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    last_modified: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_modified: datetime = Field(default_factory=datetime.utcnow)
     
     # --- LOGIC METHODS ---
     

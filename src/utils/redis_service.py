@@ -3,9 +3,14 @@ import redis.asyncio as redis
 from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
 from typing import Optional, Dict, Any
 import json
-from .logger import get_logger
+from src.utils.logger import get_logger
 from dotenv import load_dotenv
 import os
+import time
+import functools
+from typing import Dict, Tuple, Callable, Any
+from collections import defaultdict, deque
+import disnake
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -39,7 +44,7 @@ class RedisService:
     @classmethod
     def get_client(cls) -> Optional[redis.Redis]:
         if not cls.is_available():
-            raise RuntimeError("RedisService not available")
+            return None
         return cls._client
 
     @classmethod
@@ -48,10 +53,13 @@ class RedisService:
         if not cls.is_available():
             return False
         try:
-            pong = await cls.get_client().ping()
-            return pong is True
+            client = cls.get_client()
+            if client:
+                pong = await client.ping()
+                return pong is True
+            return False
         except Exception as e:
-            logger.error(f"Redis ping failed: {e}")
+            logger.debug(f"Redis ping failed: {e}")
             cls._available = False
             return False
 
@@ -61,10 +69,13 @@ class RedisService:
         if not cls.is_available():
             return False
         try:
-            await cls.get_client().set(key, value, ex=expire_seconds)
-            return True
+            client = cls.get_client()
+            if client:
+                await client.set(key, value, ex=expire_seconds)
+                return True
+            return False
         except Exception as e:
-            logger.error(f"Redis set failed for key {key}: {e}")
+            logger.debug(f"Redis set failed for key {key}: {e}")
             return False
 
     @classmethod
@@ -73,9 +84,12 @@ class RedisService:
         if not cls.is_available():
             return None
         try:
-            return await cls.get_client().get(key)
+            client = cls.get_client()
+            if client:
+                return await client.get(key)
+            return None
         except Exception as e:
-            logger.error(f"Redis get failed for key {key}: {e}")
+            logger.debug(f"Redis get failed for key {key}: {e}")
             return None
 
     @classmethod
@@ -84,55 +98,70 @@ class RedisService:
         if not cls.is_available():
             return False
         try:
-            result = await cls.get_client().delete(key)
-            return result > 0
+            client = cls.get_client()
+            if client:
+                result = await client.delete(key)
+                return result > 0
+            return False
         except Exception as e:
-            logger.error(f"Redis delete failed for key {key}: {e}")
+            logger.debug(f"Redis delete failed for key {key}: {e}")
             return False
 
     @classmethod
     async def set_json(cls, key: str, value: Dict[str, Any], expire_seconds: Optional[int] = None) -> bool:
         """Set a JSON object"""
+        if not cls.is_available():
+            return False
         try:
             json_str = json.dumps(value)
             return await cls.set(key, json_str, expire_seconds)
         except (TypeError, ValueError) as e:
-            logger.error(f"JSON serialization failed for key {key}: {e}")
+            logger.debug(f"JSON serialization failed for key {key}: {e}")
             return False
 
     @classmethod
     async def get_json(cls, key: str) -> Optional[Dict[str, Any]]:
         """Get a JSON object"""
+        if not cls.is_available():
+            return None
         json_str = await cls.get(key)
         if not json_str:
             return None
         try:
             return json.loads(json_str)
         except (TypeError, ValueError) as e:
-            logger.error(f"JSON deserialization failed for key {key}: {e}")
+            logger.debug(f"JSON deserialization failed for key {key}: {e}")
             return None
 
     @classmethod
     async def cache_player_power(cls, player_id: int, power_data: Dict[str, int], ttl: int = 300) -> bool:
         """Cache player power calculations for 5 minutes"""
+        if not cls.is_available():
+            return False
         key = f"player_power:{player_id}"
         return await cls.set_json(key, power_data, ttl)
 
     @classmethod
     async def get_cached_player_power(cls, player_id: int) -> Optional[Dict[str, int]]:
         """Get cached player power data"""
+        if not cls.is_available():
+            return None
         key = f"player_power:{player_id}"
         return await cls.get_json(key)
 
     @classmethod
     async def cache_leader_bonuses(cls, player_id: int, bonuses: Dict[str, Any], ttl: int = 600) -> bool:
         """Cache leader bonuses for 10 minutes"""
+        if not cls.is_available():
+            return False
         key = f"leader_bonuses:{player_id}"
         return await cls.set_json(key, bonuses, ttl)
 
     @classmethod
     async def get_cached_leader_bonuses(cls, player_id: int) -> Optional[Dict[str, Any]]:
         """Get cached leader bonuses"""
+        if not cls.is_available():
+            return None
         key = f"leader_bonuses:{player_id}"
         return await cls.get_json(key)
 
@@ -140,11 +169,12 @@ class RedisService:
     async def invalidate_player_cache(cls, player_id: int) -> bool:
         """Invalidate all cached data for a player"""
         if not cls.is_available():
-            return False
+            return True  # Return True so the code continues
         
         keys_to_delete = [
             f"player_power:{player_id}",
-            f"leader_bonuses:{player_id}"
+            f"leader_bonuses:{player_id}",
+            f"collection_stats:{player_id}"
         ]
         
         success = True
@@ -164,12 +194,6 @@ class RedisService:
 
 
 # Rate limiting functionality
-import time
-import functools
-from typing import Dict, Tuple, Callable, Any
-from collections import defaultdict, deque
-import disnake
-
 class InMemoryRateLimiter:
     """In-memory rate limiter using sliding window"""
     
