@@ -1,0 +1,40 @@
+{
+  "types": [
+    "warrior",
+    "guardian",
+    "scout",
+    "mystic",
+    "titan"
+  ],
+  
+  "bonuses": {
+    "warrior": {
+      "atk_bonus": 0.10,
+      "description": "+10% ATK"
+    },
+    "guardian": {
+      "def_bonus": 0.10,
+      "description": "+10% DEF"
+    },
+    "scout": {
+      "capture_bonus": 0.05,
+      "description": "+5% capture chance"
+    },
+    "mystic": {
+      "xp_bonus": 0.10,
+      "description": "+10% XP gain"
+    },
+    "titan": {
+      "space_bonus": 0.15,
+      "description": "+15% space capacity"
+    }
+  },
+  
+  "distribution": {
+    "warrior": 0.25,
+    "guardian": 0.25,
+    "scout": 0.20,
+    "mystic": 0.15,
+    "titan": 0.15
+  }
+}

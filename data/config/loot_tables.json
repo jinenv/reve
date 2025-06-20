@@ -2,67 +2,255 @@
   "faded_echo": {
     "name": "Faded Echo",
     "description": "A common echo whose contents grow stronger with your experience.",
+    "max_tier": 6,
     "level_brackets": {
-      "1-50": {
-        "pools": [
-          { "tier": 1, "weight": 69 },
-          { "tier": 2, "weight": 29 },
-          { "tier": 3, "weight": 2 }
-        ]
+      "1-25": {
+        "tier_weights": {
+          "1": 70,
+          "2": 25,
+          "3": 5
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
       },
-      "51-100": {
-        "pools": [
-          { "tier": 2, "weight": 69 },
-          { "tier": 3, "weight": 29 },
-          { "tier": 4, "weight": 2 }
-        ]
+      "26-50": {
+        "tier_weights": {
+          "1": 40,
+          "2": 40,
+          "3": 15,
+          "4": 5
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
+      },
+      "51-75": {
+        "tier_weights": {
+          "2": 50,
+          "3": 35,
+          "4": 12,
+          "5": 3
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
+      },
+      "76-100": {
+        "tier_weights": {
+          "2": 25,
+          "3": 45,
+          "4": 25,
+          "5": 5
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
       },
       "101-150": {
-        "pools": [
-          { "tier": 3, "weight": 69 },
-          { "tier": 4, "weight": 29 },
-          { "tier": 5, "weight": 2 }
-        ]
+        "tier_weights": {
+          "3": 40,
+          "4": 40,
+          "5": 15,
+          "6": 5
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
+      },
+      "151-200": {
+        "tier_weights": {
+          "3": 20,
+          "4": 45,
+          "5": 25,
+          "6": 10
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
       }
     }
   },
   "vivid_echo": {
     "name": "Vivid Echo",
     "description": "A strong echo, resonating with significant power.",
+    "max_tier": 8,
     "level_brackets": {
-      "1-100": {
-        "pools": [
-          { "tier": 3, "weight": 60 },
-          { "tier": 4, "weight": 30 },
-          { "tier": 5, "weight": 10 }
-        ]
+      "1-50": {
+        "tier_weights": {
+          "3": 60,
+          "4": 30,
+          "5": 10
+        },
+        "element_preference": {
+          "inferno": 1.2,
+          "verdant": 1.2,
+          "abyssal": 1.2,
+          "tempest": 1.2,
+          "umbral": 0.8,
+          "radiant": 0.8
+        }
       },
-      "101-200": {
-        "pools": [
-          { "tier": 4, "weight": 60 },
-          { "tier": 5, "weight": 30 },
-          { "tier": 6, "weight": 10 }
-        ]
+      "51-100": {
+        "tier_weights": {
+          "3": 30,
+          "4": 45,
+          "5": 20,
+          "6": 5
+        },
+        "element_preference": {
+          "inferno": 1.1,
+          "verdant": 1.1,
+          "abyssal": 1.1,
+          "tempest": 1.1,
+          "umbral": 0.9,
+          "radiant": 0.9
+        }
+      },
+      "101-150": {
+        "tier_weights": {
+          "4": 40,
+          "5": 35,
+          "6": 20,
+          "7": 5
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
+      },
+      "151-200": {
+        "tier_weights": {
+          "4": 20,
+          "5": 40,
+          "6": 30,
+          "7": 8,
+          "8": 2
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
       }
     }
   },
   "brilliant_echo": {
     "name": "Brilliant Echo",
     "description": "An echo of immense power, pulsing with legendary energy.",
+    "max_tier": 10,
+    "level_brackets": {
+      "1-100": {
+        "tier_weights": {
+          "5": 65,
+          "6": 25,
+          "7": 8,
+          "8": 2
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.5,
+          "radiant": 1.5
+        }
+      },
+      "101-150": {
+        "tier_weights": {
+          "5": 35,
+          "6": 40,
+          "7": 20,
+          "8": 5
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.3,
+          "radiant": 1.3
+        }
+      },
+      "151-200": {
+        "tier_weights": {
+          "6": 40,
+          "7": 35,
+          "8": 20,
+          "9": 4,
+          "10": 1
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.2,
+          "radiant": 1.2
+        }
+      }
+    }
+  },
+  "elemental_echo": {
+    "name": "Elemental Echo",
+    "description": "An echo attuned to a specific element.",
+    "max_tier": 8,
     "level_brackets": {
       "1-200": {
-        "pools": [
-          { "tier": 5, "weight": 65 },
-          { "tier": 6, "weight": 30 },
-          { "tier": 7, "weight": 5 }
-        ]
-      },
-      "201-400": {
-        "pools": [
-          { "tier": 6, "weight": 65 },
-          { "tier": 7, "weight": 30 },
-          { "tier": 8, "weight": 5 }
-        ]
+        "tier_weights": {
+          "1": 20,
+          "2": 25,
+          "3": 25,
+          "4": 15,
+          "5": 10,
+          "6": 4,
+          "7": 1
+        },
+        "element_preference": {
+          "inferno": 3.0,
+          "verdant": 0.2,
+          "abyssal": 0.2,
+          "tempest": 0.2,
+          "umbral": 0.2,
+          "radiant": 0.2
+        }
       }
     }
   }

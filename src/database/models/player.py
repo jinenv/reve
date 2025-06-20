@@ -176,7 +176,7 @@ class Player(SQLModel, table=True):
         
         # Get all player's Esprits with their bases
         stacks_stmt = select(Esprit, EspritBase).join(
-            EspritBase, Esprit.esprit_base_id == EspritBase.id
+            EspritBase, onclause=(Esprit.esprit_base_id == EspritBase.id)
         ).where(Esprit.owner_id == self.id)
         
         results = (await session.execute(stacks_stmt)).all()
