@@ -1,5 +1,5 @@
 # src/database/models/esprit.py
-from typing import Optional, Dict, List, TYPE_CHECKING
+from typing import Optional, Dict, List, TYPE_CHECKING, Any
 from sqlmodel import SQLModel, Field, select, func
 from sqlalchemy import Column, String
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 class Esprit(SQLModel, table=True):
     """Universal Stack System - Each row represents ALL copies of an Esprit type a player owns"""
-    __tablename__ = "esprit"
     
     id: Optional[int] = Field(default=None, primary_key=True)
     esprit_base_id: int = Field(foreign_key="esprit_base.id", index=True)
@@ -82,7 +81,7 @@ class Esprit(SQLModel, table=True):
             "power": individual["power"] * self.quantity
         }
     
-    def get_awakening_cost(self) -> Dict[str, any]:
+    def get_awakening_cost(self) -> Dict[str, Any]:
         """
         Get cost to awaken this stack to next level.
         1st star: 1 copy, 2nd: 2 copies, etc.
@@ -123,7 +122,7 @@ class Esprit(SQLModel, table=True):
         player.total_awakenings += 1
         
         # Invalidate cache
-        if RedisService.is_available():
+        if RedisService.is_available() and player.id is not None:
             await RedisService.invalidate_player_cache(player.id)
         
         # Recalculate total power
@@ -242,7 +241,7 @@ class Esprit(SQLModel, table=True):
             await player.recalculate_total_power(session)
             
             # Invalidate cache
-            if RedisService.is_available():
+            if RedisService.is_available() and player.id is not None:
                 await RedisService.invalidate_player_cache(player.id)
             
             return None
@@ -266,7 +265,7 @@ class Esprit(SQLModel, table=True):
             await self._cleanup_empty_stacks(session, other_stack)
             
             # Invalidate cache
-            if RedisService.is_available():
+            if RedisService.is_available() and player.id is not None:
                 await RedisService.invalidate_player_cache(player.id)
             return None
             
@@ -289,7 +288,7 @@ class Esprit(SQLModel, table=True):
         player.last_fusion = datetime.utcnow()
         
         # Invalidate cache
-        if RedisService.is_available():
+        if RedisService.is_available() and player.id is not None:
             await RedisService.invalidate_player_cache(player.id)
         
         return result_stack
@@ -337,6 +336,8 @@ class Esprit(SQLModel, table=True):
             return existing_stack
         else:
             # Create new stack
+            if base.id is None:
+                raise ValueError("EspritBase must have an id")
             new_stack = cls(
                 esprit_base_id=base.id,
                 owner_id=owner_id,
@@ -356,7 +357,7 @@ class Esprit(SQLModel, table=True):
         cls,
         session: AsyncSession,
         player_id: int
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """Get collection statistics for a player"""
         # Try cache first
         if RedisService.is_available():
@@ -364,22 +365,25 @@ class Esprit(SQLModel, table=True):
             if cached:
                 return cached
         
+        # Import Esprit class for queries
+        from src.database.models.esprit import Esprit
+        
         # Total unique Esprits
-        unique_stmt = select(func.count(cls.id)).where(cls.owner_id == player_id)
+        unique_stmt = select(func.count(Esprit.id)).where(Esprit.owner_id == player_id)
         unique_count = (await session.execute(unique_stmt)).scalar() or 0
         
         # Total quantity
-        quantity_stmt = select(func.sum(cls.quantity)).where(cls.owner_id == player_id)
+        quantity_stmt = select(func.sum(Esprit.quantity)).where(Esprit.owner_id == player_id)
         total_quantity = (await session.execute(quantity_stmt)).scalar() or 0
         
         # By element
         element_stmt = select(
-            cls.element,
-            func.count(cls.id),
-            func.sum(cls.quantity)
+            Esprit.element,
+            func.count(Esprit.id),
+            func.sum(Esprit.quantity)
         ).where(
-            cls.owner_id == player_id
-        ).group_by(cls.element)
+            Esprit.owner_id == player_id
+        ).group_by(Esprit.element)
         
         element_results = (await session.execute(element_stmt)).all()
         element_stats = {
@@ -389,12 +393,12 @@ class Esprit(SQLModel, table=True):
         
         # By tier
         tier_stmt = select(
-            cls.tier,
-            func.count(cls.id),
-            func.sum(cls.quantity)
+            Esprit.tier,
+            func.count(Esprit.id),
+            func.sum(Esprit.quantity)
         ).where(
-            cls.owner_id == player_id
-        ).group_by(cls.tier).order_by(cls.tier)
+            Esprit.owner_id == player_id
+        ).group_by(Esprit.tier).order_by(Esprit.tier)
         
         tier_results = (await session.execute(tier_stmt)).all()
         tier_stats = {
@@ -404,13 +408,13 @@ class Esprit(SQLModel, table=True):
         
         # Awakened stacks
         awakened_stmt = select(
-            cls.awakening_level,
-            func.count(cls.id),
-            func.sum(cls.quantity)
+            Esprit.awakening_level,
+            func.count(Esprit.id),
+            func.sum(Esprit.quantity)
         ).where(
-            cls.owner_id == player_id,
-            cls.awakening_level > 0
-        ).group_by(cls.awakening_level)
+            Esprit.owner_id == player_id,
+            Esprit.awakening_level > 0
+        ).group_by(Esprit.awakening_level)
         
         awakened_results = (await session.execute(awakened_stmt)).all()
         awakened_stats = {

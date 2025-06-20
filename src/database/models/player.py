@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
 
 class Player(SQLModel, table=True):
-    __tablename__ = "player"
     # --- Core Identity & Progression ---
     id: Optional[int] = Field(default=None, primary_key=True)
     discord_id: int = Field(unique=True, index=True)
@@ -130,10 +129,12 @@ class Player(SQLModel, table=True):
         
         from src.database.models import Esprit, EspritBase
         
-        # Get leader stack and base in single query using JOIN
-        leader_stmt = select(Esprit, EspritBase).join(
-            EspritBase, Esprit.esprit_base_id == EspritBase.id
-        ).where(Esprit.id == self.leader_esprit_stack_id)
+        # Fixed query without join
+        leader_stmt = select(Esprit, EspritBase).where(
+            Esprit.esprit_base_id == EspritBase.id,
+            Esprit.id == self.leader_esprit_stack_id
+        )
+        
         result = (await session.execute(leader_stmt)).first()
         if not result:
             return {}
@@ -176,7 +177,7 @@ class Player(SQLModel, table=True):
             "tier": leader_stack.tier
         }
         
-        # Cache the result
+        # Cache the result with null check
         if RedisService.is_available() and self.id is not None:
             await RedisService.cache_leader_bonuses(self.id, bonuses)
         return bonuses
@@ -184,7 +185,7 @@ class Player(SQLModel, table=True):
     async def recalculate_total_power(self, session: AsyncSession) -> Dict[str, int]:
         """Recalculate total combat power from ALL owned Esprits"""
         # Try cache first
-        if RedisService.is_available():
+        if RedisService.is_available() and self.id is not None:
             cached = await RedisService.get_cached_player_power(self.id)
             if cached:
                 # Update model fields with cached values
@@ -196,9 +197,10 @@ class Player(SQLModel, table=True):
         from src.database.models import Esprit, EspritBase
         
         # Single query with JOIN for better performance
-        stacks_stmt = select(Esprit, EspritBase).join(
-            EspritBase, Esprit.esprit_base_id == EspritBase.id
-        ).where(Esprit.owner_id == self.id)
+        stacks_stmt = select(Esprit, EspritBase).where(
+            Esprit.esprit_base_id == EspritBase.id,
+            Esprit.owner_id == self.id
+        )
         
         results = (await session.execute(stacks_stmt)).all()
         
@@ -226,7 +228,7 @@ class Player(SQLModel, table=True):
         }
         
         # Cache the result
-        if RedisService.is_available():
+        if RedisService.is_available() and self.id is not None:
             await RedisService.cache_player_power(self.id, power_data)
         return power_data
 

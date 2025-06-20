@@ -5,9 +5,7 @@ from datetime import datetime
 
 from src.utils.constants import ElementConstants, TypeConstants, TierConstants
 
-class EspritBase(SQLModel, table=True):
-    __tablename__ = "esprit_base"  # Explicitly set table name
-    
+class EspritBase(SQLModel, table=True):    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     element: str = Field(index=True)  # inferno, verdant, abyssal, tempest, umbral, radiant
