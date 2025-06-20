@@ -38,7 +38,7 @@ class UtilityCog(commands.Cog):
                 
                 embed.add_field(name="Level", value=str(player.level), inline=True)
                 embed.add_field(name="Experience", value=f"{player.experience:,}", inline=True)
-                embed.add_field(name="Nyxies", value=f"{player.nyxies:,}", inline=True)
+                embed.add_field(name="Jijies", value=f"{player.jijies:,}", inline=True)
                 embed.add_field(name="Erythl", value=f"{player.erythl:,}", inline=True)
 
                 await inter.response.send_message(embed=embed)

@@ -16,7 +16,7 @@ class OnboardingCog(commands.Cog):
 
     @commands.slash_command(
         name="start",
-        description="Begin your journey with Nyxa!"
+        description="Begin your journey with Jiji!"
     )
     async def start(self, inter: disnake.ApplicationCommandInteraction):
         try:
@@ -41,7 +41,7 @@ class OnboardingCog(commands.Cog):
                 session.add(new_player)
                 
                 await inter.response.send_message(
-                    f"Welcome to Nyxa, {inter.author.mention}! Your adventure begins now!",
+                    f"Welcome to Jiji, {inter.author.mention}! Your adventure begins now!",
                     ephemeral=True
                 )
                 

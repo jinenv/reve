@@ -1,4 +1,4 @@
-# NYXA
+# JIJI
 
 This project implements a **real-time, stateful Discord bot** with RPG and gacha mechanics. It is designed for **scalability**, **atomic state transitions**, and **strict separation of concerns**.
 

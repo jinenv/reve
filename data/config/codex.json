@@ -4,7 +4,7 @@
     "description": "The first spirits a new master will encounter.",
     "required_esprits": ["Faeling", "Treant", "Sylph"],
     "rewards": {
-      "nyxies": 50000,
+      "jijies": 50000,
       "erythl": 10
     }
   },

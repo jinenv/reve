@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 async def main():
     """The main entry point for the bot."""
     load_dotenv()
-    logger.info("Starting up Nyxa...")
+    logger.info("Starting up Jiji...")
 
     # Initialize services
     logger.info("Initializing services...")

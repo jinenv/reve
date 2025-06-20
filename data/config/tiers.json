@@ -3,126 +3,162 @@
     "name": "Common",
     "base_attack": 15,
     "team_cost": 1,
-    "combine_success_rate": null,
-    "combine_cost_nyxies": null
+    "combine_success_rate": 0.80,
+    "combine_cost_jijies": 500,
+    "fragment_cost": 10,
+    "fragments_on_fail": [1, 3]
   },
   "2": {
     "name": "Uncommon",
     "base_attack": 53,
     "team_cost": 2,
     "combine_success_rate": 0.70,
-    "combine_cost_nyxies": 1000
+    "combine_cost_jijies": 1000,
+    "fragment_cost": 10,
+    "fragments_on_fail": [1, 3]
   },
   "3": {
     "name": "Rare",
     "base_attack": 184,
     "team_cost": 4,
     "combine_success_rate": 0.65,
-    "combine_cost_nyxies": 2500
+    "combine_cost_jijies": 2500,
+    "fragment_cost": 10,
+    "fragments_on_fail": [1, 3]
   },
   "4": {
     "name": "Arcane",
     "base_attack": 644,
     "team_cost": 7,
     "combine_success_rate": 0.60,
-    "combine_cost_nyxies": 6000
+    "combine_cost_jijies": 6000,
+    "fragment_cost": 25,
+    "fragments_on_fail": [2, 5]
   },
   "5": {
     "name": "Mythic",
     "base_attack": 2254,
     "team_cost": 12,
     "combine_success_rate": 0.55,
-    "combine_cost_nyxies": 15000
+    "combine_cost_jijies": 15000,
+    "fragment_cost": 25,
+    "fragments_on_fail": [2, 5]
   },
   "6": {
     "name": "Celestial",
     "base_attack": 7889,
     "team_cost": 20,
     "combine_success_rate": 0.50,
-    "combine_cost_nyxies": 40000
+    "combine_cost_jijies": 40000,
+    "fragment_cost": 25,
+    "fragments_on_fail": [2, 5]
   },
   "7": {
     "name": "Divine",
     "base_attack": 27612,
     "team_cost": 35,
     "combine_success_rate": 0.45,
-    "combine_cost_nyxies": 100000
+    "combine_cost_jijies": 100000,
+    "fragment_cost": 50,
+    "fragments_on_fail": [3, 8]
   },
   "8": {
     "name": "Primal",
     "base_attack": 96642,
     "team_cost": 60,
     "combine_success_rate": 0.40,
-    "combine_cost_nyxies": 250000
+    "combine_cost_jijies": 250000,
+    "fragment_cost": 50,
+    "fragments_on_fail": [3, 8]
   },
   "9": {
     "name": "Sovereign",
     "base_attack": 338247,
     "team_cost": 100,
     "combine_success_rate": 0.35,
-    "combine_cost_nyxies": 800000
+    "combine_cost_jijies": 800000,
+    "fragment_cost": 50,
+    "fragments_on_fail": [3, 8]
   },
   "10": {
     "name": "Astral",
     "base_attack": 1183865,
     "team_cost": 160,
     "combine_success_rate": 0.30,
-    "combine_cost_nyxies": 3000000
+    "combine_cost_jijies": 3000000,
+    "fragment_cost": 100,
+    "fragments_on_fail": [5, 12]
   },
   "11": {
     "name": "Ethereal",
     "base_attack": 4143528,
     "team_cost": 250,
     "combine_success_rate": 0.25,
-    "combine_cost_nyxies": 10000000
+    "combine_cost_jijies": 10000000,
+    "fragment_cost": 100,
+    "fragments_on_fail": [5, 12]
   },
   "12": {
     "name": "Transcendent",
     "base_attack": 14502346,
     "team_cost": 400,
     "combine_success_rate": 0.20,
-    "combine_cost_nyxies": 50000000
+    "combine_cost_jijies": 50000000,
+    "fragment_cost": 100,
+    "fragments_on_fail": [5, 12]
   },
   "13": {
     "name": "Empyrean",
     "base_attack": 50758211,
     "team_cost": 550,
     "combine_success_rate": 0.18,
-    "combine_cost_nyxies": 150000000
+    "combine_cost_jijies": 150000000,
+    "fragment_cost": 250,
+    "fragments_on_fail": [8, 18]
   },
   "14": {
     "name": "Absolute",
     "base_attack": 177653740,
     "team_cost": 750,
     "combine_success_rate": 0.16,
-    "combine_cost_nyxies": 500000000
+    "combine_cost_jijies": 500000000,
+    "fragment_cost": 250,
+    "fragments_on_fail": [8, 18]
   },
   "15": {
     "name": "Genesis",
     "base_attack": 621788090,
     "team_cost": 1000,
     "combine_success_rate": 0.14,
-    "combine_cost_nyxies": 1500000000
+    "combine_cost_jijies": 1500000000,
+    "fragment_cost": 250,
+    "fragments_on_fail": [8, 18]
   },
   "16": {
     "name": "Apocryphal",
     "base_attack": 2176258315,
     "team_cost": 1300,
     "combine_success_rate": 0.12,
-    "combine_cost_nyxies": 5000000000
+    "combine_cost_jijies": 5000000000,
+    "fragment_cost": 500,
+    "fragments_on_fail": [12, 25]
   },
   "17": {
-    "name": "Umbral",
+    "name": "Void",
     "base_attack": 7616904103,
     "team_cost": 1650,
     "combine_success_rate": 0.10,
-    "combine_cost_nyxies": 15000000000
+    "combine_cost_jijies": 15000000000,
+    "fragment_cost": 500,
+    "fragments_on_fail": [12, 25]
   },
   "18": {
     "name": "Singularity",
     "base_attack": 26659164361,
     "team_cost": 2000,
     "combine_success_rate": 0.05,
-    "combine_cost_nyxies": 50000000000
+    "combine_cost_jijies": 50000000000,
+    "fragment_cost": 500,
+    "fragments_on_fail": [12, 25]
   }
 }
