@@ -1,7 +1,7 @@
-# src/main.py (UPDATED VERSION)
+
+# src/main.py
 import os
 import logging
-import asyncio
 from dotenv import load_dotenv
 
 from src.bot import run_bot 
@@ -12,7 +12,7 @@ from src.utils.config_manager import ConfigManager
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s')
 logger = logging.getLogger(__name__)
 
-async def main():
+def main():
     """The main entry point for the bot."""
     load_dotenv()
     logger.info("Starting up Jiji...")
@@ -31,12 +31,9 @@ async def main():
     # Initialize Redis (optional - gracefully handle unavailability)
     try:
         RedisService.init()
-        if await RedisService.ping():
-            logger.info("RedisService initialized and connected.")
-        else:
-            logger.warning("Redis connection failed, continuing without cache.")
+        logger.info("RedisService initialized.")
     except Exception as e:
         logger.warning(f"Redis not available, continuing without cache: {e}")
     
-    # Run the bot (this will block)
+    # Run the bot (this will block and handle its own event loop)
     run_bot()

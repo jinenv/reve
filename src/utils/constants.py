@@ -48,22 +48,22 @@ class ElementConstants:
 class TypeConstants:
     """Type-related constants"""
     
-    TYPES = ["warrior", "guardian", "scout", "mystic", "titan"]
+    TYPES = ["chaos", "order", "hunt", "wisdom", "command"]
     
     EMOJIS = {
-        "warrior": "⚔️",
-        "guardian": "🛡️",
-        "scout": "🏹",
-        "mystic": "📜",
-        "titan": "🗿"
+        "chaos": "⚔️",
+        "order": "🛡️",
+        "hunt": "🏹",
+        "wisdom": "📜",
+        "command": "🗿"
     }
     
     DESCRIPTIONS = {
-        "warrior": "Offensive powerhouse with bonus ATK",
-        "guardian": "Defensive specialist with bonus DEF",
-        "scout": "Agile hunter with increased capture chance",
-        "mystic": "Wise sage providing bonus XP gain",
-        "titan": "Massive being granting extra space capacity"
+        "chaos": "Offensive powerhouse with bonus ATK",
+        "order": "Defensive specialist with bonus DEF",
+        "hunt": "Agile hunter with increased capture chance",
+        "wisdom": "Wise sage providing bonus XP gain",
+        "command": "Massive being granting extra space capacity"
     }
     
     @classmethod
@@ -85,10 +85,10 @@ class TierConstants:
     """Tier-related constants"""
     
     TIER_NAMES = {
-        1: "Common", 2: "Uncommon", 3: "Rare", 4: "Arcane",
+        1: "Common", 2: "Uncommon", 3: "Rare", 4:  "Epic",
         5: "Mythic", 6: "Celestial", 7: "Divine", 8: "Primal",
         9: "Sovereign", 10: "Astral", 11: "Ethereal", 12: "Transcendent",
-        13: "Empyrean", 14: "Absolute", 15: "Genesis", 16: "Apocryphal",
+        13: "Empyrean", 14: "Absolute", 15: "Genesis", 16: "Legendary",
         17: "Void", 18: "Singularity"
     }
     

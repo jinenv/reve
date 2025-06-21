@@ -2,14 +2,18 @@
 from typing import Optional
 from sqlmodel import SQLModel, Field
 from datetime import datetime
-
+from sqlalchemy.dialects.postgresql import JSONB, JSON
+from sqlalchemy import Column
 from src.utils.constants import ElementConstants, TypeConstants, TierConstants
 
-class EspritBase(SQLModel, table=True):    
+class EspritBase(SQLModel, table=True):
+    __table_args__ = {'extend_existing': True}
+    __tablename__ = 'esprit_base'  # type: ignore
+    
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     element: str = Field(index=True)  # inferno, verdant, abyssal, tempest, umbral, radiant
-    type: str = Field(default="warrior", index=True)  # warrior, guardian, scout, mystic, titan
+    type: str = Field(default="chaos", index=True)  # chaos, order, hunt, wisdom, command
     base_tier: int = Field(index=True)
     
     # Base stats (before tier/awakening multipliers)
@@ -22,8 +26,8 @@ class EspritBase(SQLModel, table=True):
     image_url: Optional[str] = None
     
     # MW-style abilities (stored as JSON in DB but typed here)
-    abilities: Optional[str] = None  # JSON string of ability data
-    
+    abilities: Optional[list] = Field(default=None, sa_column=Column(JSON))
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     
@@ -70,3 +74,11 @@ class EspritBase(SQLModel, table=True):
     def is_valid_tier(self) -> bool:
         """Validate tier"""
         return TierConstants.is_valid(self.base_tier)
+    
+    def get_ability_details(self) -> list[dict]:
+        """Get full ability details from ability IDs"""
+        if not self.abilities:
+            return []
+    
+        from src.utils.ability_manager import AbilityManager
+        return [AbilityManager.get_ability(ability_id) for ability_id in self.abilities]

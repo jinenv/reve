@@ -2,7 +2,7 @@
   "bot_info": {
     "name": "Jiji",
     "version": "1.0.0",
-    "description": "Meow"
+    "description": "Mreow"
   },
   "player_progression": {
     "xp_formula": {
@@ -95,5 +95,13 @@
       "brilliant_echo": 0.001
     },
     "boss_echo_multiplier": 2.0
-  }
+  },
+  "starter_rewards": {
+    "jijies": 5000,
+    "erythl": 10,
+    "energy": 100,
+    "faded_echo": 1,
+    "tier_1_fragments": 5,
+    "space_bonus": 20
+}
 }

@@ -1,40 +1,32 @@
 {
   "types": [
-    "warrior",
-    "guardian",
-    "scout",
-    "mystic",
-    "titan"
+    "chaos",
+    "order",
+    "hunt",
+    "wisdom",
+    "command"
   ],
   
   "bonuses": {
-    "warrior": {
+    "chaos": {
       "atk_bonus": 0.10,
-      "description": "+10% ATK"
+      "description": "+10% ATK - Embodies destructive entropy"
     },
-    "guardian": {
+    "order": {
       "def_bonus": 0.10,
-      "description": "+10% DEF"
+      "description": "+10% DEF - Maintains perfect harmony"
     },
-    "scout": {
+    "hunt": {
       "capture_bonus": 0.05,
-      "description": "+5% capture chance"
+      "description": "+5% capture chance - Tracks prey relentlessly"
     },
-    "mystic": {
+    "wisdom": {
       "xp_bonus": 0.10,
-      "description": "+10% XP gain"
+      "description": "+10% XP gain - Accelerates growth through insight"
     },
-    "titan": {
+    "command": {
       "space_bonus": 0.15,
-      "description": "+15% space capacity"
+      "description": "+15% space capacity - Dominates through presence"
     }
-  },
-  
-  "distribution": {
-    "warrior": 0.25,
-    "guardian": 0.25,
-    "scout": 0.20,
-    "mystic": 0.15,
-    "titan": 0.15
   }
 }

@@ -1,12 +1,12 @@
 # src/database/models/player.py
 from typing import List, Optional, Dict, Any, TYPE_CHECKING, Tuple
-from sqlmodel import SQLModel, Field, Column, select, col
+from sqlmodel import BigInteger, SQLModel, Field, Column, select, col
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, date
 import random
-
+from sqlalchemy import Column, BigInteger
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class Player(SQLModel, table=True):
     # --- Core Identity & Progression ---
     id: Optional[int] = Field(default=None, primary_key=True)
-    discord_id: int = Field(unique=True, index=True)
+    discord_id: int = Field(sa_column=Column(BigInteger, unique=True, index=True))
     username: str
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     level: int = Field(default=1)

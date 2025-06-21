@@ -247,7 +247,7 @@ class Esprit(SQLModel, table=True):
                 await RedisService.invalidate_player_cache(player.id)
             
             return None
-        
+            
         # Fusion succeeded
         player.successful_fusions += 1
         

@@ -114,7 +114,7 @@ class EmbedColors:
             "common": cls.COMMON,
             "uncommon": cls.UNCOMMON,
             "rare": cls.RARE,
-            "arcane": cls.EPIC,
+            "epic": cls.EPIC,
             "mythic": cls.MYTHIC,
             "celestial": cls.LEGENDARY,
             "divine": cls.DIVINE,
@@ -126,7 +126,7 @@ class EmbedColors:
             "empyrean": cls.COSMIC,
             "absolute": cls.COSMIC,
             "genesis": cls.COSMIC,
-            "apocryphal": cls.COSMIC,
+            "legendary": cls.COSMIC,
             "void": cls.COSMIC,
             "singularity": cls.COSMIC
         }

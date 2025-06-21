@@ -1,5 +1,8 @@
 {
     "python.analysis.extraPaths": [
         "./src"
-    ]
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.indexing": true
 }

@@ -14,18 +14,18 @@ logger = logging.getLogger(__name__)
 
 # Empty list - add your own Esprits here
 ESPRIT_DEFINITIONS = [
-    # Example template:
-    # {
-    #     "name": "Your Esprit Name",
-    #     "element": "Inferno",  # Choose from: Inferno, Verdant, Abyssal, Tempest, Umbral, Radiant
-    #     "type": "warrior",     # Choose from: warrior, guardian, scout, mystic, titan
-    #     "base_tier": 1,        # 1-18
-    #     "base_atk": 15,        # Base attack stat
-    #     "base_def": 10,        # Base defense stat
-    #     "base_hp": 100,        # Base HP stat
-    #     "description": "Description of your Esprit",
-    #     "image_url": "https://example.com/your_esprit.png"  # Optional
-    # },
+    {
+    "name": "Ferox",
+    "element": "Verdant",
+    "type": "hunt",
+    "base_tier": 4,
+    "base_atk": 644,
+    "base_def": 322,
+    "base_hp": 1288,
+    "description": "A savage, horned beast that prowls the ancient forests, feared for its relentless hunt and primal fury.",
+    "image_url": "/assets/esprits/epic/ferox.png"
+    },
+
 ]
 
 async def seed_esprits():
