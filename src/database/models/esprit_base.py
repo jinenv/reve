@@ -105,3 +105,33 @@ class EspritBase(SQLModel, table=True):
             element=self.element,
             type=self.type
         )
+    
+    def __init__(self, **data):
+        """Override init to auto-set tier_name if not provided"""
+        super().__init__(**data)
+        if self.tier_name is None and self.base_tier:
+            self.tier_name = self.get_tier_name()
+
+    def get_tier_name(self) -> str:
+        """Get tier name from base_tier"""
+        tier_names = {
+            1: "Common",
+            2: "Uncommon", 
+            3: "Rare",
+            4: "Epic",
+            5: "Mythic",
+            6: "Celestial",
+            7: "Divine",
+            8: "Primal",
+            9: "Sovereign",
+            10: "Astral",
+            11: "Ethereal",
+            12: "Transcendent",
+            13: "Empyrean",
+            14: "Absolute",
+            15: "Genesis",
+            16: "Legendary",
+            17: "Void",
+            18: "Singularity"
+        }
+        return tier_names.get(self.base_tier, "Unknown")

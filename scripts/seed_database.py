@@ -15,15 +15,16 @@ logger = logging.getLogger(__name__)
 # Empty list - add your own Esprits here
 ESPRIT_DEFINITIONS = [
     {
-    "name": "Ferox",
-    "element": "Verdant",
-    "type": "hunt",
-    "base_tier": 4,
-    "base_atk": 644,
-    "base_def": 322,
-    "base_hp": 1288,
-    "description": "A savage, horned beast that prowls the ancient forests, feared for its relentless hunt and primal fury.",
-    "image_url": "/assets/esprits/epic/ferox.png",
+    "name": "Tenebrak",
+    "element": "Umbral",
+    "type": "Chaos",
+    "base_tier": 7,
+    "tier_name": "divine",
+    "base_atk": 105000,
+    "base_def": 3500,
+    "base_hp": 42000,
+    "description": "Born of primordial fear, Tenebrak is a manifestation of nightmares that stalk the forgotten ruins between worlds. Its body pulses with shadow, and its rage knows no bounds. The lucky die quickly.",
+    "image_url": "/assets/esprits/divine/tenebrak.png",
     "abilities": None
     },
 

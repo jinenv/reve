@@ -51,20 +51,19 @@ class Esprit(SQLModel, table=True):
         self.total_space = self.space_per_unit * self.quantity
         
     def get_individual_power(self, base: "EspritBase") -> Dict[str, int]:
-        """Calculate power of one copy in this stack"""
-        # Get tier config
-        tiers_config = ConfigManager.get("tiers") or {}
-        tier_data = tiers_config.get(str(self.tier), {})
-        
-        base_atk = tier_data.get("base_attack", 15)
+        """Calculate power of one copy in this stack using ACTUAL Esprit stats"""
+        # NO MORE TIER LOOKUP - Use the actual stats from EspritBase!
+        base_atk = base.base_atk
+        base_def = base.base_def
+        base_hp = base.base_hp
         
         # Apply awakening bonus (20% per star, multiplicative)
         awakening_multiplier = 1.0 + (self.awakening_level * 0.2)
         
-        # Calculate final stats
+        # Calculate final stats with awakening
         final_atk = int(base_atk * awakening_multiplier)
-        final_def = int(final_atk * 0.7)  # 70% of ATK
-        final_hp = final_atk * 10  # 10x ATK
+        final_def = int(base_def * awakening_multiplier)
+        final_hp = int(base_hp * awakening_multiplier)
         
         return {
             "atk": final_atk,
