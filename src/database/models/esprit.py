@@ -8,6 +8,7 @@ import random
 from sqlalchemy import select as sa_select
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
+from src.utils.game_constants import Tiers, FUSION_CHART, get_fusion_result
 
 if TYPE_CHECKING:
     from src.database.models import EspritBase
@@ -27,29 +28,11 @@ class Esprit(SQLModel, table=True):
     awakening_level: int = Field(default=0, ge=0, le=5)  # 0-5 stars
     element: str = Field(sa_column=Column(String))  # Cached from base for quick access
     
-    # Space System (MW Style)
-    space_per_unit: int = Field(default=1)  # Space value per copy
-    total_space: int = Field(default=1)     # Total space this stack uses
-    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_modified: datetime = Field(default_factory=datetime.utcnow)
     
-    # --- LOGIC METHODS ---
-    
-    def calculate_space_value(self) -> int:
-        """Calculate space value based on tier using team_cost from tiers.json"""
-        tiers_config = ConfigManager.get("tiers") or {}
-        tier_data = tiers_config.get(str(self.tier), {})
-        
-        # Use team_cost as space value (it's already balanced)
-        return tier_data.get("team_cost", 1)
-    
-    def update_space_values(self):
-        """Update space calculations when tier or quantity changes"""
-        self.space_per_unit = self.calculate_space_value()
-        self.total_space = self.space_per_unit * self.quantity
-        
+    # --- LOGIC METHODS ---   
     def get_individual_power(self, base: "EspritBase") -> Dict[str, int]:
         """Calculate power of one copy in this stack using ACTUAL Esprit stats"""
         # NO MORE TIER LOOKUP - Use the actual stats from EspritBase!
@@ -112,10 +95,6 @@ class Esprit(SQLModel, table=True):
         self.quantity -= cost["copies_needed"]
         self.awakening_level += 1
         
-        # Update space values
-        self.update_space_values()
-        self.last_modified = datetime.utcnow()
-        
         # Update player stats
         from src.database.models import Player
         player_stmt = select(Player).where(Player.id == self.owner_id)
@@ -132,227 +111,208 @@ class Esprit(SQLModel, table=True):
         return True
     
     async def perform_fusion(
-        self, 
-        other_stack: "Esprit", 
-        session: AsyncSession,
-        use_fragments: bool = False,
-        fragments_amount: int = 0
-    ) -> Optional["Esprit"]:
-        """
-        Fuses two stacks following MW fusion rules.
-        Returns the resulting Esprit stack if successful, None if failed.
-        Fragments guarantee success, not just specific tier monsters.
-        """
-        from src.database.models import Player, EspritBase
-        
-        # Must be same tier
-        if self.tier != other_stack.tier:
-            return None
+            self, 
+            other_stack: "Esprit", 
+            session: AsyncSession,
+            use_fragments: bool = False,
+            fragments_amount: int = 0
+        ) -> Optional["Esprit"]:
+            """
+            Fuses two stacks following MW fusion rules.
+            Returns the resulting Esprit stack if successful, None if failed.
+            Fragments guarantee success, not just specific tier monsters.
+            """
+            from src.database.models import Player, EspritBase
             
-        # Need at least 1 copy from each stack
-        if self.quantity < 1 or other_stack.quantity < 1:
-            return None
-            
-        # Get player for costs and fragments
-        player_stmt = select(Player).where(Player.id == self.owner_id).with_for_update()
-        player = (await session.execute(player_stmt)).scalar_one()
-        
-        # Get fusion cost from tiers.json
-        tiers_config = ConfigManager.get("tiers") or {}
-        tier_data = tiers_config.get(str(self.tier), {})
-        fusion_cost = tier_data.get("combine_cost_jijies", 0)
-        
-        # Check if player can afford
-        if fusion_cost and player.jijies < fusion_cost:
-            return None  # Can't afford
-        
-        # Get fusion chart
-        fusion_config = ConfigManager.get("elements") or {}
-        fusion_chart = fusion_config.get("fusion_chart", {})
-        
-        # Determine result element based on MW chart
-        if self.element == other_stack.element:
-            # Same element fusion - always produces same element
-            result_element = self.element
-            base_success_rate = tier_data.get("combine_success_rate", 0.5)
-        else:
-            # Different element fusion - check chart
-            fusion_key = f"{self.element.lower()}_{other_stack.element.lower()}"
-            reverse_key = f"{other_stack.element.lower()}_{self.element.lower()}"
-            
-            fusion_result = fusion_chart.get(fusion_key) or fusion_chart.get(reverse_key)
-            
-            if not fusion_result:
-                return None  # Invalid combination
+            # Must be same tier
+            if self.tier != other_stack.tier:
+                return None
                 
-            # Handle MW style results
-            if isinstance(fusion_result, list):
-                # 50/50 chance
-                result_element = random.choice(fusion_result).title()
-            elif fusion_result == "random":
-                # Random any element
-                result_element = random.choice(["Inferno", "Verdant", "Abyssal", "Tempest", "Umbral", "Radiant"])
+            # Need at least 1 copy from each stack
+            if self.quantity < 1 or other_stack.quantity < 1:
+                return None
+                
+            # Get player for costs and fragments
+            player_stmt = select(Player).where(Player.id == self.owner_id).with_for_update()
+            player = (await session.execute(player_stmt)).scalar_one()
+            
+            # Get fusion cost from Tiers
+            tier_data = Tiers.get(self.tier)
+            fusion_cost = tier_data.combine_cost_jijies if tier_data else 0
+
+            # Check if player can afford
+            if fusion_cost and player.jijies < fusion_cost:
+                return None  # Can't afford
+            
+            # Determine result element based on MW chart
+            if self.element == other_stack.element:
+                # Same element fusion - always produces same element
+                result_element = self.element
+                base_success_rate = tier_data.combine_success_rate if tier_data else 0.5
             else:
-                result_element = fusion_result.title()
+                # Different element fusion - use fusion chart
+                fusion_result = get_fusion_result(self.element, other_stack.element)
                 
-            # Cross-element uses lower rate
-            base_success_rate = tier_data.get("combine_success_rate", 0.5) * 0.8
-        
-        # Apply leader bonus if applicable
-        leader_bonuses = await player.get_leader_bonuses(session)
-        fusion_bonus = leader_bonuses.get("element_bonuses", {}).get("fusion_bonus", 0)
-        final_success_rate = min(base_success_rate * (1 + fusion_bonus), 0.95)
-        
-        # Use fragments for guaranteed success
-        if use_fragments and fragments_amount >= 10:
-            if player.get_fragment_count(result_element.lower()) >= 10:
-                player.consume_element_fragments(result_element.lower(), 10)
-                final_success_rate = 1.0  # Guarantee success
-        
-        # Deduct cost
-        if fusion_cost:
-            player.jijies -= fusion_cost
-        
-        # Attempt fusion
-        player.total_fusions += 1
-        
-        # Consume materials first
-        self.quantity -= 1
-        if other_stack.id != self.id:  # Different stacks
-            other_stack.quantity -= 1
-        
-        # Check fusion success
-        if random.random() > final_success_rate:
-            # Fusion failed - produce element fragments
-            fragments_gained = max(1, self.tier // 2)
+                if not fusion_result:
+                    return None  # Invalid combination
+                    
+                # Handle MW style results
+                if isinstance(fusion_result, list):
+                    # 50/50 chance
+                    result_element = random.choice(fusion_result).title()
+                elif fusion_result == "random":
+                    # Random any element
+                    result_element = random.choice(["Inferno", "Verdant", "Abyssal", "Tempest", "Umbral", "Radiant"])
+                else:
+                    result_element = fusion_result.title()
+                    
+                # Cross-element fusion success rate (uses Tiers method)
+                base_success_rate = Tiers.get_fusion_success_rate(self.tier, same_element=False)
             
-            # Add fragments for the result element (or random if multiple possible)
-            if result_element in ["Multiple possible", "Random"]:
-                fragment_element = random.choice([self.element, other_stack.element])
-            else:
-                fragment_element = result_element
+            # Apply leader bonus if applicable
+            leader_bonuses = await player.get_leader_bonuses(session)
+            fusion_bonus = leader_bonuses.get("element_bonuses", {}).get("fusion_bonus", 0)
+            final_success_rate = min(base_success_rate * (1 + fusion_bonus), 0.95)
+            
+            # Use fragments for guaranteed success
+            if use_fragments and fragments_amount >= 10:
+                if player.get_fragment_count(result_element.lower()) >= 10:
+                    player.consume_element_fragments(result_element.lower(), 10)
+                    final_success_rate = 1.0  # Guarantee success
+            
+            # Deduct cost
+            if fusion_cost:
+                player.jijies -= fusion_cost
+            
+            # Attempt fusion
+            player.total_fusions += 1
+            
+            # Consume materials first
+            self.quantity -= 1
+            if other_stack.id != self.id:  # Different stacks
+                other_stack.quantity -= 1
+            
+            # Check fusion success
+            if random.random() > final_success_rate:
+                # Fusion failed - produce element fragments
+                fragments_gained = max(1, self.tier // 2)
                 
-            player.add_element_fragments(fragment_element.lower(), fragments_gained)
+                # Add fragments for the result element (or random if multiple possible)
+                if result_element in ["Multiple possible", "Random"]:
+                    fragment_element = random.choice([self.element, other_stack.element])
+                else:
+                    fragment_element = result_element
+                    
+                player.add_element_fragments(fragment_element.lower(), fragments_gained)
+                
+                # Clean up empty stacks
+                await self._cleanup_empty_stacks(session, other_stack)
+                
+                # Update player stats
+                await player.recalculate_total_power(session)
+                
+                # Invalidate cache
+                if RedisService.is_available() and player.id is not None:
+                    await RedisService.invalidate_player_cache(player.id)
+                
+                return None
+                
+            # Fusion succeeded
+            player.successful_fusions += 1
+            
+            # Find a random Esprit of the result element and next tier
+            target_tier = self.tier + 1
+            base_stmt = select(EspritBase).where(
+                EspritBase.element == result_element,
+                EspritBase.base_tier == target_tier
+            )
+            possible_bases = (await session.execute(base_stmt)).scalars().all()
+            
+            if not possible_bases:
+                # No Esprit exists at this tier/element - give fragments instead
+                fragments_gained = max(1, self.tier // 2)
+                player.add_element_fragments(result_element.lower(), fragments_gained)
+                
+                await self._cleanup_empty_stacks(session, other_stack)
+                
+                # Invalidate cache
+                if RedisService.is_available() and player.id is not None:
+                    await RedisService.invalidate_player_cache(player.id)
+                return None
+                
+            result_base = random.choice(list(possible_bases))
+            
+            # Add result to collection
+            result_stack = await Esprit.add_to_collection(
+                session=session,
+                owner_id=self.owner_id,
+                base=result_base,
+                quantity=1
+            )
             
             # Clean up empty stacks
             await self._cleanup_empty_stacks(session, other_stack)
             
             # Update player stats
-            await player.recalculate_space(session)
             await player.recalculate_total_power(session)
+            player.last_fusion = datetime.utcnow()
             
             # Invalidate cache
             if RedisService.is_available() and player.id is not None:
                 await RedisService.invalidate_player_cache(player.id)
             
-            return None
-            
-        # Fusion succeeded
-        player.successful_fusions += 1
-        
-        # Find a random Esprit of the result element and next tier
-        target_tier = self.tier + 1
-        base_stmt = select(EspritBase).where(
-            EspritBase.element == result_element,
-            EspritBase.base_tier == target_tier
-        )
-        possible_bases = (await session.execute(base_stmt)).scalars().all()
-        
-        if not possible_bases:
-            # No Esprit exists at this tier/element - give fragments instead
-            fragments_gained = max(1, self.tier // 2)
-            player.add_element_fragments(result_element.lower(), fragments_gained)
-            
-            await self._cleanup_empty_stacks(session, other_stack)
-            
-            # Invalidate cache
-            if RedisService.is_available() and player.id is not None:
-                await RedisService.invalidate_player_cache(player.id)
-            return None
-            
-        result_base = random.choice(list(possible_bases))
-        
-        # Add result to collection
-        result_stack = await Esprit.add_to_collection(
-            session=session,
-            owner_id=self.owner_id,
-            base=result_base,
-            quantity=1
-        )
-        
-        # Clean up empty stacks
-        await self._cleanup_empty_stacks(session, other_stack)
-        
-        # Update player stats
-        await player.recalculate_space(session)
-        await player.recalculate_total_power(session)
-        player.last_fusion = datetime.utcnow()
-        
-        # Invalidate cache
-        if RedisService.is_available() and player.id is not None:
-            await RedisService.invalidate_player_cache(player.id)
-        
-        return result_stack
+            return result_stack
     
     async def _cleanup_empty_stacks(self, session: AsyncSession, other_stack: "Esprit"):
-        """Clean up empty stacks after fusion"""
-        if self.quantity == 0:
-            await session.delete(self)
-        else:
-            self.update_space_values()
-            
-        if other_stack.quantity == 0 and other_stack.id != self.id:
-            await session.delete(other_stack)
-        elif other_stack.id != self.id:
-            other_stack.update_space_values()
-    
+        """
+        Deletes this stack and/or the other stack from the database if their quantity is zero or less.
+        """
+        stacks_to_check: List["Esprit"] = [self]
+        if other_stack.id != self.id:
+            stacks_to_check.append(other_stack)
+        for stack in stacks_to_check:
+            if stack.quantity <= 0:
+                await session.delete(stack)
+        await session.commit()
+
     @classmethod
     async def add_to_collection(
         cls,
         session: AsyncSession,
         owner_id: int,
         base: "EspritBase",
-        quantity: int = 1,
-        tier: Optional[int] = None
+        quantity: int = 1
     ) -> "Esprit":
         """
-        Adds Esprits to a player's collection using the universal stack system.
-        Creates new stack or adds to existing one.
+        Adds the specified quantity of an Esprit to the player's collection, stacking if possible.
         """
-        if tier is None:
-            tier = base.base_tier
-            
-        # Check if stack already exists with lock
-        existing_stmt = select(cls).where(
+        esprit_stmt = select(cls).where(
             cls.owner_id == owner_id,
-            cls.esprit_base_id == base.id
-        ).with_for_update()
-        existing_stack = (await session.execute(existing_stmt)).scalar_one_or_none()
-        
-        if existing_stack:
-            # Add to existing stack
-            existing_stack.quantity += quantity
-            existing_stack.last_modified = datetime.utcnow()
-            existing_stack.update_space_values()
-            return existing_stack
+            cls.esprit_base_id == base.id,
+            cls.tier == base.base_tier,
+            cls.element == base.element
+        )
+        esprit = (await session.execute(esprit_stmt)).scalar_one_or_none()
+        if esprit:
+            esprit.quantity += quantity
+            esprit.last_modified = datetime.utcnow()
         else:
-            # Create new stack
             if base.id is None:
-                raise ValueError("EspritBase must have an id")
-            new_stack = cls(
+                raise ValueError("EspritBase.id cannot be None when adding to collection.")
+            esprit = cls(
                 esprit_base_id=base.id,
                 owner_id=owner_id,
                 quantity=quantity,
-                tier=tier,
+                tier=base.base_tier,
+                awakening_level=0,
                 element=base.element,
-                awakening_level=0
+                created_at=datetime.utcnow(),
+                last_modified=datetime.utcnow()
             )
-            new_stack.update_space_values()
-            
-            session.add(new_stack)
-            await session.flush()
-            return new_stack
-    
+            session.add(esprit)
+        await session.commit()
+        return esprit
+
     @classmethod
     async def get_player_collection_stats(
         cls,

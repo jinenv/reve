@@ -13,10 +13,6 @@
       "minutes_per_point": 6,
       "max_energy_base": 100,
       "max_energy_per_level": 10
-    },
-    "space_scaling": {
-      "early_game_generous": true,
-      "notes": "See space_values.json for tier-based scaling"
     }
   },
   "quest_system": {
@@ -58,7 +54,6 @@
     "enabled": true,
     "max_stack_size": 999999,
     "auto_combine_on_gacha": true,
-    "leader_excludes_from_space": true,
     "all_esprits_contribute_power": true
   },
   "leader_system": {
@@ -101,7 +96,6 @@
     "erythl": 10,
     "energy": 100,
     "faded_echo": 1,
-    "tier_1_fragments": 5,
-    "space_bonus": 20
+    "tier_1_fragments": 5
 }
 }

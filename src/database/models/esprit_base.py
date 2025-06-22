@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, Field
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy import Column
-from src.utils.constants import ElementConstants, TypeConstants, TierConstants
+from src.utils.game_constants import Elements, EspritTypes, Tiers
 
 class EspritBase(SQLModel, table=True):
     __table_args__ = {'extend_existing': True}
@@ -35,27 +35,33 @@ class EspritBase(SQLModel, table=True):
     
     def get_type_description(self) -> str:
         """Get description of this Esprit's type"""
-        return TypeConstants.get_description(self.type)
+        esprit_type = EspritTypes.from_string(self.type)
+        return esprit_type.bonuses.get("description", "") if esprit_type else ""
     
     def get_element_color(self) -> int:
         """Get Discord color for this element"""
-        return ElementConstants.get_color(self.element)
+        element = Elements.from_string(self.element)
+        return element.color if element else 0x2c2d31
     
     def get_element_emoji(self) -> str:
         """Get emoji for this element"""
-        return ElementConstants.get_emoji(self.element)
+        element = Elements.from_string(self.element)
+        return element.emoji if element else "🔮"
     
     def get_type_emoji(self) -> str:
         """Get emoji for this type"""
-        return TypeConstants.get_emoji(self.type)
+        esprit_type = EspritTypes.from_string(self.type)
+        return esprit_type.emoji if esprit_type else "❓"
     
     def get_tier_display(self) -> str:
         """Get tier display with Roman numerals"""
-        return TierConstants.get_display(self.base_tier)
+        tier_data = Tiers.get(self.base_tier)
+        return tier_data.display_name if tier_data else f"Tier {self.base_tier}"
     
     def get_rarity_name(self) -> str:
-        """Get rarity name based on tier from tiers.json"""
-        return TierConstants.get_name(self.base_tier)
+        """Get rarity name based on tier"""
+        tier_data = Tiers.get(self.base_tier)
+        return tier_data.name if tier_data else "Unknown"
     
     def get_full_display_name(self) -> str:
         """Get full display name with element and type"""
@@ -63,19 +69,19 @@ class EspritBase(SQLModel, table=True):
     
     def get_stats_display(self) -> str:
         """Get formatted stats display"""
-        return f"ATK: {self.base_atk} | DEF: {self.base_def} | HP: {self.base_hp}"
+        return f"ATK: {self.base_atk:,} | DEF: {self.base_def:,} | HP: {self.base_hp:,}"
     
     def is_valid_element(self) -> bool:
         """Validate element"""
-        return ElementConstants.is_valid(self.element)
+        return Elements.from_string(self.element) is not None
     
     def is_valid_type(self) -> bool:
         """Validate type"""
-        return TypeConstants.is_valid(self.type)
+        return EspritTypes.from_string(self.type) is not None
     
     def is_valid_tier(self) -> bool:
         """Validate tier"""
-        return TierConstants.is_valid(self.base_tier)
+        return Tiers.is_valid(self.base_tier)
     
     def get_ability_details(self) -> dict:
         """
@@ -110,28 +116,5 @@ class EspritBase(SQLModel, table=True):
         """Override init to auto-set tier_name if not provided"""
         super().__init__(**data)
         if self.tier_name is None and self.base_tier:
-            self.tier_name = self.get_tier_name()
-
-    def get_tier_name(self) -> str:
-        """Get tier name from base_tier"""
-        tier_names = {
-            1: "Common",
-            2: "Uncommon", 
-            3: "Rare",
-            4: "Epic",
-            5: "Mythic",
-            6: "Celestial",
-            7: "Divine",
-            8: "Primal",
-            9: "Sovereign",
-            10: "Astral",
-            11: "Ethereal",
-            12: "Transcendent",
-            13: "Empyrean",
-            14: "Absolute",
-            15: "Genesis",
-            16: "Legendary",
-            17: "Void",
-            18: "Singularity"
-        }
-        return tier_names.get(self.base_tier, "Unknown")
+            tier_data = Tiers.get(self.base_tier)
+            self.tier_name = tier_data.name if tier_data else "Unknown"

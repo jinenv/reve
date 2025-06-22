@@ -18,7 +18,15 @@ class ConfigManager:
             return
 
         cls._configs.clear()
+        
+        # Skip files that are now in game_constants.py
+        skip_files = {"elements.json", "esprit_types.json", "tiers.json"}
+        
         for file in cls._base_path.glob("*.json"):
+            if file.name in skip_files:
+                logger.info(f"Skipping {file.name} - data moved to game_constants.py")
+                continue
+                
             try:
                 with file.open("r", encoding="utf-8") as f:
                     cls._configs[file.stem] = json.load(f)

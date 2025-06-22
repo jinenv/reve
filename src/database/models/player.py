@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, date
 import random
 from sqlalchemy import Column, BigInteger
+from src.utils.game_constants import Elements, EspritTypes, Tiers, GameConstants, get_fusion_result, FUSION_CHART
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
 
@@ -30,8 +31,6 @@ class Player(SQLModel, table=True):
     
     # --- Monster Warlord Style Leader System ---
     leader_esprit_stack_id: Optional[int] = Field(default=None, foreign_key="esprit.id")
-    max_space: int = Field(default=50)  # Starting space (will scale with level)
-    current_space: int = Field(default=0)
     
     # --- Combat Power (Sigil) ---
     total_attack_power: int = Field(default=0)  # Cached total of ALL Esprits
@@ -93,28 +92,8 @@ class Player(SQLModel, table=True):
     # --- LOGIC METHODS ---
 
     def xp_for_next_level(self) -> int:
-        """Safe XP calculation without eval()"""
-        config = ConfigManager.get("global_config") or {}
-        formula_config = config.get("player_progression", {}).get("xp_formula", {})
-        base = formula_config.get("base", 100)
-        exponent = formula_config.get("exponent", 1.5)
-        return int(base * (self.level ** exponent))
-
-    def calculate_max_space(self) -> int:
-        """Calculate max space based on level with better early game scaling"""
-        # More generous early game space
-        if self.level <= 10:
-            return 50 + (self.level * 20)  # 50-250 space for levels 1-10
-        elif self.level <= 50:
-            return 250 + ((self.level - 10) * 15)  # 250-850 for levels 11-50
-        elif self.level <= 100:
-            return 850 + ((self.level - 50) * 10)  # 850-1350 for levels 51-100
-        else:
-            return 1350 + ((self.level - 100) * 5)  # Slower growth after 100
-
-    def update_max_space(self):
-        """Update max space based on current level"""
-        self.max_space = self.calculate_max_space()
+        """Calculate XP required for next level using GameConstants"""
+        return GameConstants.get_xp_required(self.level)
 
     async def get_leader_bonuses(self, session: AsyncSession) -> Dict[str, Any]:
         """Get all bonuses from the leader Esprit including awakening boosts"""
@@ -141,13 +120,13 @@ class Player(SQLModel, table=True):
         
         leader_stack, base = result
         
-        # Get element bonuses
-        elements_config = ConfigManager.get("elements") or {}
-        element_bonuses = elements_config.get("bonuses", {}).get(leader_stack.element.lower(), {})
+        # Get element bonuses using new constants
+        element = Elements.from_string(leader_stack.element)
+        element_bonuses = element.bonuses if element else {}
         
-        # Get type bonuses
-        types_config = ConfigManager.get("esprit_types") or {}
-        type_bonuses = types_config.get("bonuses", {}).get(base.type, {})
+        # Get type bonuses using new constants
+        esprit_type = EspritTypes.from_string(base.type)
+        type_bonuses = esprit_type.bonuses if esprit_type else {}
         
         # Apply awakening multiplier to leadership bonuses
         awakening_multiplier = 1.0 + (leader_stack.awakening_level * 0.1)  # 10% per star
@@ -155,7 +134,7 @@ class Player(SQLModel, table=True):
         # Scale all percentage bonuses by awakening
         scaled_element_bonuses = {}
         for key, value in element_bonuses.items():
-            if isinstance(value, (int, float)) and value > 0:
+            if isinstance(value, (int, float)) and value > 0 and key != "energy_regen_bonus":
                 scaled_element_bonuses[key] = value * awakening_multiplier
             else:
                 scaled_element_bonuses[key] = value
@@ -232,24 +211,6 @@ class Player(SQLModel, table=True):
             await RedisService.cache_player_power(self.id, power_data)
         return power_data
 
-    async def recalculate_space(self, session: AsyncSession) -> int:
-        """Recalculate current space usage from all owned Esprits"""
-        from src.database.models import Esprit
-        
-        # Single query to get total space
-        stacks_stmt = select(Esprit).where(Esprit.owner_id == self.id)
-        stacks = (await session.execute(stacks_stmt)).scalars().all()
-        
-        total_space = 0
-        for stack in stacks:
-            # Leader doesn't count toward space
-            if stack.id == self.leader_esprit_stack_id:
-                continue
-            total_space += stack.total_space
-        
-        self.current_space = total_space
-        return total_space
-
     def add_experience(self, amount: int) -> bool:
         """Adds experience and handles leveling up. Returns True if a level-up occurred."""
         leveled_up = False
@@ -265,9 +226,8 @@ class Player(SQLModel, table=True):
             leveled_up = True
             
             # Level up bonuses
-            self.max_energy += 10
+            self.max_energy += GameConstants.MAX_ENERGY_PER_LEVEL
             self.energy = self.max_energy  # Refill energy on level up
-            self.update_max_space()  # Update space limit
             
         return leveled_up
 
@@ -386,9 +346,8 @@ class Player(SQLModel, table=True):
         Returns the new Esprit instance if successful, otherwise None.
         """
         if capturable_tiers := area_data.get("capturable_tiers"):
-            # Base capture chance
-            config = ConfigManager.get("global_config") or {}
-            base_capture_chance = config.get("quest_system", {}).get("capture_chance", 0.10)
+            # Base capture chance from GameConstants
+            base_capture_chance = GameConstants.BASE_CAPTURE_CHANCE
             
             # Apply leader bonus if applicable
             leader_bonuses = await self.get_leader_bonuses(session)
@@ -410,7 +369,9 @@ class Player(SQLModel, table=True):
                 
                 if area_element:
                     # 70% chance for area element
-                    if random.random() < 0.7:
+                    config = ConfigManager.get("global_config") or {}
+                    area_bias = config.get("quest_system", {}).get("area_element_bias", 0.7)
+                    if random.random() < area_bias:
                         possible_esprits_stmt = possible_esprits_stmt.where(
                             EspritBase.element == area_element.title()
                         )
@@ -433,7 +394,6 @@ class Player(SQLModel, table=True):
                     # Invalidate cache and update stats
                     if RedisService.is_available():
                         await RedisService.invalidate_player_cache(self.id)
-                    await self.recalculate_space(session)
                     await self.recalculate_total_power(session)
                     
                     return new_stack
@@ -510,12 +470,11 @@ class Player(SQLModel, table=True):
         now = datetime.utcnow()
         minutes_passed = (now - self.last_energy_update).total_seconds() / 60
         
-        config = ConfigManager.get("global_config") or {}
-        base_minutes_per_point = config.get("player_progression", {}).get("energy_regeneration", {}).get("minutes_per_point", 6)
+        # Use GameConstants for base rate
+        minutes_per_point = GameConstants.ENERGY_REGEN_MINUTES
         
         # Apply leader bonus if applicable (will need session context in actual use)
         # For now, use base rate
-        minutes_per_point = base_minutes_per_point
         
         energy_to_add = int(minutes_passed // minutes_per_point)
         
