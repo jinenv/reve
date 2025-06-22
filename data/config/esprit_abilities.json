@@ -1,0 +1,215 @@
+{
+  "description": "Unique abilities for specific tier 5+ Esprits",
+  "template": {
+    "esprit_name": {
+      "basic": {
+        "name": "Unique Basic Attack Name",
+        "description": "Description with {power}% scaling",
+        "type": "damage_type",
+        "element": "matching_esprit_element",
+        "power": 140,
+        "energy_cost": 0,
+        "cooldown": 0,
+        "effects": ["additional_effects_if_any"]
+      },
+      "skill": {
+        "name": "Unique Skill Name",
+        "description": "Tactical/utility ability description",
+        "type": "skill_type",
+        "power": 50,
+        "energy_cost": 2,
+        "cooldown": 3,
+        "duration": 3,
+        "effects": []
+      },
+      "ultimate": {
+        "name": "Ultimate Ability Name",
+        "description": "Powerful signature move",
+        "type": "ultimate_type",
+        "power": 250,
+        "energy_cost": 5,
+        "cooldown": 5,
+        "effects": []
+      },
+      "passive": {
+        "name": "Passive Name",
+        "description": "Always-on benefit",
+        "type": "passive_type",
+        "power": 20,
+        "trigger": "always/on_condition",
+        "effects": []
+      }
+    }
+  },
+  
+  "examples": {
+    "ferox": {
+      "basic": {
+        "name": "Savage Bite",
+        "description": "Tear into prey dealing {power}% ATK with 30% chance to cause bleed",
+        "type": "physical_bleed",
+        "element": "verdant",
+        "power": 140,
+        "energy_cost": 0,
+        "cooldown": 0,
+        "effects": ["bleed_chance_30"]
+      },
+      "skill": {
+        "name": "Hunter's Instinct",
+        "description": "Mark prey for the hunt - next 3 attacks deal +50% damage and always hit",
+        "type": "mark_amplify",
+        "power": 50,
+        "energy_cost": 2,
+        "cooldown": 3,
+        "duration": 3,
+        "effects": ["perfect_accuracy", "damage_amp"]
+      },
+      "ultimate": {
+        "name": "Primal Fury",
+        "description": "Enter a feral rage, gaining 100% ATK and 50% lifesteal for 3 turns",
+        "type": "berserk_mode",
+        "power": 100,
+        "energy_cost": 4,
+        "cooldown": 5,
+        "duration": 3,
+        "effects": ["atk_double", "lifesteal_50"]
+      },
+      "passive": {
+        "name": "Pack Leader",
+        "description": "Hunt-type allies gain 25% of Ferox's ATK",
+        "type": "type_synergy",
+        "power": 25,
+        "trigger": "always",
+        "effects": ["hunt_type_buff"]
+      }
+    },
+    
+    "tier_5_example": {
+      "basic": {
+        "name": "Mythic Strike",
+        "description": "Channel mythic energy to deal {power}% ATK",
+        "type": "energy_damage",
+        "element": "player_choice",
+        "power": 150,
+        "energy_cost": 0,
+        "cooldown": 0,
+        "effects": []
+      },
+      "skill": {
+        "name": "Mythic Shield",
+        "description": "Create a barrier absorbing 200% of DEF as damage",
+        "type": "shield",
+        "power": 200,
+        "energy_cost": 3,
+        "cooldown": 4,
+        "duration": 3,
+        "effects": ["damage_absorb"]
+      },
+      "ultimate": {
+        "name": "Mythic Awakening",
+        "description": "Unleash true power - all stats +50%, all abilities cost 0 for 2 turns",
+        "type": "transformation",
+        "power": 50,
+        "energy_cost": 6,
+        "cooldown": 6,
+        "duration": 2,
+        "effects": ["stat_boost_all", "zero_cost"]
+      },
+      "passive": {
+        "name": "Mythic Presence",
+        "description": "Start battle with +3 energy and 20% damage reduction",
+        "type": "battle_start",
+        "power": 20,
+        "trigger": "battle_start",
+        "effects": ["bonus_energy_3", "damage_reduction"]
+      }
+    },
+    
+    "tier_10_boss": {
+      "basic": {
+        "name": "Astral Rend",
+        "description": "Tear through dimensions dealing {power}% ATK, ignoring 50% DEF",
+        "type": "pierce_damage",
+        "element": "void",
+        "power": 180,
+        "energy_cost": 0,
+        "cooldown": 0,
+        "effects": ["defense_pierce_50"]
+      },
+      "skill": {
+        "name": "Phase Shift",
+        "description": "Become intangible for 2 turns, reflecting 100% damage taken",
+        "type": "phase",
+        "power": 100,
+        "energy_cost": 4,
+        "cooldown": 5,
+        "duration": 2,
+        "effects": ["intangible", "perfect_reflect"]
+      },
+      "ultimate": {
+        "name": "Stellar Collapse",
+        "description": "Create a singularity dealing {power}% ATK to all enemies, pulls them together",
+        "type": "gravity_aoe",
+        "power": 300,
+        "energy_cost": 7,
+        "cooldown": 6,
+        "effects": ["aoe_damage", "group_enemies", "stun_chance_50"]
+      },
+      "passive": {
+        "name": "Cosmic Entity",
+        "description": "Immune to all status effects, regenerate 10% max HP per turn",
+        "type": "cosmic_body",
+        "power": 10,
+        "trigger": "always",
+        "effects": ["status_immunity", "hp_regen"]
+      }
+    }
+  },
+  
+  "ability_types": [
+    "damage", "heal", "shield", "buff", "debuff", "summon",
+    "transform", "execute", "lifesteal", "dot", "aoe", "chain",
+    "pierce", "true_damage", "reflect", "absorb", "cleanse",
+    "revive", "teleport", "stealth", "taunt", "fear", "charm"
+  ],
+  
+  "effect_keywords": [
+    "bleed", "burn", "freeze", "stun", "silence", "poison",
+    "slow", "haste", "regeneration", "thorns", "counter",
+    "dodge", "block", "parry", "crit", "lifesteal", "execute",
+    "pierce", "splash", "chain", "cleave", "rampage", "berserk"
+  ],
+  
+  "scaling_guidelines": {
+    "tier_5_mythic": {
+      "basic_power": "140-160%",
+      "skill_power": "Variable",
+      "ultimate_power": "250-300%",
+      "passive_power": "15-25%"
+    },
+    "tier_8_primal": {
+      "basic_power": "160-180%",
+      "skill_power": "Variable",
+      "ultimate_power": "300-400%",
+      "passive_power": "20-30%"
+    },
+    "tier_10_astral": {
+      "basic_power": "180-200%",
+      "skill_power": "Variable", 
+      "ultimate_power": "400-500%",
+      "passive_power": "25-35%"
+    },
+    "tier_15_genesis": {
+      "basic_power": "220-250%",
+      "skill_power": "Variable",
+      "ultimate_power": "600-800%",
+      "passive_power": "40-50%"
+    },
+    "tier_18_singularity": {
+      "basic_power": "300%+",
+      "skill_power": "Variable",
+      "ultimate_power": "1000%+",
+      "passive_power": "50%+"
+    }
+  }
+}

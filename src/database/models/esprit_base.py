@@ -15,6 +15,7 @@ class EspritBase(SQLModel, table=True):
     element: str = Field(index=True)  # inferno, verdant, abyssal, tempest, umbral, radiant
     type: str = Field(default="chaos", index=True)  # chaos, order, hunt, wisdom, command
     base_tier: int = Field(index=True)
+    tier_name: Optional[str] = Field(default=None, index=True)  # Cached tier name
     
     # Base stats (before tier/awakening multipliers)
     base_atk: int
@@ -25,7 +26,8 @@ class EspritBase(SQLModel, table=True):
     description: str
     image_url: Optional[str] = None
     
-    # MW-style abilities (stored as JSON in DB but typed here)
+    # For tiers 1-4: null or empty list (uses universal abilities)
+    # For tiers 5+: ["esprit_name"] or specific ability IDs if you want
     abilities: Optional[list] = Field(default=None, sa_column=Column(JSON))
 
     # Timestamps
@@ -75,10 +77,31 @@ class EspritBase(SQLModel, table=True):
         """Validate tier"""
         return TierConstants.is_valid(self.base_tier)
     
-    def get_ability_details(self) -> list[dict]:
-        """Get full ability details from ability IDs"""
-        if not self.abilities:
-            return []
-    
+    def get_ability_details(self) -> dict:
+        """
+        Get full ability details based on tier.
+        Tiers 1-4: Universal abilities based on element/type
+        Tiers 5+: Unique abilities from esprit_abilities.json
+        """
         from src.utils.ability_manager import AbilityManager
-        return [AbilityManager.get_ability(ability_id) for ability_id in self.abilities]
+        
+        # Get abilities based on tier
+        abilities = AbilityManager.get_esprit_abilities(
+            esprit_name=self.name,
+            tier=self.base_tier,
+            element=self.element,
+            type=self.type
+        )
+        
+        return abilities
+    
+    def get_formatted_abilities(self) -> list[str]:
+        """Get abilities formatted for Discord display"""
+        from src.utils.ability_manager import AbilityManager
+        
+        return AbilityManager.get_abilities_for_embed(
+            esprit_name=self.name,
+            tier=self.base_tier,
+            element=self.element,
+            type=self.type
+        )

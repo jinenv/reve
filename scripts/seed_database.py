@@ -23,7 +23,8 @@ ESPRIT_DEFINITIONS = [
     "base_def": 322,
     "base_hp": 1288,
     "description": "A savage, horned beast that prowls the ancient forests, feared for its relentless hunt and primal fury.",
-    "image_url": "/assets/esprits/epic/ferox.png"
+    "image_url": "/assets/esprits/epic/ferox.png",
+    "abilities": None
     },
 
 ]
