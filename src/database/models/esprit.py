@@ -9,6 +9,7 @@ from sqlalchemy import select as sa_select
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
 from src.utils.game_constants import Tiers, FUSION_CHART, get_fusion_result
+from src.utils.transaction_logger import transaction_logger, TransactionType
 
 if TYPE_CHECKING:
     from src.database.models import EspritBase
@@ -91,8 +92,11 @@ class Esprit(SQLModel, table=True):
         if not cost["can_awaken"]:
             return False
         
+        old_awakening = self.awakening_level
+        copies_consumed = cost["copies_needed"]
+        
         # Consume the copies
-        self.quantity -= cost["copies_needed"]
+        self.quantity -= copies_consumed
         self.awakening_level += 1
         
         # Update player stats
@@ -100,6 +104,20 @@ class Esprit(SQLModel, table=True):
         player_stmt = select(Player).where(Player.id == self.owner_id)
         player = (await session.execute(player_stmt)).scalar_one()
         player.total_awakenings += 1
+        
+        # Log the awakening
+        from src.database.models import EspritBase
+        base_stmt = select(EspritBase).where(EspritBase.id == self.esprit_base_id)
+        base = (await session.execute(base_stmt)).scalar_one()
+        
+        if player.id is not None:
+            transaction_logger.log_awakening(
+                player.id,
+                base.name,
+                old_awakening,
+                self.awakening_level,
+                copies_consumed
+            )
         
         # Invalidate cache
         if RedisService.is_available() and player.id is not None:
@@ -177,12 +195,19 @@ class Esprit(SQLModel, table=True):
             # Use fragments for guaranteed success
             if use_fragments and fragments_amount >= 10:
                 if player.get_fragment_count(result_element.lower()) >= 10:
-                    player.consume_element_fragments(result_element.lower(), 10)
+                    await player.consume_element_fragments(session, result_element.lower(), 10, "fusion_guarantee")
                     final_success_rate = 1.0  # Guarantee success
             
             # Deduct cost
             if fusion_cost:
-                player.jijies -= fusion_cost
+                await player.spend_currency(session, "jijies", fusion_cost, "fusion_cost")
+            
+            # Get bases for logging
+            self_base_stmt = select(EspritBase).where(EspritBase.id == self.esprit_base_id)
+            self_base = (await session.execute(self_base_stmt)).scalar_one()
+            
+            other_base_stmt = select(EspritBase).where(EspritBase.id == other_stack.esprit_base_id)
+            other_base = (await session.execute(other_base_stmt)).scalar_one()
             
             # Attempt fusion
             player.total_fusions += 1
@@ -193,7 +218,28 @@ class Esprit(SQLModel, table=True):
                 other_stack.quantity -= 1
             
             # Check fusion success
-            if random.random() > final_success_rate:
+            fusion_succeeded = random.random() <= final_success_rate
+            
+            # Log the fusion attempt
+            if player.id is not None:
+                transaction_logger.log_fusion(
+                    player.id,
+                    {
+                        "name": self_base.name,
+                        "tier": self.tier,
+                        "element": self.element
+                    },
+                    {
+                        "name": other_base.name,
+                        "tier": other_stack.tier,
+                        "element": other_stack.element
+                    },
+                    None,  # Will update with result if successful
+                    fusion_succeeded,
+                    fusion_cost
+                )
+            
+            if not fusion_succeeded:
                 # Fusion failed - produce element fragments
                 fragments_gained = max(1, self.tier // 2)
                 
@@ -203,7 +249,7 @@ class Esprit(SQLModel, table=True):
                 else:
                     fragment_element = result_element
                     
-                player.add_element_fragments(fragment_element.lower(), fragments_gained)
+                await player.add_element_fragments(session, fragment_element.lower(), fragments_gained, "fusion_failure")
                 
                 # Clean up empty stacks
                 await self._cleanup_empty_stacks(session, other_stack)
@@ -231,7 +277,7 @@ class Esprit(SQLModel, table=True):
             if not possible_bases:
                 # No Esprit exists at this tier/element - give fragments instead
                 fragments_gained = max(1, self.tier // 2)
-                player.add_element_fragments(result_element.lower(), fragments_gained)
+                await player.add_element_fragments(session, result_element.lower(), fragments_gained, "fusion_no_result")
                 
                 await self._cleanup_empty_stacks(session, other_stack)
                 
@@ -249,6 +295,29 @@ class Esprit(SQLModel, table=True):
                 base=result_base,
                 quantity=1
             )
+            
+            # Log successful fusion with result
+            if player.id is not None:
+                transaction_logger.log_fusion(
+                    player.id,
+                    {
+                        "name": self_base.name,
+                        "tier": self.tier,
+                        "element": self.element
+                    },
+                    {
+                        "name": other_base.name,
+                        "tier": other_stack.tier,
+                        "element": other_stack.element
+                    },
+                    {
+                        "name": result_base.name,
+                        "tier": result_base.base_tier,
+                        "element": result_base.element
+                    },
+                    True,
+                    fusion_cost
+                )
             
             # Clean up empty stacks
             await self._cleanup_empty_stacks(session, other_stack)

@@ -1,0 +1,341 @@
+{
+  "categories": {
+    "progression": {
+      "name": "Progression",
+      "icon": "📈",
+      "description": "General progress achievements"
+    },
+    "collection": {
+      "name": "Collection",
+      "icon": "📚",
+      "description": "Esprit collection achievements"
+    },
+    "combat": {
+      "name": "Combat",
+      "icon": "⚔️",
+      "description": "Battle and fusion achievements"
+    },
+    "economy": {
+      "name": "Economy",
+      "icon": "💰",
+      "description": "Currency and building achievements"
+    },
+    "social": {
+      "name": "Social",
+      "icon": "👥",
+      "description": "Guild and community achievements"
+    }
+  },
+  
+  "achievements": {
+    "first_steps": {
+      "id": "first_steps",
+      "name": "First Steps",
+      "description": "Reach level 10",
+      "category": "progression",
+      "requirement": {
+        "type": "player_level",
+        "value": 10
+      },
+      "rewards": {
+        "erythl": 5,
+        "title": "Novice"
+      },
+      "points": 10
+    },
+    
+    "seasoned_summoner": {
+      "id": "seasoned_summoner",
+      "name": "Seasoned Summoner",
+      "description": "Reach level 50",
+      "category": "progression",
+      "requirement": {
+        "type": "player_level",
+        "value": 50
+      },
+      "rewards": {
+        "erythl": 25,
+        "title": "Veteran"
+      },
+      "points": 50
+    },
+    
+    "master_summoner": {
+      "id": "master_summoner",
+      "name": "Master Summoner",
+      "description": "Reach level 100",
+      "category": "progression",
+      "requirement": {
+        "type": "player_level",
+        "value": 100
+      },
+      "rewards": {
+        "erythl": 100,
+        "title": "Master",
+        "items": {"skill_reset_token": 1}
+      },
+      "points": 100
+    },
+    
+    "first_capture": {
+      "id": "first_capture",
+      "name": "First Friend",
+      "description": "Capture your first Esprit",
+      "category": "collection",
+      "requirement": {
+        "type": "total_unique_esprits",
+        "value": 1
+      },
+      "rewards": {
+        "jijies": 5000
+      },
+      "points": 5
+    },
+    
+    "collector_10": {
+      "id": "collector_10",
+      "name": "Budding Collector",
+      "description": "Collect 10 unique Esprits",
+      "category": "collection",
+      "requirement": {
+        "type": "total_unique_esprits",
+        "value": 10
+      },
+      "rewards": {
+        "erythl": 10,
+        "items": {"capture_charm": 2}
+      },
+      "points": 20
+    },
+    
+    "collector_50": {
+      "id": "collector_50",
+      "name": "Esprit Enthusiast",
+      "description": "Collect 50 unique Esprits",
+      "category": "collection",
+      "requirement": {
+        "type": "total_unique_esprits",
+        "value": 50
+      },
+      "rewards": {
+        "erythl": 50,
+        "title": "Collector"
+      },
+      "points": 50
+    },
+    
+    "first_awakening": {
+      "id": "first_awakening",
+      "name": "Awakened Power",
+      "description": "Awaken any Esprit to 1 star",
+      "category": "combat",
+      "requirement": {
+        "type": "total_awakenings",
+        "value": 1
+      },
+      "rewards": {
+        "jijies": 10000
+      },
+      "points": 15
+    },
+    
+    "max_awakening": {
+      "id": "max_awakening",
+      "name": "Five Star General",
+      "description": "Awaken any Esprit to 5 stars",
+      "category": "combat",
+      "requirement": {
+        "type": "has_5_star_esprit",
+        "value": true
+      },
+      "rewards": {
+        "erythl": 100,
+        "title": "Awakened",
+        "items": {"awakening_stone": 1}
+      },
+      "points": 100
+    },
+    
+    "fusion_novice": {
+      "id": "fusion_novice",
+      "name": "Fusion Novice",
+      "description": "Complete 10 successful fusions",
+      "category": "combat",
+      "requirement": {
+        "type": "successful_fusions",
+        "value": 10
+      },
+      "rewards": {
+        "items": {"fusion_catalyst": 1}
+      },
+      "points": 20
+    },
+    
+    "fusion_master": {
+      "id": "fusion_master",
+      "name": "Fusion Master",
+      "description": "Complete 100 successful fusions",
+      "category": "combat",
+      "requirement": {
+        "type": "successful_fusions",
+        "value": 100
+      },
+      "rewards": {
+        "erythl": 50,
+        "title": "Alchemist",
+        "items": {"fusion_catalyst": 5}
+      },
+      "points": 75
+    },
+    
+    "millionaire": {
+      "id": "millionaire",
+      "name": "Millionaire",
+      "description": "Accumulate 1,000,000 jijies",
+      "category": "economy",
+      "requirement": {
+        "type": "total_jijies_earned",
+        "value": 1000000
+      },
+      "rewards": {
+        "erythl": 25,
+        "title": "Wealthy"
+      },
+      "points": 50
+    },
+    
+    "building_empire": {
+      "id": "building_empire",
+      "name": "Building Empire",
+      "description": "Have 5 buildings at level 5 or higher",
+      "category": "economy",
+      "requirement": {
+        "type": "buildings_at_level",
+        "value": 5,
+        "level": 5
+      },
+      "rewards": {
+        "items": {"building_boost": 2, "building_slot": 1}
+      },
+      "points": 60
+    },
+    
+    "max_building": {
+      "id": "max_building",
+      "name": "Master Architect",
+      "description": "Max out any building to level 10",
+      "category": "economy",
+      "requirement": {
+        "type": "has_max_building",
+        "value": true
+      },
+      "rewards": {
+        "erythl": 75,
+        "title": "Architect"
+      },
+      "points": 80
+    },
+    
+    "quest_marathon": {
+      "id": "quest_marathon",
+      "name": "Quest Marathon",
+      "description": "Complete 1000 quests",
+      "category": "progression",
+      "requirement": {
+        "type": "total_quests_completed",
+        "value": 1000
+      },
+      "rewards": {
+        "erythl": 30,
+        "items": {"energy_potion": 20}
+      },
+      "points": 40
+    },
+    
+    "echo_hunter": {
+      "id": "echo_hunter",
+      "name": "Echo Hunter",
+      "description": "Open 100 echoes",
+      "category": "collection",
+      "requirement": {
+        "type": "total_echoes_opened",
+        "value": 100
+      },
+      "rewards": {
+        "items": {"echo_key": 5},
+        "title": "Echo Hunter"
+      },
+      "points": 45
+    },
+    
+    "elemental_master": {
+      "id": "elemental_master",
+      "name": "Elemental Master",
+      "description": "Own at least 10 Esprits of each element",
+      "category": "collection",
+      "requirement": {
+        "type": "esprits_per_element",
+        "value": 10
+      },
+      "rewards": {
+        "erythl": 100,
+        "title": "Elementalist",
+        "element_fragments": {"all": 200}
+      },
+      "points": 90
+    },
+    
+    "tier_climber": {
+      "id": "tier_climber",
+      "name": "Tier Climber",
+      "description": "Own an Esprit of tier 10 or higher",
+      "category": "collection",
+      "requirement": {
+        "type": "highest_tier_owned",
+        "value": 10
+      },
+      "rewards": {
+        "erythl": 50,
+        "tier_fragments": {"10": 50}
+      },
+      "points": 70
+    },
+    
+    "codex_scholar": {
+      "id": "codex_scholar",
+      "name": "Codex Scholar",
+      "description": "Complete 10 collections",
+      "category": "collection",
+      "requirement": {
+        "type": "collections_completed",
+        "value": 10
+      },
+      "rewards": {
+        "erythl": 75,
+        "title": "Scholar"
+      },
+      "points": 85
+    }
+  },
+  
+  "titles": {
+    "Novice": {"color": "#808080"},
+    "Veteran": {"color": "#00ff00"},
+    "Master": {"color": "#0099ff"},
+    "Collector": {"color": "#9932cc"},
+    "Awakened": {"color": "#ff8c00"},
+    "Alchemist": {"color": "#ff0066"},
+    "Wealthy": {"color": "#ffd700"},
+    "Architect": {"color": "#00ffff"},
+    "Echo Hunter": {"color": "#ff6b6b"},
+    "Elementalist": {"color": "#9b59b6"},
+    "Scholar": {"color": "#3498db"}
+  },
+  
+  "point_rewards": {
+    "100": {"erythl": 50, "items": {"skill_reset_token": 1}},
+    "250": {"erythl": 100, "items": {"building_slot": 1}},
+    "500": {"erythl": 200, "items": {"awakening_stone": 2}},
+    "1000": {"erythl": 500, "title": "Completionist", "items": {"fusion_catalyst": 10}}
+  }
+}

@@ -1,0 +1,290 @@
+{
+  "items": {
+    "echo_key": {
+      "id": "echo_key",
+      "name": "Echo Key",
+      "description": "Opens any echo without consuming it",
+      "category": "consumable",
+      "rarity": "rare",
+      "icon": "🗝️",
+      "effects": {
+        "type": "open_echo",
+        "preserve_echo": true
+      }
+    },
+    
+    "xp_orb": {
+      "id": "xp_orb",
+      "name": "Experience Orb",
+      "description": "Grants 100 experience points",
+      "category": "consumable",
+      "rarity": "common",
+      "icon": "🔮",
+      "effects": {
+        "type": "grant_xp",
+        "amount": 100
+      }
+    },
+    
+    "energy_potion": {
+      "id": "energy_potion",
+      "name": "Energy Potion",
+      "description": "Instantly restores 50 energy",
+      "category": "consumable",
+      "rarity": "common",
+      "icon": "🧪",
+      "effects": {
+        "type": "restore_energy",
+        "amount": 50
+      }
+    },
+    
+    "stamina_elixir": {
+      "id": "stamina_elixir",
+      "name": "Stamina Elixir",
+      "description": "Instantly restores 25 stamina",
+      "category": "consumable",
+      "rarity": "uncommon",
+      "icon": "⚗️",
+      "effects": {
+        "type": "restore_stamina",
+        "amount": 25
+      }
+    },
+    
+    "fusion_catalyst": {
+      "id": "fusion_catalyst",
+      "name": "Fusion Catalyst",
+      "description": "Guarantees next fusion success",
+      "category": "consumable",
+      "rarity": "epic",
+      "icon": "💎",
+      "effects": {
+        "type": "fusion_guarantee",
+        "duration": 1
+      }
+    },
+    
+    "awakening_stone": {
+      "id": "awakening_stone",
+      "name": "Awakening Stone",
+      "description": "Reduces awakening cost by 1 copy",
+      "category": "consumable",
+      "rarity": "mythic",
+      "icon": "💠",
+      "effects": {
+        "type": "awakening_discount",
+        "reduction": 1
+      }
+    },
+    
+    "capture_charm": {
+      "id": "capture_charm",
+      "name": "Capture Charm",
+      "description": "+50% capture chance for 10 quests",
+      "category": "consumable",
+      "rarity": "rare",
+      "icon": "🪬",
+      "effects": {
+        "type": "capture_boost",
+        "multiplier": 1.5,
+        "duration": 10
+      }
+    },
+    
+    "building_boost": {
+      "id": "building_boost",
+      "name": "Construction Boost",
+      "description": "Instantly complete a building upgrade",
+      "category": "consumable",
+      "rarity": "legendary",
+      "icon": "🏗️",
+      "effects": {
+        "type": "instant_build"
+      }
+    },
+    
+    "fragment_bundle_small": {
+      "id": "fragment_bundle_small",
+      "name": "Small Fragment Bundle",
+      "description": "Contains 50 random fragments",
+      "category": "consumable",
+      "rarity": "uncommon",
+      "icon": "📦",
+      "effects": {
+        "type": "grant_fragments",
+        "amount": 50,
+        "tier_range": [1, 6]
+      }
+    },
+    
+    "fragment_bundle_large": {
+      "id": "fragment_bundle_large",
+      "name": "Large Fragment Bundle",
+      "description": "Contains 200 random fragments",
+      "category": "consumable",
+      "rarity": "epic",
+      "icon": "📦",
+      "effects": {
+        "type": "grant_fragments",
+        "amount": 200,
+        "tier_range": [4, 12]
+      }
+    },
+    
+    "skill_reset_token": {
+      "id": "skill_reset_token",
+      "name": "Skill Reset Token",
+      "description": "Reset skill points for free",
+      "category": "consumable",
+      "rarity": "mythic",
+      "icon": "🔄",
+      "effects": {
+        "type": "skill_reset",
+        "free": true
+      }
+    },
+    
+    "building_slot": {
+      "id": "building_slot",
+      "name": "Building Permit",
+      "description": "Unlock an additional building slot",
+      "category": "permanent",
+      "rarity": "legendary",
+      "icon": "📜",
+      "effects": {
+        "type": "unlock_slot",
+        "slot_type": "building"
+      }
+    }
+  },
+  
+  "shop": {
+    "daily_deals": {
+      "refresh_hours": 24,
+      "slots": 6,
+      "possible_items": [
+        {
+          "item_id": "energy_potion",
+          "cost": {"jijies": 1000},
+          "weight": 30,
+          "stock": 5
+        },
+        {
+          "item_id": "stamina_elixir",
+          "cost": {"jijies": 2500},
+          "weight": 20,
+          "stock": 3
+        },
+        {
+          "item_id": "xp_orb",
+          "cost": {"jijies": 500},
+          "weight": 25,
+          "stock": 10
+        },
+        {
+          "item_id": "echo_key",
+          "cost": {"jijies": 10000},
+          "weight": 10,
+          "stock": 1
+        },
+        {
+          "item_id": "capture_charm",
+          "cost": {"jijies": 15000},
+          "weight": 10,
+          "stock": 2
+        },
+        {
+          "item_id": "fragment_bundle_small",
+          "cost": {"jijies": 5000},
+          "weight": 5,
+          "stock": 3
+        }
+      ]
+    },
+    
+    "premium_shop": {
+      "always_available": [
+        {
+          "item_id": "building_boost",
+          "cost": {"erythl": 50},
+          "limit_per_week": 3
+        },
+        {
+          "item_id": "fusion_catalyst",
+          "cost": {"erythl": 30},
+          "limit_per_week": 5
+        },
+        {
+          "item_id": "awakening_stone",
+          "cost": {"erythl": 100},
+          "limit_per_week": 1
+        },
+        {
+          "item_id": "skill_reset_token",
+          "cost": {"erythl": 75},
+          "limit_per_month": 2
+        },
+        {
+          "item_id": "building_slot",
+          "cost": {"erythl": 200},
+          "limit_per_account": 7
+        },
+        {
+          "item_id": "fragment_bundle_large",
+          "cost": {"erythl": 40},
+          "limit_per_week": 10
+        }
+      ]
+    },
+    
+    "bundles": {
+      "starter_pack": {
+        "name": "Starter Bundle",
+        "description": "Great value for new summoners!",
+        "cost": {"erythl": 100},
+        "contents": {
+          "jijies": 50000,
+          "items": {
+            "energy_potion": 10,
+            "stamina_elixir": 5,
+            "fusion_catalyst": 2,
+            "echo_key": 3
+          }
+        },
+        "limit": 1,
+        "requirement": "account_age_days < 7"
+      },
+      
+      "builder_pack": {
+        "name": "Builder's Bundle",
+        "description": "Everything you need for a strong economy",
+        "cost": {"erythl": 250},
+        "contents": {
+          "items": {
+            "building_boost": 5,
+            "building_slot": 1
+          },
+          "jijies": 100000
+        },
+        "limit": 3
+      },
+      
+      "fusion_master_pack": {
+        "name": "Fusion Master Bundle",
+        "description": "Dominate the fusion game",
+        "cost": {"erythl": 150},
+        "contents": {
+          "items": {
+            "fusion_catalyst": 10,
+            "fragment_bundle_large": 3
+          },
+          "element_fragments": {
+            "all": 100
+          }
+        },
+        "limit": 5
+      }
+    }
+  }
+}

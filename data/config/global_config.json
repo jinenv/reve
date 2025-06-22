@@ -4,6 +4,7 @@
     "version": "1.0.0",
     "description": "Mreow"
   },
+  
   "player_progression": {
     "xp_formula": {
       "base": 100,
@@ -13,8 +14,19 @@
       "minutes_per_point": 6,
       "max_energy_base": 100,
       "max_energy_per_level": 10
+    },
+    "stamina_regeneration": {
+      "minutes_per_point": 10,
+      "max_stamina_base": 50,
+      "max_stamina_per_level": 0
+    },
+    "skill_points": {
+      "per_level": 1,
+      "reset_base_cost": 100,
+      "reset_cost_multiplier": 1
     }
   },
+  
   "quest_system": {
     "capture_chance": 0.10,
     "energy_refill_on_levelup": true,
@@ -23,8 +35,10 @@
     "area_element_bias": 0.70,
     "always_auto_victory": true
   },
+  
   "fusion_rules": {
     "fragments_guarantee_tier_monster": true,
+    "element_fusion_penalty": 0.75,
     "fragment_drops": {
       "tier_1_3": [1, 3],
       "tier_4_6": [2, 5],
@@ -43,6 +57,7 @@
     },
     "max_tier": 18
   },
+  
   "awakening_system": {
     "max_stars": 5,
     "bonus_per_star": 0.20,
@@ -50,24 +65,53 @@
     "available_all_tiers": true,
     "leadership_bonus_scaling": 0.10
   },
+  
   "universal_stack_system": {
     "enabled": true,
     "max_stack_size": 999999,
     "auto_combine_on_gacha": true,
     "all_esprits_contribute_power": true
   },
+  
   "leader_system": {
     "enabled": true,
     "bonuses_stack": false,
     "can_change_anytime": true,
     "awakening_boosts_leadership": true
   },
+  
+  "building_system": {
+    "enabled": true,
+    "starting_slots": 3,
+    "max_slots": 10,
+    "slot_costs": [
+      {"slot": 4, "cost": {"erythl": 50}},
+      {"slot": 5, "cost": {"erythl": 100}},
+      {"slot": 6, "cost": {"erythl": 200}},
+      {"slot": 7, "cost": {"erythl": 400}},
+      {"slot": 8, "cost": {"erythl": 800}},
+      {"slot": 9, "cost": {"erythl": 1600}},
+      {"slot": 10, "cost": {"erythl": 3200}}
+    ],
+    "production_rates": {
+      "jijies": "per_hour",
+      "xp_orbs": "per_hour",
+      "erythl": "per_hour",
+      "echo_keys": "per_hour",
+      "random_fragments": "per_hour"
+    }
+  },
+  
   "combat_system": {
     "enabled": false,
     "boss_fights_only": true,
     "leader_determines_skills": true,
-    "power_calculation": "total_all_esprits"
+    "power_calculation": "total_all_esprits",
+    "pvp_enabled": false,
+    "stamina_per_pvp": 5,
+    "stamina_per_boss": 10
   },
+  
   "economy": {
     "jijies_multipliers": {
       "quest_base": 1.0,
@@ -79,9 +123,19 @@
       "level_milestone_10": 10,
       "level_milestone_50": 50,
       "level_milestone_100": 100,
-      "achievement_completion": 5
+      "achievement_completion": 5,
+      "weekly_rank_1": 100,
+      "weekly_rank_2_10": 50,
+      "weekly_rank_11_50": 25,
+      "weekly_rank_51_100": 10
+    },
+    "building_upkeep": {
+      "payment_interval_hours": 24,
+      "bankruptcy_penalty": "buildings_inactive",
+      "grace_period_hours": 6
     }
   },
+  
   "echo_rates": {
     "daily_echo_type": "faded_echo",
     "quest_echo_chances": {
@@ -89,13 +143,89 @@
       "vivid_echo": 0.01,
       "brilliant_echo": 0.001
     },
-    "boss_echo_multiplier": 2.0
+    "boss_echo_multiplier": 2.0,
+    "echo_key_usage": {
+      "preserves_echo": true,
+      "works_on_all_types": true
+    }
   },
+  
+  "item_system": {
+    "enabled": true,
+    "inventory_shared": true,
+    "stack_limits": {
+      "consumable": 999,
+      "permanent": 1
+    }
+  },
+  
+  "shop_system": {
+    "daily_reset_time_utc": "00:00",
+    "weekly_reset_day": "monday",
+    "tax_rate": 0.0
+  },
+  
+  "guild_system": {
+    "enabled": false,
+    "max_members": 50,
+    "creation_cost": {"jijies": 1000000, "erythl": 100},
+    "benefits": {
+      "xp_bonus_per_level": 0.01,
+      "capture_bonus_per_level": 0.005,
+      "building_cost_reduction_per_level": 0.01
+    }
+  },
+  
+  "achievement_system": {
+    "enabled": true,
+    "retroactive": true,
+    "point_multipliers": {
+      "first_completion": 1.0,
+      "seasonal": 2.0
+    }
+  },
+  
+  "event_system": {
+    "enabled": false,
+    "types": ["double_xp", "capture_boost", "fusion_discount", "building_rush"],
+    "duration_hours": 48
+  },
+  
+  "daily_rewards": {
+    "enabled": true,
+    "reset_time_utc": "00:00",
+    "rewards": [
+      {"day": 1, "jijies": 1000, "items": {"energy_potion": 1}},
+      {"day": 2, "jijies": 2000, "items": {"xp_orb": 5}},
+      {"day": 3, "jijies": 3000, "items": {"stamina_elixir": 1}},
+      {"day": 4, "jijies": 5000, "items": {"capture_charm": 1}},
+      {"day": 5, "jijies": 7500, "items": {"fragment_bundle_small": 1}},
+      {"day": 6, "jijies": 10000, "items": {"echo_key": 1}},
+      {"day": 7, "erythl": 10, "items": {"fusion_catalyst": 1}}
+    ],
+    "streak_bonuses": {
+      "7": {"erythl": 5},
+      "14": {"erythl": 10, "items": {"skill_reset_token": 1}},
+      "28": {"erythl": 25, "items": {"building_slot": 1}}
+    }
+  },
+  
   "starter_rewards": {
     "jijies": 5000,
     "erythl": 10,
     "energy": 100,
     "faded_echo": 1,
-    "tier_1_fragments": 5
-}
+    "tier_1_fragments": 5,
+    "items": {
+      "energy_potion": 5,
+      "xp_orb": 10
+    }
+  },
+  
+  "rate_limits": {
+    "quest": {"uses": 50, "per_seconds": 3600},
+    "fusion": {"uses": 20, "per_seconds": 300},
+    "echo": {"uses": 10, "per_seconds": 60},
+    "shop": {"uses": 30, "per_seconds": 600}
+  }
 }
