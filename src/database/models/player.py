@@ -27,6 +27,9 @@ class Player(SQLModel, table=True):
     energy: int = Field(default=100)
     max_energy: int = Field(default=100)
     last_energy_update: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    stamina: int = Field(default=50)
+    max_stamina: int = Field(default=50)
+    last_stamina_update: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     last_active: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     
     # --- Monster Warlord Style Leader System ---
@@ -89,6 +92,22 @@ class Player(SQLModel, table=True):
     last_quest: Optional[datetime] = Field(default=None)
     last_fusion: Optional[datetime] = Field(default=None)
     
+    # --- Resource Generation Stats ---
+    total_jijies_earned: int = Field(default=0)
+    total_erythl_earned: int = Field(default=0)
+    total_energy_spent: int = Field(default=0)
+    total_stamina_spent: int = Field(default=0)
+
+    # --- Skill Point Allocation System ---
+    skill_points: int = Field(default=0)  # Unspent points
+    allocated_skills: Dict[str, int] = Field(default_factory=lambda: {
+        "energy": 0,      # +1 max energy per point
+        "stamina": 0,     # +1 max stamina per point
+        "attack": 0,      # +5 flat attack (trap)
+        "defense": 0      # +5 flat defense (trap)
+    }, sa_column=Column(JSON))
+    skill_reset_count: int = Field(default=0)  # Track resets for monetization
+
     # --- LOGIC METHODS ---
 
     def xp_for_next_level(self) -> int:
@@ -193,8 +212,13 @@ class Player(SQLModel, table=True):
             total_atk += power["atk"]
             total_def += power["def"]
             total_hp += power["hp"]
-        
-        # Update cached values
+
+        # Apply skill bonuses (the trap stats)
+        skill_bonuses = self.get_skill_bonuses()
+        total_atk += skill_bonuses["bonus_attack"]
+        total_def += skill_bonuses["bonus_defense"]
+
+        # Finalize Update cached values
         self.total_attack_power = total_atk
         self.total_defense_power = total_def
         self.total_hp = total_hp
@@ -228,6 +252,8 @@ class Player(SQLModel, table=True):
             # Level up bonuses
             self.max_energy += GameConstants.MAX_ENERGY_PER_LEVEL
             self.energy = self.max_energy  # Refill energy on level up
+            self.stamina = self.max_stamina  # Refill stamina too!
+            self.skill_points += 1
             
         return leveled_up
 
@@ -566,3 +592,135 @@ class Player(SQLModel, table=True):
         self.total_echoes_opened += 1
         
         return None, selected_base, selected_tier
+    
+    def regenerate_stamina(self) -> int:
+        """Regenerates stamina based on time passed. Returns amount gained."""
+        if self.stamina >= self.max_stamina:
+            return 0
+            
+        now = datetime.utcnow()
+        minutes_passed = (now - self.last_stamina_update).total_seconds() / 60
+        
+        # Base rate: 10 minutes per stamina point (MW-style, slower than energy)
+        minutes_per_point = 10
+        
+        # Apply any bonuses (future feature: items, leader effects, etc.)
+        # For now, just base rate
+        
+        stamina_to_add = int(minutes_passed // minutes_per_point)
+        
+        if stamina_to_add > 0:
+            old_stamina = self.stamina
+            self.stamina = min(self.stamina + stamina_to_add, self.max_stamina)
+            self.last_stamina_update += timedelta(minutes=stamina_to_add * minutes_per_point)
+            return self.stamina - old_stamina
+        
+        return 0
+    
+    def consume_stamina(self, amount: int) -> bool:
+        """Consume stamina for PvP/Boss actions. Returns True if successful."""
+        self.regenerate_stamina()  # Always regen first
+        
+        if self.stamina >= amount:
+            self.stamina -= amount
+            self.total_stamina_spent += amount
+            return True
+        return False
+    
+    def consume_energy(self, amount: int) -> bool:
+        """Consume energy for questing. Returns True if successful."""
+        self.regenerate_energy()  # Always regen first
+        
+        if self.energy >= amount:
+            self.energy -= amount
+            self.total_energy_spent += amount
+            return True
+        return False
+    
+    # --- SKILL ALLOCATION METHODS ---
+    
+    def allocate_skill_points(self, skill: str, points: int) -> Dict[str, Any]:
+        """
+        Allocate skill points to a stat.
+        Returns result with success status and message.
+        """
+        if skill not in self.allocated_skills:
+            return {"success": False, "message": "Invalid skill type"}
+        
+        if points <= 0:
+            return {"success": False, "message": "Must allocate at least 1 point"}
+        
+        if self.skill_points < points:
+            return {"success": False, "message": f"Insufficient skill points. You have {self.skill_points}"}
+        
+        # Allocate the points
+        self.skill_points -= points
+        self.allocated_skills[skill] += points
+        flag_modified(self, "allocated_skills")
+        
+        # Apply effects immediately
+        if skill == "energy":
+            self.max_energy += points
+            self.energy = min(self.energy + points, self.max_energy)  # Top up
+        elif skill == "stamina":
+            self.max_stamina += points
+            self.stamina = min(self.stamina + points, self.max_stamina)  # Top up
+        elif skill == "attack":
+            # These are applied in get_total_attack()
+            pass
+        elif skill == "defense":
+            # These are applied in get_total_defense()
+            pass
+        
+        return {
+            "success": True,
+            "message": f"Allocated {points} points to {skill}",
+            "new_total": self.allocated_skills[skill]
+        }
+    
+    def reset_skill_points(self) -> Dict[str, Any]:
+        """
+        Reset all allocated skill points. 
+        In MW, this cost jewels. For now, track the reset count.
+        """
+        total_allocated = sum(self.allocated_skills.values())
+        
+        if total_allocated == 0:
+            return {"success": False, "message": "No skill points to reset"}
+        
+        # Reset max energy/stamina
+        self.max_energy = GameConstants.MAX_ENERGY_BASE + (self.level * GameConstants.MAX_ENERGY_PER_LEVEL)
+        self.max_stamina = 50  # Base stamina
+        
+        # Return all points
+        self.skill_points += total_allocated
+        self.allocated_skills = {
+            "energy": 0,
+            "stamina": 0,
+            "attack": 0,
+            "defense": 0
+        }
+        flag_modified(self, "allocated_skills")
+        
+        # Track reset for potential monetization
+        self.skill_reset_count += 1
+        
+        # Ensure current values don't exceed new maximums
+        self.energy = min(self.energy, self.max_energy)
+        self.stamina = min(self.stamina, self.max_stamina)
+        
+        return {
+            "success": True,
+            "message": f"Reset {total_allocated} skill points",
+            "reset_count": self.skill_reset_count
+        }
+    
+    def get_skill_bonuses(self) -> Dict[str, int]:
+        """Get current bonuses from allocated skills"""
+        return {
+            "bonus_attack": self.allocated_skills.get("attack", 0) * 5,  # +5 per point
+            "bonus_defense": self.allocated_skills.get("defense", 0) * 5,  # +5 per point
+            "bonus_energy": self.allocated_skills.get("energy", 0),  # +1 per point
+            "bonus_stamina": self.allocated_skills.get("stamina", 0)  # +1 per point
+        }
+    
