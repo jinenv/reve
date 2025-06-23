@@ -126,24 +126,24 @@ class Tiers:
     """Tier management system"""
     
     _TIER_DATA = {
-        1: TierData(1, "Common", "I", 15, 0.80, 500, 10, (1, 3), 0x808080),
-        2: TierData(2, "Uncommon", "II", 53, 0.70, 1000, 10, (1, 3), 0x808080),
-        3: TierData(3, "Rare", "III", 184, 0.65, 2500, 10, (1, 3), 0x00ff00),
-        4: TierData(4, "Epic", "IV", 644, 0.60, 6000, 25, (2, 5), 0x0099ff),
-        5: TierData(5, "Mythic", "V", 2254, 0.55, 15000, 25, (2, 5), 0x9932cc),
-        6: TierData(6, "Celestial", "VI", 7889, 0.50, 40000, 25, (2, 5), 0x9932cc),
-        7: TierData(7, "Divine", "VII", 27612, 0.45, 100000, 50, (3, 8), 0xff8c00),
-        8: TierData(8, "Primal", "VIII", 96642, 0.40, 250000, 50, (3, 8), 0xff0066),
-        9: TierData(9, "Sovereign", "IX", 338247, 0.35, 800000, 50, (3, 8), 0xffff00),
-        10: TierData(10, "Astral", "X", 1183865, 0.30, 3000000, 100, (5, 12), 0x00ffff),
-        11: TierData(11, "Ethereal", "XI", 4143528, 0.25, 10000000, 100, (5, 12), 0x00ffff),
-        12: TierData(12, "Transcendent", "XII", 14502346, 0.20, 50000000, 100, (5, 12), 0x00ffff),
-        13: TierData(13, "Empyrean", "XIII", 50758211, 0.18, 150000000, 250, (8, 18), 0x00ffff),
-        14: TierData(14, "Absolute", "XIV", 177653740, 0.16, 500000000, 250, (8, 18), 0x00ffff),
-        15: TierData(15, "Genesis", "XV", 621788090, 0.14, 1500000000, 250, (8, 18), 0x00ffff),
-        16: TierData(16, "Legendary", "XVI", 2176258315, 0.12, 5000000000, 500, (12, 25), 0x00ffff),
-        17: TierData(17, "Void", "XVII", 7616904103, 0.10, 15000000000, 500, (12, 25), 0x00ffff),
-        18: TierData(18, "Singularity", "XVIII", 26659164361, 0.05, 50000000000, 500, (12, 25), 0x00ffff)
+        1: TierData(1, "Common", "I", 30, 0.80, 500, 10, (1, 3), 0x808080),              # was 15
+        2: TierData(2, "Uncommon", "II", 106, 0.70, 1000, 10, (1, 3), 0x808080),        # was 53
+        3: TierData(3, "Rare", "III", 368, 0.65, 2500, 10, (1, 3), 0x00ff00),          # was 184
+        4: TierData(4, "Epic", "IV", 1288, 0.60, 6000, 25, (2, 5), 0x0099ff),          # was 644
+        5: TierData(5, "Mythic", "V", 4508, 0.55, 15000, 25, (2, 5), 0x9932cc),        # was 2254
+        6: TierData(6, "Celestial", "VI", 15778, 0.50, 40000, 25, (2, 5), 0x9932cc),   # was 7889
+        7: TierData(7, "Divine", "VII", 55224, 0.45, 100000, 50, (3, 8), 0xff8c00),    # was 27612
+        8: TierData(8, "Primal", "VIII", 193284, 0.40, 250000, 50, (3, 8), 0xff0066),  # was 96642
+        9: TierData(9, "Sovereign", "IX", 676494, 0.35, 800000, 50, (3, 8), 0xffff00), # was 338247
+        10: TierData(10, "Astral", "X", 2367730, 0.30, 3000000, 100, (5, 12), 0x00ffff),        # was 1183865
+        11: TierData(11, "Ethereal", "XI", 8287056, 0.25, 10000000, 100, (5, 12), 0x00ffff),    # was 4143528
+        12: TierData(12, "Transcendent", "XII", 29004692, 0.20, 50000000, 100, (5, 12), 0x00ffff), # was 14502346
+        13: TierData(13, "Empyrean", "XIII", 101516422, 0.18, 150000000, 250, (8, 18), 0x00ffff),  # was 50758211
+        14: TierData(14, "Absolute", "XIV", 355307480, 0.16, 500000000, 250, (8, 18), 0x00ffff),   # was 177653740
+        15: TierData(15, "Genesis", "XV", 1243576180, 0.14, 1500000000, 250, (8, 18), 0x00ffff),   # was 621788090
+        16: TierData(16, "Legendary", "XVI", 4352516630, 0.12, 5000000000, 500, (12, 25), 0x00ffff), # was 2176258315
+        17: TierData(17, "Void", "XVII", 15233808206, 0.10, 15000000000, 500, (12, 25), 0x00ffff),   # was 7616904103
+        18: TierData(18, "Singularity", "XVIII", 53318328722, 0.05, 50000000000, 500, (12, 25), 0x00ffff) # was 26659164361
     }
     
     @classmethod
