@@ -1,10 +1,10 @@
 # src/utils/ability_system.py
 """
-Type-safe ability system that won't make Pylance cry.
-Fixed all the type inconsistencies that were causing attribute access errors.
+Completely rewritten ability system for the comprehensive JSON structure.
+No more universal/unique split. Just simple lookups. You're welcome.
 """
 
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 from src.utils.config_manager import ConfigManager
@@ -31,6 +31,7 @@ class Ability:
     duration: Optional[int] = None
     effects: Optional[List[str]] = None
     element: Optional[str] = None
+    power2: Optional[int] = None  # For abilities that need multiple power values
     
     def __post_init__(self):
         if self.effects is None:
@@ -47,7 +48,8 @@ class Ability:
             cooldown=data.get("cooldown", 0),
             duration=data.get("duration"),
             effects=data.get("effects", []),
-            element=data.get("element")
+            element=data.get("element"),
+            power2=data.get("power2")
         )
     
     def format_for_display(self, ability_type: AbilityType) -> str:
@@ -59,8 +61,10 @@ class Ability:
         }
         emoji = type_emojis.get(ability_type, "📌")
         
-        # Process description to replace {power} with actual value
+        # Process description to replace power placeholders
         desc = self.description.replace("{power}", str(self.power))
+        if self.power2 is not None:
+            desc = desc.replace("{power2}", str(self.power2))
         
         # Build display string
         display = f"{emoji} **{self.name}**\n{desc}"
@@ -77,7 +81,7 @@ class Ability:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert ability to dictionary for serialization"""
-        return {
+        result = {
             "name": self.name,
             "description": self.description,
             "type": self.type,
@@ -87,6 +91,9 @@ class Ability:
             "effects": self.effects,
             "element": self.element
         }
+        if self.power2 is not None:
+            result["power2"] = self.power2
+        return result
 
 
 class AbilitySet:
@@ -116,33 +123,25 @@ class AbilitySet:
         ultimate = None
         passives = []
         
-        # Handle basic - always single ability or None
+        # Handle basic ability
         if "basic" in data:
             basic_data = data["basic"]
             if isinstance(basic_data, dict):
                 basic = Ability.from_dict(basic_data)
-            elif isinstance(basic_data, list) and len(basic_data) > 0:
-                # If somehow it's a list, take the first one
-                basic = Ability.from_dict(basic_data[0])
-                logger.warning("Basic ability was provided as list, taking first element")
         
-        # Handle ultimate - always single ability or None
+        # Handle ultimate ability
         if "ultimate" in data:
             ultimate_data = data["ultimate"]
             if isinstance(ultimate_data, dict):
                 ultimate = Ability.from_dict(ultimate_data)
-            elif isinstance(ultimate_data, list) and len(ultimate_data) > 0:
-                # If somehow it's a list, take the first one
-                ultimate = Ability.from_dict(ultimate_data[0])
-                logger.warning("Ultimate ability was provided as list, taking first element")
         
-        # Handle passives - always a list
+        # Handle passive ability (always single in new system)
         if "passive" in data:
             passive_data = data["passive"]
-            if isinstance(passive_data, list):
-                passives = [Ability.from_dict(p) for p in passive_data]
-            elif isinstance(passive_data, dict):
+            if isinstance(passive_data, dict):
                 passives = [Ability.from_dict(passive_data)]
+            elif isinstance(passive_data, list):
+                passives = [Ability.from_dict(p) for p in passive_data]
         
         return cls(basic=basic, ultimate=ultimate, passives=passives)
     
@@ -156,7 +155,7 @@ class AbilitySet:
         if self.ultimate:
             formatted.append(self.ultimate.format_for_display(AbilityType.ULTIMATE))
         
-        # Handle multiple passives
+        # Handle passives
         for i, passive in enumerate(self.passives):
             if len(self.passives) > 1:
                 # Add numbering if multiple passives
@@ -197,181 +196,151 @@ class AbilitySet:
 
 class AbilitySystem:
     """
-    Unified ability system that handles everything with type safety.
-    No more "could be anything" types - everything is predictable.
+    COMPLETELY REWRITTEN ability system for the comprehensive JSON structure.
+    No more universal/unique nonsense. Just simple lookups. Much cleaner.
     """
     
-    _universal_cache: Optional[Dict] = None
-    _unique_cache: Optional[Dict] = None
+    _abilities_cache: Optional[Dict] = None
     
     @classmethod
-    def _load_universal_abilities(cls) -> Dict:
-        """Load universal abilities from config with caching"""
-        if cls._universal_cache is None:
-            config = ConfigManager.get("universal_abilities")
-            cls._universal_cache = config if isinstance(config, dict) else {}
-        return cls._universal_cache
-    
-    @classmethod 
-    def _load_unique_abilities(cls) -> Dict:
-        """Load unique Esprit abilities from config with caching"""
-        if cls._unique_cache is None:
+    def _load_abilities(cls) -> Dict:
+        """Load the comprehensive abilities config with caching"""
+        if cls._abilities_cache is None:
             config = ConfigManager.get("esprit_abilities")
-            cls._unique_cache = config if isinstance(config, dict) else {}
-        return cls._unique_cache
+            cls._abilities_cache = config if isinstance(config, dict) else {}
+            logger.info("Loaded comprehensive abilities config")
+        return cls._abilities_cache
     
     @classmethod
     def get_esprit_abilities(
         cls, 
         esprit_name: str, 
         tier: int, 
-        element: str, 
-        esprit_type: str
+        element: str
     ) -> AbilitySet:
         """
-        Main entry point: Get abilities for an Esprit.
-        Tiers 1-4 use universal abilities, 5+ use unique abilities.
-        GUARANTEED to return proper AbilitySet with correct types.
+        Main entry point: Get abilities for an Esprit from comprehensive system.
+        Simple lookup: generated_abilities[element][tier]
         """
         try:
-            if tier <= 4:
-                return cls._get_universal_abilities(tier, element, esprit_type)
-            else:
-                return cls._get_unique_abilities(esprit_name, tier, element, esprit_type)
-        except Exception as e:
-            logger.error(f"Error getting abilities for {esprit_name}: {e}")
-            return cls._get_default_abilities(tier)
-    
-    @classmethod
-    def _get_universal_abilities(cls, tier: int, element: str, esprit_type: str) -> AbilitySet:
-        """Get universal abilities for tiers 1-4 with guaranteed types"""
-        universal_config = cls._load_universal_abilities()
-        
-        # Build key from element and type  
-        ability_key = f"{element.lower()}_{esprit_type.lower()}"
-        abilities_data = universal_config.get("abilities", {}).get(ability_key, {})
-        
-        if not abilities_data:
-            logger.warning(f"No universal abilities found for {ability_key}, using defaults")
-            return cls._get_default_abilities(tier)
-        
-        # Scale abilities based on tier - guaranteed single abilities for basic/ultimate
-        scaled_data = {}
-        
-        # Handle basic ability
-        if "basic" in abilities_data:
-            basic_data = abilities_data["basic"].copy()
-            if "scaling" in basic_data and str(tier) in basic_data["scaling"]:
-                basic_data["power"] = basic_data["scaling"][str(tier)]
-            scaled_data["basic"] = basic_data
-        
-        # Handle ultimate ability
-        if "ultimate" in abilities_data:
-            ultimate_data = abilities_data["ultimate"].copy()
-            if "scaling" in ultimate_data and str(tier) in ultimate_data["scaling"]:
-                ultimate_data["power"] = ultimate_data["scaling"][str(tier)]
-            scaled_data["ultimate"] = ultimate_data
-        
-        # Handle passive abilities - calculate slots based on tier
-        if "passive" in abilities_data:
-            passive_slots = cls._calculate_passive_slots(tier)
-            passive_data = abilities_data["passive"]
+            abilities_config = cls._load_abilities()
             
-            if passive_slots == 1:
-                scaled_data["passive"] = passive_data
+            # Look up in the comprehensive structure
+            generated_abilities = abilities_config.get("generated_abilities", {})
+            element_abilities = generated_abilities.get(element.lower(), {})
+            tier_abilities = element_abilities.get(str(tier), {})
+            
+            if tier_abilities:
+                logger.debug(f"Found abilities for {element} tier {tier}")
+                return AbilitySet.from_dict(tier_abilities)
             else:
-                # Create multiple passive variations
-                passives = [passive_data]
-                for slot in range(2, passive_slots + 1):
-                    enhanced_passive = passive_data.copy()
-                    enhanced_passive["name"] = f"{passive_data['name']} {slot}"
-                    base_power = passive_data.get("power", 10)
-                    enhanced_passive["power"] = base_power + (slot * 5)
-                    enhanced_passive["description"] = enhanced_passive["description"].replace(
-                        "{power}", str(enhanced_passive["power"])
-                    )
-                    passives.append(enhanced_passive)
-                scaled_data["passive"] = passives
-        
-        return AbilitySet.from_dict(scaled_data)
+                # Try fallback generation
+                logger.warning(f"No predefined abilities for {element} tier {tier}, generating fallback")
+                return cls._generate_fallback_abilities(element, tier)
+                
+        except Exception as e:
+            logger.error(f"Error getting abilities for {esprit_name} (tier {tier}, {element}): {e}")
+            return cls._get_emergency_fallback_abilities(tier)
     
     @classmethod
-    def _get_unique_abilities(cls, esprit_name: str, tier: int, element: str, esprit_type: str) -> AbilitySet:
-        """Get unique abilities for tier 5+ Esprits with guaranteed types"""
-        unique_config = cls._load_unique_abilities()
-        
-        # Try exact name match first
-        clean_name = esprit_name.lower().replace(" ", "_").replace("'", "")
-        abilities_data = unique_config.get(clean_name, {})
-        
-        if not abilities_data:
-            # Try the examples section
-            examples = unique_config.get("examples", {})
-            abilities_data = examples.get(clean_name, {})
-        
-        if not abilities_data:
-            logger.warning(f"No unique abilities found for {esprit_name}, using tier defaults")
-            return cls._get_tier_default_abilities(tier)
-        
-        return AbilitySet.from_dict(abilities_data)
-    
-    @classmethod
-    def _calculate_passive_slots(cls, tier: int) -> int:
-        """Calculate number of passive slots based on tier"""
-        if tier <= 3:
-            return 1
-        elif tier <= 10:
-            return 2
-        else:
-            return 3
-    
-    @classmethod
-    def _get_default_abilities(cls, tier: int = 1) -> AbilitySet:
-        """Get basic default abilities as fallback with guaranteed types"""
-        passive_slots = cls._calculate_passive_slots(tier)
-        
-        # Create guaranteed single abilities
-        basic = Ability(
-            name="Strike",
-            description=f"Deal {100 + (tier * 5)}% ATK damage",
-            type="damage",
-            power=100 + (tier * 5),
-            cooldown=0
-        )
-        
-        ultimate = Ability(
-            name="Unleash",
-            description=f"Deal {200 + (tier * 10)}% ATK to all enemies",
-            type="aoe_damage",
-            power=200 + (tier * 10),
-            cooldown=5
-        )
-        
-        # Create guaranteed list of passives
-        passives = []
-        for i in range(passive_slots):
-            power = 10 + (i * 5)
-            passive = Ability(
-                name=f"Resilience {i+1}" if i > 0 else "Resilience",
-                description=f"Take {power}% less damage",
-                type="damage_reduction",
-                power=power
+    def _generate_fallback_abilities(cls, element: str, tier: int) -> AbilitySet:
+        """
+        Generate abilities when not explicitly defined using the tier power scaling.
+        Uses the power scaling from the comprehensive config.
+        """
+        try:
+            abilities_config = cls._load_abilities()
+            tier_scaling = abilities_config.get("tier_power_scaling", {})
+            scaling_data = tier_scaling.get(str(tier), {"basic": 100, "ultimate": 200, "passive": 20})
+            
+            # Get element themes for naming
+            element_templates = abilities_config.get("element_templates", {})
+            element_theme = element_templates.get(element.lower(), {})
+            
+            # Generate basic ability
+            basic_power = scaling_data.get("basic", 100)
+            basic_name = f"{element.title()} Strike"
+            if "basic_pattern" in element_theme:
+                pattern = element_theme["basic_pattern"].split("/")
+                # Pick based on tier ranges
+                if tier <= 4:
+                    basic_name = f"{pattern[0]} Strike" if pattern else basic_name
+                elif tier <= 8:
+                    basic_name = f"{pattern[1] if len(pattern) > 1 else pattern[0]} Strike"
+                elif tier <= 12:
+                    basic_name = f"{pattern[2] if len(pattern) > 2 else pattern[0]} Strike"
+                else:
+                    basic_name = f"{pattern[-1]} Strike"
+            
+            basic = Ability(
+                name=basic_name,
+                description=f"Deal {basic_power}% ATK {element.lower()} damage",
+                type="damage",
+                power=basic_power,
+                cooldown=0
             )
-            passives.append(passive)
-        
-        return AbilitySet(basic=basic, ultimate=ultimate, passives=passives)
+            
+            # Generate ultimate ability
+            ultimate_power = scaling_data.get("ultimate", 200)
+            ultimate_name = f"{element.title()} Fury"
+            if "ultimate_pattern" in element_theme:
+                pattern = element_theme["ultimate_pattern"].split("/")
+                if tier <= 4:
+                    ultimate_name = pattern[0] if pattern else ultimate_name
+                elif tier <= 8:
+                    ultimate_name = pattern[1] if len(pattern) > 1 else pattern[0]
+                elif tier <= 12:
+                    ultimate_name = pattern[2] if len(pattern) > 2 else pattern[0]
+                else:
+                    ultimate_name = pattern[-1]
+            
+            ultimate = Ability(
+                name=ultimate_name,
+                description=f"Powerful {element.lower()} attack dealing {ultimate_power}% ATK",
+                type="aoe_damage",
+                power=ultimate_power,
+                cooldown=max(3, tier // 3)  # Longer cooldowns for higher tiers
+            )
+            
+            # Generate passive ability
+            passive_power = scaling_data.get("passive", 20)
+            passive_name = f"{element.title()} Mastery"
+            if "passive_pattern" in element_theme:
+                pattern = element_theme["passive_pattern"].split("/")
+                if tier <= 4:
+                    passive_name = f"{pattern[0]} Aura" if pattern else passive_name
+                elif tier <= 8:
+                    passive_name = f"{pattern[1] if len(pattern) > 1 else pattern[0]} Aura"
+                elif tier <= 12:
+                    passive_name = f"{pattern[2] if len(pattern) > 2 else pattern[0]} Aura"
+                else:
+                    passive_name = f"{pattern[-1]} Aura"
+            
+            passive = Ability(
+                name=passive_name,
+                description=f"Enhance all {element.lower()} abilities by {passive_power}%",
+                type="element_mastery",
+                power=passive_power
+            )
+            
+            return AbilitySet(basic=basic, ultimate=ultimate, passives=[passive])
+            
+        except Exception as e:
+            logger.error(f"Error generating fallback abilities for {element} tier {tier}: {e}")
+            return cls._get_emergency_fallback_abilities(tier)
     
     @classmethod
-    def _get_tier_default_abilities(cls, tier: int) -> AbilitySet:
-        """Get tier-appropriate default abilities with guaranteed types"""
-        passive_slots = cls._calculate_passive_slots(tier)
-        
-        # Scale power based on tier for high-tier defaults
-        basic_power = 100 + (tier * 10)
-        ultimate_power = 200 + (tier * 20)
+    def _get_emergency_fallback_abilities(cls, tier: int = 1) -> AbilitySet:
+        """
+        Last resort fallback when everything else fails.
+        Simple, guaranteed-to-work abilities.
+        """
+        basic_power = 100 + (tier * 5)
+        ultimate_power = 200 + (tier * 10)
+        passive_power = 10 + tier
         
         basic = Ability(
-            name=f"Tier {tier} Strike",
+            name="Generic Strike",
             description=f"Deal {basic_power}% ATK damage",
             type="damage",
             power=basic_power,
@@ -379,42 +348,39 @@ class AbilitySystem:
         )
         
         ultimate = Ability(
-            name=f"Tier {tier} Ultimate",
-            description=f"Devastating attack dealing {ultimate_power}% ATK",
+            name="Power Unleash",
+            description=f"Unleash power for {ultimate_power}% ATK damage",
             type="ultimate",
             power=ultimate_power,
             cooldown=5
         )
         
-        # Create guaranteed list of passives
-        passives = []
-        for i in range(passive_slots):
-            power = 10 + (tier * 2) + (i * 5)
-            passive = Ability(
-                name=f"Tier {tier} Aura {i+1}" if i > 0 else f"Tier {tier} Aura",
-                description=f"Passive bonus of {power}%",
-                type="passive",
-                power=power
-            )
-            passives.append(passive)
+        passive = Ability(
+            name="Inner Strength",
+            description=f"Gain +{passive_power}% to all combat stats",
+            type="stat_boost",
+            power=passive_power
+        )
         
-        return AbilitySet(basic=basic, ultimate=ultimate, passives=passives)
+        return AbilitySet(basic=basic, ultimate=ultimate, passives=[passive])
     
     @classmethod
-    def get_abilities_for_embed(cls, esprit_name: str, tier: int, element: str, esprit_type: str) -> List[str]:
-        """Get formatted abilities ready for Discord embed display"""
-        ability_set = cls.get_esprit_abilities(esprit_name, tier, element, esprit_type)
+    def get_abilities_for_embed(cls, esprit_name: str, tier: int, element: str) -> List[str]:
+        """
+        Get formatted abilities ready for Discord embed display.
+        This is what actually gets called by the EspritBase model.
+        """
+        ability_set = cls.get_esprit_abilities(esprit_name, tier, element)
         return ability_set.get_all_formatted()
     
     @classmethod
     def reload_cache(cls):
-        """Force reload of all ability caches"""
-        cls._universal_cache = None
-        cls._unique_cache = None 
-        logger.info("All ability caches cleared and reloaded")
+        """Force reload of abilities cache"""
+        cls._abilities_cache = None 
+        logger.info("Abilities cache cleared and will reload on next access")
     
     @classmethod
-    def validate_ability_data(cls, esprit_name: str, abilities_data: Dict) -> bool:
+    def validate_ability_data(cls, abilities_data: Dict) -> bool:
         """Validate that ability data has required fields"""
         required_fields = ["name", "description", "type", "power"]
         
@@ -424,17 +390,41 @@ class AbilitySystem:
                 
             ability_data = abilities_data[ability_type]
             
-            # Handle passive arrays
-            if ability_type == "passive" and isinstance(ability_data, list):
+            # Handle single ability
+            if isinstance(ability_data, dict):
+                for field in required_fields:
+                    if field not in ability_data:
+                        logger.error(f"Missing {field} in {ability_type} ability")
+                        return False
+            # Handle ability arrays  
+            elif isinstance(ability_data, list):
                 for i, ability in enumerate(ability_data):
                     for field in required_fields:
                         if field not in ability:
-                            logger.error(f"Missing {field} in passive {i+1} ability for {esprit_name}")
+                            logger.error(f"Missing {field} in {ability_type} ability {i+1}")
                             return False
-            else:
-                for field in required_fields:
-                    if field not in ability_data:
-                        logger.error(f"Missing {field} in {ability_type} ability for {esprit_name}")
-                        return False
         
         return True
+    
+    @classmethod
+    def get_ability_preview(cls, element: str, tier: int) -> str:
+        """
+        Quick preview of what abilities an Esprit would have.
+        Useful for showing in collection views.
+        """
+        try:
+            ability_set = cls.get_esprit_abilities("preview", tier, element)
+            preview_parts = []
+            
+            if ability_set.basic:
+                preview_parts.append(f"Basic: {ability_set.basic.name}")
+            if ability_set.ultimate:
+                preview_parts.append(f"Ultimate: {ability_set.ultimate.name}")
+            if ability_set.passives:
+                preview_parts.append(f"Passive: {ability_set.passives[0].name}")
+            
+            return " | ".join(preview_parts) if preview_parts else "No abilities"
+            
+        except Exception as e:
+            logger.error(f"Error getting ability preview for {element} tier {tier}: {e}")
+            return "Unknown abilities"

@@ -149,7 +149,7 @@ class Player(SQLModel, table=True):
         return GameConstants.get_xp_required(self.level)
 
     async def get_leader_bonuses(self, session: AsyncSession) -> Dict[str, Any]:
-        """Get all bonuses from the leader Esprit including awakening boosts"""
+        """Get all bonuses from the leader Esprit with MW-style tier+awakening scaling"""
         # Try cache first
         if RedisService.is_available() and self.id is not None:
             cached = await RedisService.get_cached_leader_bonuses(self.id)
@@ -161,7 +161,7 @@ class Player(SQLModel, table=True):
         
         from src.database.models import Esprit, EspritBase
         
-        # Fixed query without join
+        # Get leader Esprit and its base
         leader_stmt = select(Esprit, EspritBase).where(
             Esprit.esprit_base_id == EspritBase.id,
             Esprit.id == self.leader_esprit_stack_id
@@ -173,33 +173,29 @@ class Player(SQLModel, table=True):
         
         leader_stack, base = result
         
-        # Get element bonuses using new constants
+        # Get element and calculate MW-style bonuses
         element = Elements.from_string(leader_stack.element)
-        element_bonuses = element.bonuses if element else {}
+        if not element:
+            return {}
         
-        # Apply awakening multiplier to leadership bonuses
-        awakening_multiplier = 1.0 + (leader_stack.awakening_level * 0.1)  # 10% per star
-        
-        # Scale all percentage bonuses by awakening
-        scaled_element_bonuses = {}
-        for key, value in element_bonuses.items():
-            if isinstance(value, (int, float)) and value > 0 and key != "energy_regen_bonus":
-                scaled_element_bonuses[key] = value * awakening_multiplier
-            else:
-                scaled_element_bonuses[key] = value
+        # Calculate bonuses based on BASE TIER + awakening (this does ALL the math)
+        scaled_bonuses = element.calculate_leadership_bonuses(
+            tier=base.base_tier,
+            awakening_level=leader_stack.awakening_level
+        )
         
         bonuses = {
             "element": leader_stack.element,
-            "type": base.type,
-            "element_bonuses": scaled_element_bonuses,
+            "base_tier": base.base_tier,
             "awakening_level": leader_stack.awakening_level,
-            "awakening_multiplier": awakening_multiplier,
-            "tier": leader_stack.tier
+            "bonuses": scaled_bonuses,  # This contains all the final calculated bonuses
+            "raw_description": element.bonuses.get("description", "")
         }
         
-        # Cache the result with null check
+        # Cache the result
         if RedisService.is_available() and self.id is not None:
             await RedisService.cache_leader_bonuses(self.id, bonuses)
+        
         return bonuses
 
     async def set_leader_esprit(self, session: AsyncSession, esprit_id: int) -> bool:

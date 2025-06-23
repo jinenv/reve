@@ -1,198 +1,211 @@
 {
-  "description": "Unique abilities for specific tier 5+ Esprits - no energy costs, just cooldowns",
+  "description": "Single source of truth for ALL Esprit abilities - no more universal/unique split",
+  "version": "1.0",
   
-  "template": {
-    "esprit_name": {
-      "basic": {
-        "name": "Unique Basic Attack Name",
-        "description": "Description dealing {power}% ATK damage",
-        "type": "damage_type",
-        "power": 140,
-        "cooldown": 0,
-        "effects": ["additional_effects_if_any"]
-      },
-      "ultimate": {
-        "name": "Ultimate Ability Name",
-        "description": "Powerful signature move with {power}% effectiveness",
-        "type": "ultimate_type",
-        "power": 250,
-        "cooldown": 5,
-        "duration": 3,
-        "effects": ["special_effects"]
-      },
-      "passive": {
-        "name": "Passive Name",
-        "description": "Always-on benefit providing {power}% bonus",
-        "type": "passive_type",
-        "power": 20,
-        "effects": ["passive_effects"]
-      }
-    }
-  },
-  
-  "examples": {
-    "ferox": {
-      "basic": {
-        "name": "Savage Bite",
-        "description": "Tear into prey dealing {power}% ATK with 30% chance to cause bleed",
-        "type": "physical_bleed",
-        "power": 140,
-        "cooldown": 0,
-        "effects": ["bleed_chance_30"]
-      },
-      "ultimate": {
-        "name": "Primal Fury",
-        "description": "Enter a feral rage, gaining {power}% ATK and 50% lifesteal for 3 turns",
-        "type": "berserk_mode",
-        "power": 100,
-        "cooldown": 5,
-        "duration": 3,
-        "effects": ["atk_boost", "lifesteal_50"]
-      },
-      "passive": {
-        "name": "Pack Leader",
-        "description": "Hunt-type allies gain {power}% of Ferox's ATK",
-        "type": "type_synergy",
-        "power": 25,
-        "effects": ["hunt_type_buff"]
-      }
-    },
-    
-    "tenebrak": {
-      "basic": {
-        "name": "Shadow Rend",
-        "description": "Tear through reality dealing {power}% ATK as pure darkness",
-        "type": "dark_damage",
-        "power": 155,
-        "cooldown": 0,
-        "effects": ["ignore_armor"]
-      },
-      "ultimate": {
-        "name": "Nightmare Manifesto",
-        "description": "All enemies take {power}% of their max HP as fear damage and lose 2 turns",
-        "type": "fear_execute",
-        "power": 25,
-        "cooldown": 6,
-        "duration": 2,
-        "effects": ["fear", "turn_skip", "max_hp_damage"]
-      },
-      "passive": {
-        "name": "Born of Fear",
-        "description": "Gains {power}% ATK for each debuffed enemy on the field",
-        "type": "scaling_power",
-        "power": 15,
-        "effects": ["atk_per_debuff"]
-      }
-    },
-
-    "mythic_exemplar": {
-      "basic": {
-        "name": "Mythic Strike",
-        "description": "Channel mythic energy to deal {power}% ATK",
-        "type": "energy_damage",
-        "power": 150,
-        "cooldown": 0,
-        "effects": []
-      },
-      "ultimate": {
-        "name": "Mythic Awakening",
-        "description": "Unleash true power - all stats +{power}%, all cooldowns reset",
-        "type": "transformation",
-        "power": 50,
-        "cooldown": 6,
-        "duration": 2,
-        "effects": ["stat_boost_all", "cooldown_reset"]
-      },
-      "passive": {
-        "name": "Mythic Presence",
-        "description": "Start battle with all cooldowns ready and {power}% damage reduction",
-        "type": "battle_start",
-        "power": 20,
-        "effects": ["cooldowns_ready", "damage_reduction"]
-      }
-    },
-    
-    "astral_sovereign": {
-      "basic": {
-        "name": "Astral Rend",
-        "description": "Tear through dimensions dealing {power}% ATK, ignoring 50% DEF",
-        "type": "pierce_damage",
-        "power": 180,
-        "cooldown": 0,
-        "effects": ["defense_pierce_50"]
-      },
-      "ultimate": {
-        "name": "Stellar Collapse",
-        "description": "Create a singularity dealing {power}% ATK to all enemies and stunning them",
-        "type": "gravity_aoe",
-        "power": 300,
-        "cooldown": 6,
-        "duration": 1,
-        "effects": ["aoe_damage", "stun_all"]
-      },
-      "passive": {
-        "name": "Cosmic Entity",
-        "description": "Immune to all status effects, regenerate {power}% max HP per turn",
-        "type": "cosmic_body",
-        "power": 10,
-        "effects": ["status_immunity", "hp_regen"]
-      }
-    }
-  },
-  
-  "ability_types": [
-    "damage", "heal", "shield", "buff", "debuff", "summon",
-    "transform", "execute", "lifesteal", "dot", "aoe", "chain",
-    "pierce", "true_damage", "reflect", "absorb", "cleanse",
-    "fear", "stun", "charm", "phase", "gravity", "time"
-  ],
-  
-  "effect_keywords": [
-    "bleed", "burn", "freeze", "stun", "silence", "poison",
-    "slow", "haste", "regeneration", "thorns", "counter",
-    "dodge", "block", "parry", "crit", "lifesteal", "execute",
-    "pierce", "splash", "chain", "cleave", "rampage", "berserk",
-    "fear", "charm", "phase", "intangible", "immunity"
-  ],
-  
-  "power_scaling_guidelines": {
-    "tier_5_mythic": {
-      "basic_power": "140-160%",
-      "ultimate_power": "250-300%", 
-      "passive_power": "15-25%",
-      "cooldown_range": "4-6"
-    },
-    "tier_7_divine": {
-      "basic_power": "160-180%",
-      "ultimate_power": "300-400%",
-      "passive_power": "20-30%", 
-      "cooldown_range": "5-6"
-    },
-    "tier_10_astral": {
-      "basic_power": "180-200%",
-      "ultimate_power": "400-500%",
-      "passive_power": "25-35%",
-      "cooldown_range": "5-7"
-    },
-    "tier_15_genesis": {
-      "basic_power": "220-250%",
-      "ultimate_power": "600-800%",
-      "passive_power": "40-50%",
-      "cooldown_range": "6-8"
-    },
-    "tier_18_singularity": {
-      "basic_power": "300%+",
-      "ultimate_power": "1000%+",
-      "passive_power": "50%+",
-      "cooldown_range": "7-10"
+  "ability_patterns": {
+    "description": "Template patterns for generating abilities by element + tier",
+    "tier_scaling": {
+      "1-4": "basic/ultimate/passive structure with tier scaling",
+      "5-8": "enhanced abilities with unique names",
+      "9-12": "powerful abilities with special effects", 
+      "13-15": "legendary abilities with unique mechanics",
+      "16-18": "cosmic abilities that break reality"
     }
   },
 
-  "design_notes": {
-    "basic_abilities": "Always 0 cooldown, tier 5+ should be 140%+ power",
-    "ultimate_abilities": "Define the Esprit's identity, 4-10 turn cooldowns",
-    "passive_abilities": "Always active, should feel impactful but not broken",
-    "effects": "Use keywords from effect_keywords for consistency",
-    "power_balance": "Higher tiers get more complex effects, not just bigger numbers"
+  "element_templates": {
+    "inferno": {
+      "theme": "aggressive damage and energy efficiency",
+      "basic_pattern": "Strike/Burn/Incinerate/Obliterate/Annihilate",
+      "ultimate_pattern": "Rage/Fury/Inferno/Apocalypse/Armageddon",
+      "passive_pattern": "Blazing/Burning/Scorching/Volcanic/Solar"
+    },
+    "verdant": {
+      "theme": "defense, healing, and growth",
+      "basic_pattern": "Touch/Bloom/Flourish/Overgrow/Genesis",
+      "ultimate_pattern": "Growth/Bloom/Forest/World Tree/Creation",
+      "passive_pattern": "Natural/Living/Ancient/Primordial/Eternal"
+    },
+    "abyssal": {
+      "theme": "HP manipulation and area control",
+      "basic_pattern": "Splash/Wave/Tsunami/Maelstrom/Deluge",
+      "ultimate_pattern": "Tide/Storm/Abyss/Leviathan/Oceanic",
+      "passive_pattern": "Flowing/Tidal/Abyssal/Oceanic/Primeval"
+    },
+    "tempest": {
+      "theme": "speed, mobility, and resource efficiency",
+      "basic_pattern": "Gust/Bolt/Storm/Hurricane/Tempest",
+      "ultimate_pattern": "Lightning/Thunder/Cyclone/Tornado/Cataclysm",
+      "passive_pattern": "Swift/Electric/Stormy/Tempestuous/Atmospheric"
+    },
+    "umbral": {
+      "theme": "high risk/high reward glass cannon",
+      "basic_pattern": "Shadow/Void/Dark/Null/Oblivion",
+      "ultimate_pattern": "Darkness/Eclipse/Void/Nihility/Entropy",
+      "passive_pattern": "Shadowy/Dark/Umbral/Void/Nihilistic"
+    },
+    "radiant": {
+      "theme": "balance, support, and fusion enhancement",
+      "basic_pattern": "Light/Beam/Ray/Radiance/Luminosity",
+      "ultimate_pattern": "Blessing/Divine/Sacred/Celestial/Transcendent",
+      "passive_pattern": "Bright/Radiant/Divine/Celestial/Transcendent"
+    }
+  },
+
+  "tier_power_scaling": {
+    "1": {"basic": 110, "ultimate": 180, "passive": 10},
+    "2": {"basic": 115, "ultimate": 190, "passive": 12},
+    "3": {"basic": 120, "ultimate": 200, "passive": 15},
+    "4": {"basic": 125, "ultimate": 210, "passive": 18},
+    "5": {"basic": 140, "ultimate": 250, "passive": 20},
+    "6": {"basic": 155, "ultimate": 280, "passive": 25},
+    "7": {"basic": 170, "ultimate": 320, "passive": 30},
+    "8": {"basic": 185, "ultimate": 360, "passive": 35},
+    "9": {"basic": 200, "ultimate": 400, "passive": 40},
+    "10": {"basic": 220, "ultimate": 450, "passive": 45},
+    "11": {"basic": 240, "ultimate": 500, "passive": 50},
+    "12": {"basic": 260, "ultimate": 550, "passive": 55},
+    "13": {"basic": 300, "ultimate": 650, "passive": 65},
+    "14": {"basic": 350, "ultimate": 750, "passive": 75},
+    "15": {"basic": 400, "ultimate": 850, "passive": 85},
+    "16": {"basic": 500, "ultimate": 1000, "passive": 100},
+    "17": {"basic": 650, "ultimate": 1200, "passive": 120},
+    "18": {"basic": 800, "ultimate": 1500, "passive": 150}
+  },
+
+  "generated_abilities": {
+    "inferno": {
+      "1": {
+        "basic": {"name": "Ember Strike", "description": "Deal {power}% ATK fire damage", "type": "damage", "power": 110, "cooldown": 0},
+        "ultimate": {"name": "Blazing Rage", "description": "Increase ATK by {power}% for 3 turns", "type": "buff", "power": 25, "cooldown": 4},
+        "passive": {"name": "Blazing Spirit", "description": "+{power}% damage when below 50% HP", "type": "conditional", "power": 10}
+      },
+      "2": {
+        "basic": {"name": "Flame Strike", "description": "Deal {power}% ATK fire damage", "type": "damage", "power": 115, "cooldown": 0},
+        "ultimate": {"name": "Burning Fury", "description": "Increase ATK by {power}% for 3 turns", "type": "buff", "power": 30, "cooldown": 4},
+        "passive": {"name": "Burning Spirit", "description": "+{power}% damage when below 50% HP", "type": "conditional", "power": 12}
+      },
+      "5": {
+        "basic": {"name": "Infernal Strike", "description": "Deal {power}% ATK fire damage with burn chance", "type": "damage_dot", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Inferno Rage", "description": "Massive fire blast dealing {power}% ATK to all enemies", "type": "aoe", "power": 250, "cooldown": 5},
+        "passive": {"name": "Scorching Aura", "description": "Enemies take {power}% of your ATK as burn damage per turn", "type": "aura_dot", "power": 20}
+      },
+      "10": {
+        "basic": {"name": "Volcanic Strike", "description": "Devastating fire attack dealing {power}% ATK", "type": "damage", "power": 220, "cooldown": 0},
+        "ultimate": {"name": "Apocalyptic Inferno", "description": "Unleash hell itself, dealing {power}% ATK to all enemies and igniting the battlefield", "type": "field_change", "power": 450, "cooldown": 6},
+        "passive": {"name": "Solar Dominance", "description": "All fire damage increased by {power}%, enemies take extra fire damage", "type": "element_mastery", "power": 45}
+      },
+      "15": {
+        "basic": {"name": "Genesis Flame", "description": "Primordial fire dealing {power}% ATK that ignores all defenses", "type": "true_damage", "power": 400, "cooldown": 0},
+        "ultimate": {"name": "Stellar Armageddon", "description": "Summon a dying star to deal {power}% ATK to everything", "type": "extinction", "power": 850, "cooldown": 8},
+        "passive": {"name": "Eternal Conflagration", "description": "Immune to fire damage, all attacks deal +{power}% fire damage", "type": "transcendent", "power": 85}
+      },
+      "18": {
+        "basic": {"name": "Reality Burn", "description": "Incinerate existence itself for {power}% ATK true damage", "type": "reality_damage", "power": 800, "cooldown": 0},
+        "ultimate": {"name": "Universal Heat Death", "description": "End all thermal energy, dealing {power}% max HP to everything", "type": "conceptual", "power": 1500, "cooldown": 10},
+        "passive": {"name": "Thermodynamic Mastery", "description": "Control heat itself: +{power}% all damage, immunity to temperature", "type": "cosmic", "power": 150}
+      }
+    },
+
+    "verdant": {
+      "1": {
+        "basic": {"name": "Nature's Touch", "description": "Deal {power}% ATK nature damage", "type": "damage", "power": 110, "cooldown": 0},
+        "ultimate": {"name": "Healing Bloom", "description": "Heal for {power}% max HP", "type": "heal", "power": 25, "cooldown": 5},
+        "passive": {"name": "Natural Harmony", "description": "Regenerate {power}% max HP per turn", "type": "regen", "power": 10}
+      },
+      "5": {
+        "basic": {"name": "Thorn Flourish", "description": "Deal {power}% ATK nature damage with healing", "type": "damage_heal", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Forest Sanctuary", "description": "Create a healing field, restoring {power}% max HP over 3 turns", "type": "field_heal", "power": 250, "cooldown": 5},
+        "passive": {"name": "Ancient Growth", "description": "Gain +{power}% max HP and DEF", "type": "stat_boost", "power": 20}
+      },
+      "10": {
+        "basic": {"name": "World Tree Strike", "description": "Channel the world tree for {power}% ATK damage", "type": "damage", "power": 220, "cooldown": 0},
+        "ultimate": {"name": "Genesis Garden", "description": "Bloom a paradise, healing all allies for {power}% and boosting stats", "type": "mass_buff", "power": 450, "cooldown": 6},
+        "passive": {"name": "Primordial Life", "description": "All healing +{power}%, immune to death effects", "type": "life_mastery", "power": 45}
+      },
+      "15": {
+        "basic": {"name": "Creation Strike", "description": "Life force attack dealing {power}% ATK and healing allies", "type": "damage_mass_heal", "power": 400, "cooldown": 0},
+        "ultimate": {"name": "Universal Bloom", "description": "Restore all life, massive healing and resurrection", "type": "universal_heal", "power": 850, "cooldown": 8},
+        "passive": {"name": "Eternal Genesis", "description": "Cannot die, constantly regenerating +{power}% max HP", "type": "immortal", "power": 85}
+      }
+    },
+
+    "tempest": {
+      "1": {
+        "basic": {"name": "Wind Slash", "description": "Deal {power}% ATK air damage", "type": "damage", "power": 110, "cooldown": 0},
+        "ultimate": {"name": "Lightning Bolt", "description": "Fast electric attack for {power}% ATK", "type": "quick_damage", "power": 180, "cooldown": 3},
+        "passive": {"name": "Swift Winds", "description": "+{power}% speed and energy regen", "type": "speed_energy", "power": 10}
+      },
+      "5": {
+        "basic": {"name": "Storm Strike", "description": "Deal {power}% ATK electric damage with speed boost", "type": "damage_speed", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Thunder Cyclone", "description": "Whirling storm dealing {power}% ATK to all enemies", "type": "aoe_speed", "power": 250, "cooldown": 4},
+        "passive": {"name": "Electric Mastery", "description": "Attacks have {power}% chance to chain to other enemies", "type": "chain_lightning", "power": 20}
+      },
+      "10": {
+        "basic": {"name": "Hurricane Force", "description": "Devastating wind attack for {power}% ATK", "type": "damage", "power": 220, "cooldown": 0},
+        "ultimate": {"name": "Atmospheric Dominion", "description": "Control weather itself, dealing {power}% ATK area damage", "type": "weather_control", "power": 450, "cooldown": 5},
+        "passive": {"name": "Storm Lord", "description": "All abilities have {power}% faster cooldowns, electric immunity", "type": "cooldown_mastery", "power": 45}
+      }
+    },
+
+    "abyssal": {
+      "1": {
+        "basic": {"name": "Water Splash", "description": "Deal {power}% ATK water damage", "type": "damage", "power": 110, "cooldown": 0},
+        "ultimate": {"name": "Tidal Wave", "description": "Water attack dealing {power}% ATK with HP boost", "type": "damage_hp", "power": 180, "cooldown": 4},
+        "passive": {"name": "Flowing Spirit", "description": "+{power}% max HP and water resistance", "type": "hp_resist", "power": 10}
+      },
+      "5": {
+        "basic": {"name": "Maelstrom Strike", "description": "Deal {power}% ATK water damage with area effect", "type": "damage_area", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Abyssal Depths", "description": "Drag enemies into the deep, massive {power}% ATK damage", "type": "pull_damage", "power": 250, "cooldown": 5},
+        "passive": {"name": "Ocean's Embrace", "description": "Gain {power}% of damage dealt as HP", "type": "lifesteal", "power": 20}
+      },
+      "10": {
+        "basic": {"name": "Leviathan's Wrath", "description": "Channel sea monster fury for {power}% ATK", "type": "damage", "power": 220, "cooldown": 0},
+        "ultimate": {"name": "Oceanic Dominion", "description": "Flood the battlefield, {power}% ATK to all plus field control", "type": "field_flood", "power": 450, "cooldown": 6},
+        "passive": {"name": "Abyssal Lord", "description": "Water mastery: +{power}% HP, all water effects enhanced", "type": "water_mastery", "power": 45}
+      }
+    },
+
+    "umbral": {
+      "1": {
+        "basic": {"name": "Shadow Strike", "description": "Deal {power}% ATK dark damage", "type": "damage", "power": 110, "cooldown": 0},
+        "ultimate": {"name": "Dark Rage", "description": "Massive ATK boost +{power}% but take more damage", "type": "glass_cannon", "power": 35, "cooldown": 4},
+        "passive": {"name": "Shadow Form", "description": "+{power}% ATK but -{power2}% DEF", "type": "risk_reward", "power": 15, "power2": 5}
+      },
+      "5": {
+        "basic": {"name": "Void Strike", "description": "Deal {power}% ATK true dark damage", "type": "true_damage", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Eclipse", "description": "Darkness covers all, {power}% ATK to enemies, boost to self", "type": "field_dark", "power": 250, "cooldown": 5},
+        "passive": {"name": "Void Touched", "description": "Extreme glass cannon: +{power}% ATK, -{power2}% DEF", "type": "extreme_risk", "power": 25, "power2": 10}
+      },
+      "10": {
+        "basic": {"name": "Entropy Strike", "description": "Decay itself deals {power}% ATK damage", "type": "entropy", "power": 220, "cooldown": 0},
+        "ultimate": {"name": "Nihility Embrace", "description": "Embrace nothingness for {power}% ATK reality damage", "type": "nihil", "power": 450, "cooldown": 6},
+        "passive": {"name": "Void Mastery", "description": "Ultimate glass cannon: +{power}% ATK, immune to healing", "type": "void_master", "power": 50}
+      }
+    },
+
+    "radiant": {
+      "1": {
+        "basic": {"name": "Light Ray", "description": "Deal {power}% ATK light damage", "type": "damage", "power": 110, "cooldown": 0},
+        "ultimate": {"name": "Divine Blessing", "description": "Heal and boost allies for {power}%", "type": "support", "power": 180, "cooldown": 5},
+        "passive": {"name": "Radiant Aura", "description": "Balanced bonuses: +{power}% to all stats", "type": "balanced", "power": 10}
+      },
+      "5": {
+        "basic": {"name": "Sacred Strike", "description": "Deal {power}% ATK holy damage with minor healing", "type": "damage_heal", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Celestial Harmony", "description": "Perfect balance: damage and healing for {power}%", "type": "balance", "power": 250, "cooldown": 5},
+        "passive": {"name": "Divine Balance", "description": "All abilities +{power}% effective, fusion success +{power2}%", "type": "harmony", "power": 20, "power2": 10}
+      },
+      "10": {
+        "basic": {"name": "Transcendent Ray", "description": "Pure light dealing {power}% ATK with perfect accuracy", "type": "perfect", "power": 220, "cooldown": 0},
+        "ultimate": {"name": "Divine Transcendence", "description": "Ascend temporarily, {power}% boost to everything", "type": "transcend", "power": 450, "cooldown": 6},
+        "passive": {"name": "Celestial Mastery", "description": "Perfect balance: +{power}% all stats, enhanced fusion", "type": "perfection", "power": 45}
+      }
+    }
+  },
+
+  "fallback_generation": {
+    "description": "For Esprits not specifically defined, generate abilities based on element + tier",
+    "naming_convention": "{element} + {tier_name} + {ability_type}",
+    "power_formula": "base_power * tier_multiplier * awakening_bonus"
   }
 }

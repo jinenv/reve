@@ -10,35 +10,48 @@ from enum import Enum
 
 
 class Elements(Enum):
-    """Element enumeration with all associated data"""
+    """Element enumeration with MW-style tier-scaling leadership"""
     INFERNO = ("Inferno", "🔥", 0xEE4B2B, {
-        "atk_bonus": 0.15,
-        "xp_bonus": 0.10,
-        "description": "+15% ATK, +10% quest XP"
+        "base_atk_bonus": 0.05,          # 5% base ATK bonus
+        "tier_atk_scaling": 0.008,       # +0.8% ATK per tier above 1
+        "base_energy_reduction": 5,      # 5 seconds base energy reduction  
+        "tier_energy_scaling": 2,        # +2 seconds reduction per tier above 1
+        "description": "ATK bonus and energy regen scale with tier"
     })
     VERDANT = ("Verdant", "🌿", 0x355E3B, {
-        "def_bonus": 0.20,
-        "jijies_bonus": 0.15,
-        "description": "+20% DEF, +15% Jijies from quests"
+        "base_def_bonus": 0.08,          # 8% base DEF bonus
+        "tier_def_scaling": 0.01,        # +1% DEF per tier above 1  
+        "base_jijies_bonus": 0.05,       # 5% base jijies bonus
+        "tier_jijies_scaling": 0.005,    # +0.5% jijies per tier above 1
+        "description": "DEF and jijies bonuses scale with tier"
     })
     ABYSSAL = ("Abyssal", "🌊", 0x191970, {
-        "hp_bonus": 0.10,
-        "capture_bonus": 0.05,
-        "description": "+10% HP, +5% capture chance"
+        "base_hp_bonus": 0.05,           # 5% base HP bonus
+        "tier_hp_scaling": 0.008,        # +0.8% HP per tier above 1
+        "base_capture_bonus": 0.02,      # 2% base capture bonus
+        "tier_capture_scaling": 0.002,   # +0.2% capture per tier above 1
+        "description": "HP and capture bonuses scale with tier"
     })
     TEMPEST = ("Tempest", "🌪️", 0x818589, {
-        "energy_regen_bonus": -1,
-        "description": "+1 energy/5min"
+        "base_energy_reduction": 3,      # 3 seconds base energy reduction
+        "tier_energy_scaling": 1.5,      # +1.5 seconds reduction per tier above 1
+        "base_stamina_reduction": 2,     # 2 seconds base stamina reduction  
+        "tier_stamina_scaling": 1,       # +1 second reduction per tier above 1
+        "description": "Energy and stamina regen scale with tier"
     })
     UMBRAL = ("Umbral", "🌑", 0x36454F, {
-        "atk_bonus": 0.25,
-        "def_penalty": -0.10,
-        "description": "+25% ATK, -10% DEF"
+        "base_atk_bonus": 0.12,          # 12% base ATK bonus (glass cannon)
+        "tier_atk_scaling": 0.015,       # +1.5% ATK per tier above 1
+        "base_def_penalty": -0.05,       # -5% base DEF penalty
+        "tier_def_penalty": -0.003,      # -0.3% DEF penalty per tier above 1
+        "description": "High ATK bonus but DEF penalty, both scale with tier"
     })
     RADIANT = ("Radiant", "✨", 0xFFF8DC, {
-        "def_bonus": 0.15,
-        "fusion_bonus": 0.10,
-        "description": "+15% DEF, +10% fusion success rate"
+        "base_def_bonus": 0.06,          # 6% base DEF bonus
+        "tier_def_scaling": 0.008,       # +0.8% DEF per tier above 1
+        "base_fusion_bonus": 0.05,       # 5% base fusion success bonus
+        "tier_fusion_scaling": 0.003,    # +0.3% fusion per tier above 1
+        "description": "DEF and fusion success scale with tier"
     })
     
     def __init__(self, display_name: str, emoji: str, color: int, bonuses: Dict[str, Any]):
@@ -54,6 +67,36 @@ class Elements(Enum):
             if element.display_name.lower() == value.lower():
                 return element
         return None
+    
+    def calculate_leadership_bonuses(self, tier: int, awakening_level: int = 0) -> Dict[str, float]:
+        """
+        Calculate final leadership bonuses based on tier and awakening.
+        This is the MW-accurate scaling formula.
+        """
+        bonuses = {}
+        
+        # Calculate tier multiplier (tier 1 = base, tier 2+ = scaling)
+        tier_multiplier = max(0, tier - 1)
+        
+        # Calculate awakening multiplier (10% boost per star, MW style)
+        awakening_multiplier = 1.0 + (awakening_level * 0.1)
+        
+        for key, base_value in self.bonuses.items():
+            if key.startswith("base_"):
+                # Extract the stat name (e.g., "atk_bonus" from "base_atk_bonus")
+                stat_name = key.replace("base_", "")
+                scaling_key = f"tier_{stat_name.replace('_bonus', '_scaling')}"
+                
+                if scaling_key in self.bonuses:
+                    # Calculate: (base + tier_scaling * (tier-1)) * awakening_multiplier
+                    tier_bonus = base_value + (self.bonuses[scaling_key] * tier_multiplier)
+                    final_bonus = tier_bonus * awakening_multiplier
+                    bonuses[stat_name] = final_bonus
+                else:
+                    # No tier scaling for this stat, just apply awakening
+                    bonuses[stat_name] = base_value * awakening_multiplier
+        
+        return bonuses
     
     @classmethod
     def get_all_names(cls) -> List[str]:
