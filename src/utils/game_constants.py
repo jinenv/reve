@@ -60,49 +60,6 @@ class Elements(Enum):
         """Get all element display names"""
         return [e.display_name for e in cls]
 
-
-class EspritTypes(Enum):
-    """Esprit type enumeration with all associated data"""
-    CHAOS = ("chaos", "⚔️", {
-        "atk_bonus": 0.10,
-        "description": "+10% ATK - Embodies destructive entropy"
-    })
-    ORDER = ("order", "🛡️", {
-        "def_bonus": 0.10,
-        "description": "+10% DEF - Maintains perfect harmony"
-    })
-    HUNT = ("hunt", "🏹", {
-        "capture_bonus": 0.05,
-        "description": "+5% capture chance - Tracks prey relentlessly"
-    })
-    WISDOM = ("wisdom", "📜", {
-        "xp_bonus": 0.10,
-        "description": "+10% XP gain - Accelerates growth through insight"
-    })
-    COMMAND = ("command", "🗿", {
-        "all_stats_bonus": 0.05,
-        "description": "+5% to ATK, DEF, and HP"
-    })
-    
-    def __init__(self, type_name: str, emoji: str, bonuses: Dict[str, Any]):
-        self.type_name = type_name
-        self.emoji = emoji
-        self.bonuses = bonuses
-    
-    @classmethod
-    def from_string(cls, value: str) -> Optional['EspritTypes']:
-        """Get type from string (case-insensitive)"""
-        for esprit_type in cls:
-            if esprit_type.type_name == value.lower():
-                return esprit_type
-        return None
-    
-    @classmethod
-    def get_all_names(cls) -> List[str]:
-        """Get all type names"""
-        return [t.type_name for t in cls]
-
-
 @dataclass
 class TierData:
     """Complete tier information"""

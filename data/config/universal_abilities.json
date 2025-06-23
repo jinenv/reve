@@ -1,1513 +1,249 @@
 {
-  "description": "Generic abilities for tiers 1-4 based on element+type combinations",
+  "description": "Universal abilities for tiers 1-4 - damage multipliers and meaningful combat modifiers",
   
   "ability_structure": {
-    "basic": "Simple damage ability",
-    "skill": "Utility/tactical ability", 
-    "ultimate": "Powerful ability with cooldown",
-    "passive": "Always-on benefit"
+    "basic": "Damage multiplier based on tier - affects battle calculations",
+    "ultimate": "Combat modifier with meaningful % effects - cooldown based",
+    "passive": "Always-on benefits that scale with tier brackets (I/II/III)"
+  },
+  
+  "tier_scaling": {
+    "basic_damage_multipliers": {
+      "1": 70, "2": 75, "3": 80, "4": 85
+    },
+    "passive_tiers": {
+      "1-2": "I", "3-4": "II"
+    }
   },
   
   "abilities": {
     "inferno_chaos": {
       "basic": {
         "name": "Flame Strike",
-        "description": "Deal {power}% ATK as fire damage",
+        "description": "Strike with burning fury",
         "type": "damage",
-        "element": "fire",
-        "scaling": {
-          "1": 100,
-          "2": 110,
-          "3": 120,
-          "4": 130
-        }
-      },
-      "skill": {
-        "name": "Burning Rage",
-        "description": "Increase ATK by {power}% for 3 turns",
-        "type": "buff",
-        "stat": "atk",
-        "cooldown": 3,
-        "scaling": {
-          "1": 25,
-          "2": 30,
-          "3": 35,
-          "4": 40
+        "flavor_scaling": {
+          "1-2": "A small spark of anger",
+          "3-4": "Crackling flames surge forward"
         }
       },
       "ultimate": {
-        "name": "Inferno Burst",
-        "description": "Deal {power}% ATK to all enemies",
-        "type": "aoe_damage",
-        "element": "fire",
-        "cooldown": 5,
+        "name": "Berserker's Rage",
+        "description": "Increase damage by {power}% but take {vulnerability}% more damage for 3 turns",
+        "type": "buff_debuff",
+        "cooldown": 4,
         "scaling": {
-          "1": 150,
-          "2": 175,
-          "3": 200,
-          "4": 225
+          "1": {"power": 25, "vulnerability": 15},
+          "2": {"power": 30, "vulnerability": 15},
+          "3": {"power": 35, "vulnerability": 10},
+          "4": {"power": 40, "vulnerability": 10}
         }
       },
       "passive": {
-        "name": "Blazing Fury",
-        "description": "+{power}% ATK permanently",
-        "type": "stat_boost",
-        "stat": "atk",
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
+        "name": "Blazing Spirit",
+        "description": "Deal +{power}% damage when below 50% HP",
+        "type": "conditional_damage",
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 15},
+          "II": {"tiers": "3-4", "power": 25}
         }
       }
     },
     
     "inferno_order": {
       "basic": {
-        "name": "Cauterize",
-        "description": "Deal {power}% ATK and heal self for 20% damage dealt",
-        "type": "lifesteal",
-        "element": "fire",
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "skill": {
-        "name": "Flame Shield",
-        "description": "Grant shield equal to {power}% of max HP",
-        "type": "shield",
-        "cooldown": 4,
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
+        "name": "Cauterizing Touch",
+        "description": "Strike that burns away weakness",
+        "type": "damage",
+        "flavor_scaling": {
+          "1-2": "A gentle, healing warmth",
+          "3-4": "Sacred flames mend and strengthen"
         }
       },
       "ultimate": {
         "name": "Purifying Flame",
-        "description": "Remove debuffs and heal for {power}% max HP",
-        "type": "cleanse_heal",
+        "description": "Heal for {heal}% max HP and gain +{defense}% defense for 3 turns",
+        "type": "heal_buff",
         "cooldown": 5,
         "scaling": {
-          "1": 40,
-          "2": 50,
-          "3": 60,
-          "4": 70
+          "1": {"heal": 20, "defense": 15},
+          "2": {"heal": 25, "defense": 20},
+          "3": {"heal": 30, "defense": 25},
+          "4": {"heal": 35, "defense": 30}
         }
       },
       "passive": {
-        "name": "Warm Embrace",
+        "name": "Regeneration",
         "description": "Heal {power}% max HP each turn",
-        "type": "regen",
-        "scaling": {
-          "1": 3,
-          "2": 4,
-          "3": 5,
-          "4": 6
+        "type": "regeneration",
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 3},
+          "II": {"tiers": "3-4", "power": 5}
         }
       }
     },
-    
+
     "inferno_hunt": {
       "basic": {
         "name": "Searing Shot",
-        "description": "Deal {power}% ATK with +20% crit chance",
-        "type": "crit_damage",
-        "element": "fire",
-        "scaling": {
-          "1": 90,
-          "2": 100,
-          "3": 110,
-          "4": 120
-        }
-      },
-      "skill": {
-        "name": "Hunter's Mark",
-        "description": "Mark enemy, next 3 attacks deal +{power}% damage",
-        "type": "mark",
-        "cooldown": 3,
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
+        "description": "Precise strike that finds weakness",
+        "type": "damage",
+        "flavor_scaling": {
+          "1-2": "A careful, aimed ember",
+          "3-4": "Fire seeks the enemy's weakness"
         }
       },
       "ultimate": {
-        "name": "Blazing Hunt",
-        "description": "Deal {power}% ATK, always crits if enemy is marked",
-        "type": "execute",
-        "cooldown": 4,
+        "name": "Hunter's Mark",
+        "description": "Mark target: ignore {pierce}% defense and gain +{crit}% crit chance for 2 turns",
+        "type": "mark_debuff",
+        "cooldown": 3,
         "scaling": {
-          "1": 180,
-          "2": 200,
-          "3": 220,
-          "4": 240
+          "1": {"pierce": 15, "crit": 20},
+          "2": {"pierce": 20, "crit": 25},
+          "3": {"pierce": 25, "crit": 30},
+          "4": {"pierce": 30, "crit": 35}
         }
       },
       "passive": {
         "name": "Predator's Focus",
-        "description": "+{power}% accuracy and crit rate",
-        "type": "crit_boost",
-        "scaling": {
-          "1": 5,
-          "2": 7,
-          "3": 9,
-          "4": 11
+        "description": "+{power}% critical hit chance",
+        "type": "crit_bonus",
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 8},
+          "II": {"tiers": "3-4", "power": 12}
         }
       }
     },
-    
+
     "inferno_wisdom": {
       "basic": {
         "name": "Ember Bolt",
-        "description": "Deal {power}% ATK, reduce enemy fire resistance",
-        "type": "resistance_shred",
-        "element": "fire",
-        "scaling": {
-          "1": 85,
-          "2": 95,
-          "3": 105,
-          "4": 115
-        }
-      },
-      "skill": {
-        "name": "Flame Study",
-        "description": "Next ability has no cooldown and costs no energy",
-        "type": "cooldown_reset",
-        "cooldown": 4,
-        "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 1,
-          "4": 1
+        "description": "Knowledge burns away ignorance",
+        "type": "damage",
+        "flavor_scaling": {
+          "1-2": "A spark of understanding",
+          "3-4": "Wisdom ignites the mind"
         }
       },
       "ultimate": {
-        "name": "Pyroclasm",
-        "description": "Deal {power}% ATK based on enemy's missing HP",
-        "type": "execute_damage",
-        "cooldown": 5,
+        "name": "Analyze Weakness",
+        "description": "Reduce enemy defense by {debuff}% and gain {cooldown}% cooldown reduction for 3 turns",
+        "type": "debuff_buff",
+        "cooldown": 4,
         "scaling": {
-          "1": 120,
-          "2": 140,
-          "3": 160,
-          "4": 180
+          "1": {"debuff": 15, "cooldown": 20},
+          "2": {"debuff": 20, "cooldown": 25},
+          "3": {"debuff": 25, "cooldown": 30},
+          "4": {"debuff": 30, "cooldown": 35}
         }
       },
       "passive": {
         "name": "Burning Knowledge",
-        "description": "Abilities have {power}% shorter cooldowns",
+        "description": "All abilities have {power}% faster cooldowns",
         "type": "cooldown_reduction",
-        "scaling": {
-          "1": 10,
-          "2": 15,
-          "3": 20,
-          "4": 25
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 15},
+          "II": {"tiers": "3-4", "power": 25}
         }
       }
     },
-    
+
     "inferno_command": {
       "basic": {
         "name": "Dominating Flame",
-        "description": "Deal {power}% ATK and intimidate (reduce enemy ATK)",
-        "type": "debuff_damage",
-        "element": "fire",
-        "scaling": {
-          "1": 95,
-          "2": 105,
-          "3": 115,
-          "4": 125
-        }
-      },
-      "skill": {
-        "name": "Rally the Flames",
-        "description": "All allies gain {power}% ATK for 2 turns",
-        "type": "team_buff",
-        "cooldown": 4,
-        "scaling": {
-          "1": 15,
-          "2": 20,
-          "3": 25,
-          "4": 30
+        "description": "Fire that commands submission",
+        "type": "damage",
+        "flavor_scaling": {
+          "1-2": "A demanding flicker",
+          "3-4": "Flames that brook no defiance"
         }
       },
       "ultimate": {
-        "name": "Conflagration Command",
-        "description": "Force all enemies to attack each other for 1 turn",
-        "type": "confusion",
-        "cooldown": 6,
+        "name": "Intimidating Presence",
+        "description": "Reduce enemy damage by {debuff}% and accuracy by {accuracy}% for 4 turns",
+        "type": "mass_debuff",
+        "cooldown": 5,
         "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 1,
-          "4": 1
+          "1": {"debuff": 20, "accuracy": 15},
+          "2": {"debuff": 25, "accuracy": 20},
+          "3": {"debuff": 30, "accuracy": 25},
+          "4": {"debuff": 35, "accuracy": 30}
         }
       },
       "passive": {
-        "name": "Imposing Presence",
+        "name": "Imposing Aura",
         "description": "Enemies have {power}% chance to miss",
-        "type": "intimidation",
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
+        "type": "dodge_aura",
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 10},
+          "II": {"tiers": "3-4", "power": 15}
         }
       }
     },
-    
+
     "verdant_chaos": {
       "basic": {
         "name": "Thorn Lash",
-        "description": "Deal {power}% ATK and inflict bleed",
-        "type": "dot_damage",
-        "element": "nature",
-        "scaling": {
-          "1": 90,
-          "2": 100,
-          "3": 110,
-          "4": 120
-        }
-      },
-      "skill": {
-        "name": "Wild Growth",
-        "description": "Increase max HP by {power}% for battle",
-        "type": "hp_boost",
-        "cooldown": 5,
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
+        "description": "Wild growth pierces defenses",
+        "type": "damage",
+        "flavor_scaling": {
+          "1-2": "Tiny thorns seeking blood",
+          "3-4": "Vines writhe with primal hunger"
         }
       },
       "ultimate": {
-        "name": "Nature's Wrath",
-        "description": "Deal {power}% ATK and entangle all enemies",
-        "type": "root_damage",
-        "cooldown": 5,
+        "name": "Savage Growth",
+        "description": "Gain +{attack}% attack and +{hp}% max HP for 3 turns",
+        "type": "stat_boost",
+        "cooldown": 4,
         "scaling": {
-          "1": 140,
-          "2": 160,
-          "3": 180,
-          "4": 200
+          "1": {"attack": 20, "hp": 25},
+          "2": {"attack": 25, "hp": 30},
+          "3": {"attack": 30, "hp": 35},
+          "4": {"attack": 35, "hp": 40}
         }
       },
       "passive": {
-        "name": "Savage Growth",
-        "description": "+{power}% HP and ATK",
-        "type": "hybrid_boost",
-        "scaling": {
-          "1": 5,
-          "2": 7,
-          "3": 9,
-          "4": 11
+        "name": "Wild Resilience",
+        "description": "+{power}% HP and take {reduction}% less damage",
+        "type": "hp_defense",
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 15, "reduction": 5},
+          "II": {"tiers": "3-4", "power": 25, "reduction": 10}
         }
       }
     },
-    
+
     "verdant_order": {
       "basic": {
         "name": "Healing Touch",
-        "description": "Deal {power}% ATK and heal ally for 30% damage",
-        "type": "heal_damage",
-        "element": "nature",
-        "scaling": {
-          "1": 70,
-          "2": 80,
-          "3": 90,
-          "4": 100
-        }
-      },
-      "skill": {
-        "name": "Regeneration",
-        "description": "Heal self for {power}% max HP over 3 turns",
-        "type": "hot",
-        "cooldown": 3,
-        "scaling": {
-          "1": 30,
-          "2": 36,
-          "3": 42,
-          "4": 48
+        "description": "Life energy mends all wounds",
+        "type": "damage",
+        "flavor_scaling": {
+          "1-2": "Gentle shoots of new growth",
+          "3-4": "Flowers bloom in your presence"
         }
       },
       "ultimate": {
         "name": "Life Bloom",
-        "description": "Heal all allies for {power}% max HP",
-        "type": "aoe_heal",
+        "description": "Heal {heal}% max HP and cleanse all debuffs",
+        "type": "heal_cleanse",
         "cooldown": 5,
         "scaling": {
-          "1": 40,
-          "2": 50,
-          "3": 60,
-          "4": 70
+          "1": {"heal": 30},
+          "2": {"heal": 40},
+          "3": {"heal": 50},
+          "4": {"heal": 60}
         }
       },
       "passive": {
-        "name": "Natural Recovery",
+        "name": "Natural Harmony",
         "description": "All healing effects +{power}%",
         "type": "healing_boost",
-        "scaling": {
-          "1": 15,
-          "2": 20,
-          "3": 25,
-          "4": 30
-        }
-      }
-    },
-    
-    "verdant_hunt": {
-      "basic": {
-        "name": "Poison Dart",
-        "description": "Deal {power}% ATK and poison for 3 turns",
-        "type": "poison_damage",
-        "element": "nature",
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "skill": {
-        "name": "Camouflage",
-        "description": "Gain {power}% dodge chance for 2 turns",
-        "type": "evasion",
-        "cooldown": 3,
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      },
-      "ultimate": {
-        "name": "Toxic Trap",
-        "description": "Set trap dealing {power}% ATK when triggered",
-        "type": "trap",
-        "cooldown": 4,
-        "scaling": {
-          "1": 200,
-          "2": 225,
-          "3": 250,
-          "4": 275
-        }
-      },
-      "passive": {
-        "name": "Nature's Stalker",
-        "description": "+{power}% damage from behind",
-        "type": "backstab",
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      }
-    },
-    
-    "verdant_wisdom": {
-      "basic": {
-        "name": "Spore Cloud",
-        "description": "Deal {power}% ATK and reduce accuracy",
-        "type": "blind_damage",
-        "element": "nature",
-        "scaling": {
-          "1": 85,
-          "2": 95,
-          "3": 105,
-          "4": 115
-        }
-      },
-      "skill": {
-        "name": "Photosynthesis",
-        "description": "Gain {power} energy and heal 20% HP",
-        "type": "energy_gain",
-        "cooldown": 4,
-        "scaling": {
-          "1": 2,
-          "2": 3,
-          "3": 4,
-          "4": 5
-        }
-      },
-      "ultimate": {
-        "name": "Overgrowth",
-        "description": "Heal {power}% and gain that much as shield",
-        "type": "heal_shield",
-        "cooldown": 5,
-        "scaling": {
-          "1": 35,
-          "2": 45,
-          "3": 55,
-          "4": 65
-        }
-      },
-      "passive": {
-        "name": "Natural Wisdom",
-        "description": "+{power}% XP from battles",
-        "type": "xp_boost",
-        "scaling": {
-          "1": 10,
-          "2": 15,
-          "3": 20,
-          "4": 25
-        }
-      }
-    },
-    
-    "verdant_command": {
-      "basic": {
-        "name": "Command Nature",
-        "description": "Deal {power}% ATK and summon vines",
-        "type": "summon_damage",
-        "element": "nature",
-        "scaling": {
-          "1": 95,
-          "2": 105,
-          "3": 115,
-          "4": 125
-        }
-      },
-      "skill": {
-        "name": "Forest's Call",
-        "description": "Summon treant with {power}% of your stats",
-        "type": "summon",
-        "cooldown": 5,
-        "scaling": {
-          "1": 40,
-          "2": 50,
-          "3": 60,
-          "4": 70
-        }
-      },
-      "ultimate": {
-        "name": "Nature's Army",
-        "description": "All summons gain {power}% stats and attack",
-        "type": "summon_buff",
-        "cooldown": 5,
-        "scaling": {
-          "1": 50,
-          "2": 60,
-          "3": 70,
-          "4": 80
-        }
-      },
-      "passive": {
-        "name": "Pack Leader",
-        "description": "Summons have +{power}% stats",
-        "type": "summon_boost",
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      }
-    },
-    
-    "abyssal_chaos": {
-      "basic": {
-        "name": "Crushing Depths",
-        "description": "Deal {power}% ATK and reduce DEF",
-        "type": "armor_break",
-        "element": "water",
-        "scaling": {
-          "1": 95,
-          "2": 105,
-          "3": 115,
-          "4": 125
-        }
-      },
-      "skill": {
-        "name": "Riptide",
-        "description": "Pull enemy and deal {power}% ATK",
-        "type": "displacement",
-        "cooldown": 3,
-        "scaling": {
-          "1": 110,
-          "2": 120,
-          "3": 130,
-          "4": 140
-        }
-      },
-      "ultimate": {
-        "name": "Maelstrom",
-        "description": "Deal {power}% ATK to all, chance to stun",
-        "type": "aoe_stun",
-        "cooldown": 5,
-        "scaling": {
-          "1": 130,
-          "2": 150,
-          "3": 170,
-          "4": 190
-        }
-      },
-      "passive": {
-        "name": "Abyssal Pressure",
-        "description": "Attacks slow enemies by {power}%",
-        "type": "slow_on_hit",
-        "scaling": {
-          "1": 15,
-          "2": 20,
-          "3": 25,
-          "4": 30
-        }
-      }
-    },
-    
-    "abyssal_order": {
-      "basic": {
-        "name": "Tidal Barrier",
-        "description": "Deal {power}% ATK and gain 20% as shield",
-        "type": "shield_damage",
-        "element": "water",
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "skill": {
-        "name": "Water Prison",
-        "description": "Trap enemy for 1 turn, they take {power}% more damage",
-        "type": "root_amplify",
-        "cooldown": 4,
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      },
-      "ultimate": {
-        "name": "Tsunami Wall",
-        "description": "Block next {power} attacks for all allies",
-        "type": "team_block",
-        "cooldown": 5,
-        "scaling": {
-          "1": 2,
-          "2": 3,
-          "3": 4,
-          "4": 5
-        }
-      },
-      "passive": {
-        "name": "Flowing Defense",
-        "description": "+{power}% DEF, immune to displacement",
-        "type": "def_stability",
-        "scaling": {
-          "1": 15,
-          "2": 18,
-          "3": 21,
-          "4": 24
-        }
-      }
-    },
-    
-    "abyssal_hunt": {
-      "basic": {
-        "name": "Harpoon Strike",
-        "description": "Deal {power}% ATK, pull enemy closer",
-        "type": "hook_damage",
-        "element": "water",
-        "scaling": {
-          "1": 100,
-          "2": 110,
-          "3": 120,
-          "4": 130
-        }
-      },
-      "skill": {
-        "name": "Blood in Water",
-        "description": "Mark enemy, all attacks heal for {power}% damage",
-        "type": "lifesteal_mark",
-        "cooldown": 3,
-        "scaling": {
-          "1": 25,
-          "2": 30,
-          "3": 35,
-          "4": 40
-        }
-      },
-      "ultimate": {
-        "name": "Feeding Frenzy",
-        "description": "Deal {power}% ATK, double if enemy below 50% HP",
-        "type": "execute",
-        "cooldown": 4,
-        "scaling": {
-          "1": 150,
-          "2": 175,
-          "3": 200,
-          "4": 225
-        }
-      },
-      "passive": {
-        "name": "Apex Predator",
-        "description": "+{power}% damage to wounded enemies",
-        "type": "execute_boost",
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      }
-    },
-    
-    "abyssal_wisdom": {
-      "basic": {
-        "name": "Frost Shard",
-        "description": "Deal {power}% ATK, chance to freeze",
-        "type": "freeze_damage",
-        "element": "water",
-        "scaling": {
-          "1": 85,
-          "2": 95,
-          "3": 105,
-          "4": 115
-        }
-      },
-      "skill": {
-        "name": "Ice Mirror",
-        "description": "Reflect next {power} attacks back",
-        "type": "reflect",
-        "cooldown": 4,
-        "scaling": {
-          "1": 1,
-          "2": 2,
-          "3": 2,
-          "4": 3
-        }
-      },
-      "ultimate": {
-        "name": "Absolute Zero",
-        "description": "Freeze all enemies, they take {power}% more damage",
-        "type": "aoe_freeze",
-        "cooldown": 6,
-        "scaling": {
-          "1": 25,
-          "2": 30,
-          "3": 35,
-          "4": 40
-        }
-      },
-      "passive": {
-        "name": "Clarity of Depths",
-        "description": "Immune to confusion, +{power}% accuracy",
-        "type": "mental_clarity",
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      }
-    },
-    
-    "abyssal_command": {
-      "basic": {
-        "name": "Kraken's Grasp",
-        "description": "Deal {power}% ATK to all enemies",
-        "type": "aoe_damage",
-        "element": "water",
-        "scaling": {
-          "1": 70,
-          "2": 80,
-          "3": 90,
-          "4": 100
-        }
-      },
-      "skill": {
-        "name": "Leviathan's Call",
-        "description": "Summon sea beast with {power}% stats",
-        "type": "summon",
-        "cooldown": 5,
-        "scaling": {
-          "1": 50,
-          "2": 60,
-          "3": 70,
-          "4": 80
-        }
-      },
-      "ultimate": {
-        "name": "Drown the World",
-        "description": "Flood battlefield, all take {power}% water damage/turn",
-        "type": "field_effect",
-        "cooldown": 6,
-        "scaling": {
-          "1": 15,
-          "2": 20,
-          "3": 25,
-          "4": 30
-        }
-      },
-      "passive": {
-        "name": "Lord of the Abyss",
-        "description": "Water attacks heal you for {power}% damage",
-        "type": "element_absorb",
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      }
-    },
-    
-    "tempest_chaos": {
-      "basic": {
-        "name": "Lightning Strike",
-        "description": "Deal {power}% ATK, chain to nearby enemy",
-        "type": "chain_damage",
-        "element": "lightning",
-        "scaling": {
-          "1": 90,
-          "2": 100,
-          "3": 110,
-          "4": 120
-        }
-      },
-      "skill": {
-        "name": "Storm Surge",
-        "description": "Gain {power}% speed and ATK for 2 turns",
-        "type": "haste_buff",
-        "cooldown": 3,
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      },
-      "ultimate": {
-        "name": "Thunderstorm",
-        "description": "Random strikes deal {power}% ATK 3-5 times",
-        "type": "random_strikes",
-        "cooldown": 5,
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "passive": {
-        "name": "Static Charge",
-        "description": "{power}% chance to stun on hit",
-        "type": "stun_chance",
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
-        }
-      }
-    },
-    
-    "tempest_order": {
-      "basic": {
-        "name": "Wind Barrier",
-        "description": "Deal {power}% ATK and deflect projectiles",
-        "type": "deflect_damage",
-        "element": "wind",
-        "scaling": {
-          "1": 85,
-          "2": 95,
-          "3": 105,
-          "4": 115
-        }
-      },
-      "skill": {
-        "name": "Eye of Storm",
-        "description": "Create safe zone, allies heal {power}% per turn",
-        "type": "zone_heal",
-        "cooldown": 4,
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
-        }
-      },
-      "ultimate": {
-        "name": "Calm Before Storm",
-        "description": "All allies immune to damage for 1 turn",
-        "type": "team_immune",
-        "cooldown": 7,
-        "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 1,
-          "4": 1
-        }
-      },
-      "passive": {
-        "name": "Wind's Grace",
-        "description": "Allies have +{power}% dodge chance",
-        "type": "team_evasion",
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
-        }
-      }
-    },
-    
-    "tempest_hunt": {
-      "basic": {
-        "name": "Wind Arrow",
-        "description": "Deal {power}% ATK, never misses",
-        "type": "true_strike",
-        "element": "wind",
-        "scaling": {
-          "1": 95,
-          "2": 105,
-          "3": 115,
-          "4": 125
-        }
-      },
-      "skill": {
-        "name": "Tailwind",
-        "description": "Next {power} attacks strike first",
-        "type": "priority",
-        "cooldown": 3,
-        "scaling": {
-          "1": 2,
-          "2": 2,
-          "3": 3,
-          "4": 3
-        }
-      },
-      "ultimate": {
-        "name": "Perfect Shot",
-        "description": "Deal {power}% ATK, ignores shields/defense",
-        "type": "pierce",
-        "cooldown": 4,
-        "scaling": {
-          "1": 200,
-          "2": 225,
-          "3": 250,
-          "4": 275
-        }
-      },
-      "passive": {
-        "name": "Wind Runner",
-        "description": "+{power}% speed and initiative",
-        "type": "speed_boost",
-        "scaling": {
-          "1": 25,
-          "2": 30,
-          "3": 35,
-          "4": 40
-        }
-      }
-    },
-    
-    "tempest_wisdom": {
-      "basic": {
-        "name": "Gust",
-        "description": "Deal {power}% ATK and dispel 1 buff",
-        "type": "dispel_damage",
-        "element": "wind",
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "skill": {
-        "name": "Forecast",
-        "description": "See enemy intentions, gain {power}% dodge",
-        "type": "foresight",
-        "cooldown": 3,
-        "scaling": {
-          "1": 40,
-          "2": 45,
-          "3": 50,
-          "4": 55
-        }
-      },
-      "ultimate": {
-        "name": "Temporal Wind",
-        "description": "Reset all cooldowns, gain {power} energy",
-        "type": "reset",
-        "cooldown": 6,
-        "scaling": {
-          "1": 3,
-          "2": 4,
-          "3": 5,
-          "4": 6
-        }
-      },
-      "passive": {
-        "name": "Wisdom of Winds",
-        "description": "Start battle with +{power} energy",
-        "type": "energy_start",
-        "scaling": {
-          "1": 2,
-          "2": 3,
-          "3": 4,
-          "4": 5
-        }
-      }
-    },
-    
-    "tempest_command": {
-      "basic": {
-        "name": "Cyclone",
-        "description": "Deal {power}% ATK and scatter enemies",
-        "type": "scatter_damage",
-        "element": "wind",
-        "scaling": {
-          "1": 85,
-          "2": 95,
-          "3": 105,
-          "4": 115
-        }
-      },
-      "skill": {
-        "name": "Storm Herald",
-        "description": "All allies gain {power}% speed",
-        "type": "team_haste",
-        "cooldown": 4,
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      },
-      "ultimate": {
-        "name": "Hurricane Force",
-        "description": "Push all enemies back, deal {power}% ATK",
-        "type": "aoe_knockback",
-        "cooldown": 5,
-        "scaling": {
-          "1": 120,
-          "2": 140,
-          "3": 160,
-          "4": 180
-        }
-      },
-      "passive": {
-        "name": "Storm Commander",
-        "description": "Team gains {power}% of your speed",
-        "type": "speed_share",
-        "scaling": {
-          "1": 25,
-          "2": 30,
-          "3": 35,
-          "4": 40
-        }
-      }
-    },
-    
-    "umbral_chaos": {
-      "basic": {
-        "name": "Shadow Strike",
-        "description": "Deal {power}% ATK from shadows",
-        "type": "sneak_attack",
-        "element": "dark",
-        "scaling": {
-          "1": 110,
-          "2": 120,
-          "3": 130,
-          "4": 140
-        }
-      },
-      "skill": {
-        "name": "Dark Pact",
-        "description": "Sacrifice 10% HP for {power}% ATK boost",
-        "type": "sacrifice",
-        "cooldown": 3,
-        "scaling": {
-          "1": 40,
-          "2": 50,
-          "3": 60,
-          "4": 70
-        }
-      },
-      "ultimate": {
-        "name": "Void Eruption",
-        "description": "Deal {power}% of missing HP as damage",
-        "type": "missing_hp_damage",
-        "cooldown": 5,
-        "scaling": {
-          "1": 200,
-          "2": 250,
-          "3": 300,
-          "4": 350
-        }
-      },
-      "passive": {
-        "name": "Embrace Darkness",
-        "description": "+{power}% damage when below 50% HP",
-        "type": "berserker",
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      }
-    },
-    
-    "umbral_order": {
-      "basic": {
-        "name": "Dark Shield",
-        "description": "Deal {power}% ATK, absorb damage equal to dealt",
-        "type": "absorb_shield",
-        "element": "dark",
-        "scaling": {
-          "1": 70,
-          "2": 80,
-          "3": 90,
-          "4": 100
-        }
-      },
-      "skill": {
-        "name": "Shadow Veil",
-        "description": "Become untargetable for 1 turn",
-        "type": "vanish",
-        "cooldown": 5,
-        "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 1,
-          "4": 1
-        }
-      },
-      "ultimate": {
-        "name": "Null Zone",
-        "description": "Create zone negating {power}% of all damage",
-        "type": "damage_reduction_zone",
-        "cooldown": 6,
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      },
-      "passive": {
-        "name": "Shadow Guardian",
-        "description": "Block first attack each turn",
-        "type": "auto_block",
-        "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 1,
-          "4": 1
-        }
-      }
-    },
-    
-    "umbral_hunt": {
-      "basic": {
-        "name": "Assassinate",
-        "description": "Deal {power}% ATK, +50% from behind",
-        "type": "backstab",
-        "element": "dark",
-        "scaling": {
-          "1": 100,
-          "2": 110,
-          "3": 120,
-          "4": 130
-        }
-      },
-      "skill": {
-        "name": "Shadow Step",
-        "description": "Teleport behind enemy, gain {power}% crit",
-        "type": "teleport",
-        "cooldown": 3,
-        "scaling": {
-          "1": 40,
-          "2": 50,
-          "3": 60,
-          "4": 70
-        }
-      },
-      "ultimate": {
-        "name": "Death Mark",
-        "description": "Mark for death - dies if below {power}% HP",
-        "type": "execute_mark",
-        "cooldown": 5,
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      },
-      "passive": {
-        "name": "Silent Killer",
-        "description": "Critical strikes silence for 1 turn",
-        "type": "crit_silence",
-        "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 1,
-          "4": 1
-        }
-      }
-    },
-    
-    "umbral_wisdom": {
-      "basic": {
-        "name": "Mind Spike",
-        "description": "Deal {power}% ATK as psychic damage",
-        "type": "psychic_damage",
-        "element": "dark",
-        "scaling": {
-          "1": 90,
-          "2": 100,
-          "3": 110,
-          "4": 120
-        }
-      },
-      "skill": {
-        "name": "Dark Meditation",
-        "description": "Skip turn to double next ability's effect",
-        "type": "charge",
-        "cooldown": 4,
-        "scaling": {
-          "1": 2,
-          "2": 2,
-          "3": 2,
-          "4": 2
-        }
-      },
-      "ultimate": {
-        "name": "Void Mind",
-        "description": "Steal {power}% of enemy's highest stat",
-        "type": "stat_steal",
-        "cooldown": 5,
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      },
-      "passive": {
-        "name": "Forbidden Knowledge",
-        "description": "Abilities cost {power} less energy",
-        "type": "energy_reduction",
-        "scaling": {
-          "1": 1,
-          "2": 1,
-          "3": 2,
-          "4": 2
-        }
-      }
-    },
-    
-    "umbral_command": {
-      "basic": {
-        "name": "Dominate",
-        "description": "Deal {power}% ATK and control enemy for 1 turn",
-        "type": "mind_control",
-        "element": "dark",
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "skill": {
-        "name": "Shadow Legion",
-        "description": "Summon {power} shadow copies",
-        "type": "clone",
-        "cooldown": 5,
-        "scaling": {
-          "1": 1,
-          "2": 2,
-          "3": 2,
-          "4": 3
-        }
-      },
-      "ultimate": {
-        "name": "Eclipse",
-        "description": "All enemies lose {power}% accuracy and damage",
-        "type": "mass_debuff",
-        "cooldown": 6,
-        "scaling": {
-          "1": 25,
-          "2": 30,
-          "3": 35,
-          "4": 40
-        }
-      },
-      "passive": {
-        "name": "Dark Authority",
-        "description": "Summons/clones have {power}% of your stats",
-        "type": "minion_boost",
-        "scaling": {
-          "1": 60,
-          "2": 70,
-          "3": 80,
-          "4": 90
-        }
-      }
-    },
-    
-    "radiant_chaos": {
-      "basic": {
-        "name": "Solar Flare",
-        "description": "Deal {power}% ATK and blind enemy",
-        "type": "blind_damage",
-        "element": "light",
-        "scaling": {
-          "1": 95,
-          "2": 105,
-          "3": 115,
-          "4": 125
-        }
-      },
-      "skill": {
-        "name": "Burning Light",
-        "description": "Next {power} attacks burn enemies",
-        "type": "burn_attacks",
-        "cooldown": 3,
-        "scaling": {
-          "1": 2,
-          "2": 3,
-          "3": 3,
-          "4": 4
-        }
-      },
-      "ultimate": {
-        "name": "Supernova",
-        "description": "Deal {power}% ATK to all, more to dark types",
-        "type": "typed_aoe",
-        "cooldown": 5,
-        "scaling": {
-          "1": 120,
-          "2": 140,
-          "3": 160,
-          "4": 180
-        }
-      },
-      "passive": {
-        "name": "Radiant Fury",
-        "description": "+{power}% damage to dark enemies",
-        "type": "type_advantage",
-        "scaling": {
-          "1": 30,
-          "2": 35,
-          "3": 40,
-          "4": 45
-        }
-      }
-    },
-    
-    "radiant_order": {
-      "basic": {
-        "name": "Holy Light",
-        "description": "Deal {power}% ATK, heal ally for 30%",
-        "type": "heal_damage",
-        "element": "light",
-        "scaling": {
-          "1": 80,
-          "2": 90,
-          "3": 100,
-          "4": 110
-        }
-      },
-      "skill": {
-        "name": "Blessing",
-        "description": "Remove debuffs and grant {power}% all stats",
-        "type": "cleanse_buff",
-        "cooldown": 4,
-        "scaling": {
-          "1": 15,
-          "2": 20,
-          "3": 25,
-          "4": 30
-        }
-      },
-      "ultimate": {
-        "name": "Divine Grace",
-        "description": "Revive fallen ally with {power}% HP",
-        "type": "revive",
-        "cooldown": 7,
-        "scaling": {
-          "1": 40,
-          "2": 50,
-          "3": 60,
-          "4": 70
-        }
-      },
-      "passive": {
-        "name": "Sanctuary",
-        "description": "Allies take {power}% less damage",
-        "type": "team_protection",
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
-        }
-      }
-    },
-    
-    "radiant_hunt": {
-      "basic": {
-        "name": "Light Arrow",
-        "description": "Deal {power}% ATK, reveals hidden enemies",
-        "type": "true_sight_damage",
-        "element": "light",
-        "scaling": {
-          "1": 100,
-          "2": 110,
-          "3": 120,
-          "4": 130
-        }
-      },
-      "skill": {
-        "name": "Guiding Light",
-        "description": "Team gains {power}% accuracy and crit",
-        "type": "team_precision",
-        "cooldown": 4,
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      },
-      "ultimate": {
-        "name": "Judgment Ray",
-        "description": "Deal {power}% ATK, always crits if enemy debuffed",
-        "type": "conditional_crit",
-        "cooldown": 4,
-        "scaling": {
-          "1": 180,
-          "2": 200,
-          "3": 220,
-          "4": 240
-        }
-      },
-      "passive": {
-        "name": "Eagle Eye",
-        "description": "Can't miss, +{power}% crit damage",
-        "type": "perfect_accuracy",
-        "scaling": {
-          "1": 30,
-          "2": 40,
-          "3": 50,
-          "4": 60
-        }
-      }
-    },
-    
-    "radiant_wisdom": {
-      "basic": {
-        "name": "Enlighten",
-        "description": "Deal {power}% ATK, reduce enemy resistances",
-        "type": "resistance_shred",
-        "element": "light",
-        "scaling": {
-          "1": 85,
-          "2": 95,
-          "3": 105,
-          "4": 115
-        }
-      },
-      "skill": {
-        "name": "Clarity",
-        "description": "Remove all debuffs, gain {power} energy",
-        "type": "self_cleanse",
-        "cooldown": 3,
-        "scaling": {
-          "1": 3,
-          "2": 4,
-          "3": 5,
-          "4": 6
-        }
-      },
-      "ultimate": {
-        "name": "Transcendence",
-        "description": "Become immune to debuffs for {power} turns",
-        "type": "debuff_immunity",
-        "cooldown": 6,
-        "scaling": {
-          "1": 2,
-          "2": 2,
-          "3": 3,
-          "4": 3
-        }
-      },
-      "passive": {
-        "name": "Inner Light",
-        "description": "Heal {power}% max HP when using abilities",
-        "type": "ability_heal",
-        "scaling": {
-          "1": 10,
-          "2": 12,
-          "3": 14,
-          "4": 16
-        }
-      }
-    },
-    
-    "radiant_command": {
-      "basic": {
-        "name": "Divine Command",
-        "description": "Deal {power}% ATK, ally copies this attack",
-        "type": "echo_damage",
-        "element": "light",
-        "scaling": {
-          "1": 90,
-          "2": 100,
-          "3": 110,
-          "4": 120
-        }
-      },
-      "skill": {
-        "name": "Rally",
-        "description": "All allies gain {power}% stats and heal 20%",
-        "type": "mass_buff",
-        "cooldown": 5,
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
-        }
-      },
-      "ultimate": {
-        "name": "Crusade",
-        "description": "All allies attack with {power}% bonus damage",
-        "type": "team_attack",
-        "cooldown": 5,
-        "scaling": {
-          "1": 50,
-          "2": 60,
-          "3": 70,
-          "4": 80
-        }
-      },
-      "passive": {
-        "name": "Inspiring Presence",
-        "description": "Allies gain {power}% of your highest stat",
-        "type": "stat_share",
-        "scaling": {
-          "1": 20,
-          "2": 25,
-          "3": 30,
-          "4": 35
+        "tier_versions": {
+          "I": {"tiers": "1-2", "power": 25},
+          "II": {"tiers": "3-4", "power": 40}
         }
       }
     }

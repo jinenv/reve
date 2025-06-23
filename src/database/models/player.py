@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, date
 import random
 from sqlalchemy import Column, BigInteger, Index
-from src.utils.game_constants import Elements, EspritTypes, Tiers, GameConstants, get_fusion_result, FUSION_CHART
+from src.utils.game_constants import Elements, Tiers, GameConstants, get_fusion_result, FUSION_CHART
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
 from src.utils.transaction_logger import transaction_logger, TransactionType
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
 
 class Player(SQLModel, table=True):
+    __tablename__: str = "player" 
     # SQLModel will automatically use "player" as table name
     __table_args__ = (
         Index("ix_player_level", "level"),
@@ -176,10 +177,6 @@ class Player(SQLModel, table=True):
         element = Elements.from_string(leader_stack.element)
         element_bonuses = element.bonuses if element else {}
         
-        # Get type bonuses using new constants
-        esprit_type = EspritTypes.from_string(base.type)
-        type_bonuses = esprit_type.bonuses if esprit_type else {}
-        
         # Apply awakening multiplier to leadership bonuses
         awakening_multiplier = 1.0 + (leader_stack.awakening_level * 0.1)  # 10% per star
         
@@ -191,18 +188,10 @@ class Player(SQLModel, table=True):
             else:
                 scaled_element_bonuses[key] = value
         
-        scaled_type_bonuses = {}
-        for key, value in type_bonuses.items():
-            if isinstance(value, (int, float)) and value > 0:
-                scaled_type_bonuses[key] = value * awakening_multiplier
-            else:
-                scaled_type_bonuses[key] = value
-        
         bonuses = {
             "element": leader_stack.element,
             "type": base.type,
             "element_bonuses": scaled_element_bonuses,
-            "type_bonuses": scaled_type_bonuses,
             "awakening_level": leader_stack.awakening_level,
             "awakening_multiplier": awakening_multiplier,
             "tier": leader_stack.tier

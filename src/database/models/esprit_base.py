@@ -1,25 +1,28 @@
 # src/database/models/esprit_base.py
-from typing import Optional, List, Any
+from typing import Dict, Optional, List, Any
 from sqlmodel import SQLModel, Field, select, col
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy import Column, Index, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import validator
-from src.utils.game_constants import Elements, EspritTypes, Tiers
+from src.utils.game_constants import Elements, Tiers
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class EspritBase(SQLModel, table=True):
+    __tablename__: str = "esprit_base"
     # SQLModel will use "espritbase" as table name by default
     __table_args__ = (
         Index("ix_espritbase_element_tier", "element", "base_tier"),
-        Index("ix_espritbase_type_tier", "type", "base_tier"),
+        # Index("ix_espritbase_type_tier", "type", "base_tier"),  # <- DELETE THIS LINE
         {'extend_existing': True}
     )
     
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     element: str = Field(index=True)  # inferno, verdant, abyssal, tempest, umbral, radiant
-    type: str = Field(default="chaos", index=True)  # chaos, order, hunt, wisdom, command
     base_tier: int = Field(index=True)
     tier_name: Optional[str] = Field(default=None, index=True)  # Cached tier name
     
@@ -53,19 +56,6 @@ class EspritBase(SQLModel, table=True):
             raise ValueError(f"Invalid element: {v}. Must be one of: {', '.join(valid_elements)}")
         
         return v.title()  # Ensure consistent casing (Inferno, Verdant, etc.)
-    
-    @validator('type')
-    def validate_type(cls, v):
-        """Ensure type is valid and properly cased"""
-        if not v:
-            raise ValueError("Type cannot be empty")
-        
-        esprit_type = EspritTypes.from_string(v)
-        if not esprit_type:
-            valid_types = [t.name for t in EspritTypes]
-            raise ValueError(f"Invalid type: {v}. Must be one of: {', '.join(valid_types)}")
-        
-        return v.lower()  # Ensure consistent casing (chaos, order, etc.)
     
     @validator('base_tier')
     def validate_tier(cls, v):
@@ -129,11 +119,6 @@ class EspritBase(SQLModel, table=True):
     
     # --- DISPLAY METHODS ---
     
-    def get_type_description(self) -> str:
-        """Get description of this Esprit's type"""
-        esprit_type = EspritTypes.from_string(self.type)
-        return esprit_type.bonuses.get("description", "") if esprit_type else ""
-    
     def get_element_color(self) -> int:
         """Get Discord color for this element"""
         element = Elements.from_string(self.element)
@@ -143,11 +128,6 @@ class EspritBase(SQLModel, table=True):
         """Get emoji for this element"""
         element = Elements.from_string(self.element)
         return element.emoji if element else "🔮"
-    
-    def get_type_emoji(self) -> str:
-        """Get emoji for this type"""
-        esprit_type = EspritTypes.from_string(self.type)
-        return esprit_type.emoji if esprit_type else "❓"
     
     def get_tier_display(self) -> str:
         """Get tier display with Roman numerals"""
@@ -160,9 +140,9 @@ class EspritBase(SQLModel, table=True):
         return tier_data.name if tier_data else "Unknown"
     
     def get_full_display_name(self) -> str:
-        """Get full display name with element and type"""
-        return f"{self.get_element_emoji()} {self.name} {self.get_type_emoji()}"
-    
+        """Get full display name with element"""
+        return f"{self.get_element_emoji()} {self.name}"
+
     def get_stats_display(self) -> str:
         """Get formatted stats display"""
         return f"ATK: {self.base_atk:,} | DEF: {self.base_def:,} | HP: {self.base_hp:,}"
@@ -183,44 +163,232 @@ class EspritBase(SQLModel, table=True):
         """Validate element"""
         return Elements.from_string(self.element) is not None
     
-    def is_valid_type(self) -> bool:
-        """Validate type"""
-        return EspritTypes.from_string(self.type) is not None
-    
     def is_valid_tier(self) -> bool:
         """Validate tier"""
         return Tiers.is_valid(self.base_tier)
     
     # --- ABILITY METHODS ---
     
-    def get_ability_details(self) -> dict:
+    
+    def get_ability_details(self) -> Dict[str, Any]:
         """
         Get full ability details based on tier.
         Tiers 1-4: Universal abilities based on element/type
         Tiers 5+: Unique abilities from esprit_abilities.json
+        
+        Returns a properly structured dictionary that won't make Pylance cry.
         """
-        from src.utils.ability_manager import AbilityManager
+        from src.utils.ability_system import AbilitySystem
         
-        # Get abilities based on tier
-        abilities = AbilityManager.get_esprit_abilities(
-            esprit_name=self.name,
-            tier=self.base_tier,
-            element=self.element,
-            type=self.type
-        )
-        
-        return abilities
+        try:
+            # Get abilities with guaranteed type safety
+            ability_set = AbilitySystem.get_esprit_abilities(
+                esprit_name=self.name,
+                tier=self.base_tier,
+                element=self.element
+            )
+            
+            # Convert to dictionary with proper structure
+            abilities_dict = {}
+            
+            # Basic ability (guaranteed Optional[Ability])
+            if ability_set.basic is not None:
+                abilities_dict["basic"] = {
+                    "name": ability_set.basic.name,
+                    "description": ability_set.basic.description,
+                    "type": ability_set.basic.type,
+                    "power": ability_set.basic.power,
+                    "cooldown": ability_set.basic.cooldown,
+                    "duration": ability_set.basic.duration,
+                    "effects": ability_set.basic.effects or [],
+                    "element": ability_set.basic.element
+                }
+            
+            # Ultimate ability (guaranteed Optional[Ability])
+            if ability_set.ultimate is not None:
+                abilities_dict["ultimate"] = {
+                    "name": ability_set.ultimate.name,
+                    "description": ability_set.ultimate.description,
+                    "type": ability_set.ultimate.type,
+                    "power": ability_set.ultimate.power,
+                    "cooldown": ability_set.ultimate.cooldown,
+                    "duration": ability_set.ultimate.duration,
+                    "effects": ability_set.ultimate.effects or [],
+                    "element": ability_set.ultimate.element
+                }
+            
+            # Passive abilities (guaranteed List[Ability])
+            if ability_set.passives:
+                abilities_dict["passives"] = []
+                for passive in ability_set.passives:
+                    abilities_dict["passives"].append({
+                        "name": passive.name,
+                        "description": passive.description,
+                        "type": passive.type,
+                        "power": passive.power,
+                        "cooldown": passive.cooldown,
+                        "duration": passive.duration,
+                        "effects": passive.effects or [],
+                        "element": passive.element
+                    })
+            
+            # Add metadata
+            abilities_dict["tier"] = self.base_tier
+            abilities_dict["element"] = self.element
+            abilities_dict["passive_count"] = ability_set.get_passive_count()
+            
+            return abilities_dict
+            
+        except Exception as e:
+            # Fallback with error logging
+            logger.error(f"Error getting ability details for {self.name}: {e}")
+            return {
+                "error": f"Could not load abilities for {self.name}",
+                "tier": self.base_tier,
+                "element": self.element,
+                "passive_count": 0
+            }
     
-    def get_formatted_abilities(self) -> list[str]:
-        """Get abilities formatted for Discord display"""
-        from src.utils.ability_manager import AbilityManager
+    def get_formatted_abilities(self) -> List[str]:
+        """
+        Get abilities formatted for Discord display.
+        This method is already correct and doesn't need changes.
+        """
+        from src.utils.ability_system import AbilitySystem
         
-        return AbilityManager.get_abilities_for_embed(
-            esprit_name=self.name,
-            tier=self.base_tier,
-            element=self.element,
-            type=self.type
-        )
+        try:
+            return AbilitySystem.get_abilities_for_embed(
+                esprit_name=self.name,
+                tier=self.base_tier,
+                element=self.element
+            )
+        except Exception as e:
+            logger.error(f"Error formatting abilities for {self.name}: {e}")
+            return [f"❌ **Error loading abilities for {self.name}**"]
+    
+    def has_unique_abilities(self) -> bool:
+        """Check if this Esprit has unique abilities (tier 5+)"""
+        return self.base_tier >= 5
+    
+    def get_ability_summary(self) -> str:
+        """Get a brief summary of abilities for display"""
+        try:
+            from src.utils.ability_system import AbilitySystem
+            
+            ability_set = AbilitySystem.get_esprit_abilities(
+                esprit_name=self.name,
+                tier=self.base_tier,
+                element=self.element
+            )
+            
+            summary_parts = []
+            
+            if ability_set.basic:
+                summary_parts.append(f"Basic: {ability_set.basic.name}")
+            
+            if ability_set.ultimate:
+                summary_parts.append(f"Ultimate: {ability_set.ultimate.name}")
+            
+            passive_count = ability_set.get_passive_count()
+            if passive_count > 0:
+                if passive_count == 1:
+                    summary_parts.append(f"Passive: {ability_set.passives[0].name}")
+                else:
+                    summary_parts.append(f"Passives: {passive_count} abilities")
+            
+            if not summary_parts:
+                return "No abilities defined"
+            
+            return " | ".join(summary_parts)
+            
+        except Exception as e:
+            logger.error(f"Error getting ability summary for {self.name}: {e}")
+            return f"Error loading abilities"
+    
+    def get_passive_ability_names(self) -> List[str]:
+        """Get list of passive ability names"""
+        try:
+            from src.utils.ability_system import AbilitySystem
+            
+            ability_set = AbilitySystem.get_esprit_abilities(
+                esprit_name=self.name,
+                tier=self.base_tier,
+                element=self.element
+            )
+            
+            return [passive.name for passive in ability_set.passives]
+            
+        except Exception as e:
+            logger.error(f"Error getting passive names for {self.name}: {e}")
+            return []
+    
+    def validate_abilities(self) -> Dict[str, Any]:
+        """
+        Validate that this Esprit's abilities are properly configured.
+        Returns validation results.
+        """
+        try:
+            from src.utils.ability_system import AbilitySystem
+            
+            ability_set = AbilitySystem.get_esprit_abilities(
+                esprit_name=self.name,
+                tier=self.base_tier,
+                element=self.element
+            )
+            
+            validation = {
+                "valid": True,
+                "errors": [],
+                "warnings": [],
+                "has_basic": ability_set.basic is not None,
+                "has_ultimate": ability_set.ultimate is not None,
+                "passive_count": ability_set.get_passive_count(),
+                "expected_passive_count": 1 if self.base_tier <= 3 else (2 if self.base_tier <= 10 else 3)
+            }
+            
+            # Check if abilities exist
+            if not ability_set.has_any_abilities():
+                validation["valid"] = False
+                validation["errors"].append("No abilities found")
+            
+            # Validate basic ability
+            if ability_set.basic is None:
+                validation["warnings"].append("Missing basic ability")
+            elif ability_set.basic.power <= 0:
+                validation["errors"].append("Basic ability has invalid power")
+                validation["valid"] = False
+            
+            # Validate ultimate ability
+            if ability_set.ultimate is None:
+                validation["warnings"].append("Missing ultimate ability")
+            elif ability_set.ultimate.power <= 0:
+                validation["errors"].append("Ultimate ability has invalid power")
+                validation["valid"] = False
+            
+            # Validate passive count
+            expected_passives = validation["expected_passive_count"]
+            actual_passives = validation["passive_count"]
+            
+            if actual_passives == 0:
+                validation["warnings"].append("No passive abilities found")
+            elif actual_passives != expected_passives:
+                validation["warnings"].append(
+                    f"Expected {expected_passives} passives for tier {self.base_tier}, found {actual_passives}"
+                )
+            
+            return validation
+            
+        except Exception as e:
+            logger.error(f"Error validating abilities for {self.name}: {e}")
+            return {
+                "valid": False,
+                "errors": [f"Validation failed: {str(e)}"],
+                "warnings": [],
+                "has_basic": False,
+                "has_ultimate": False,
+                "passive_count": 0,
+                "expected_passive_count": 0
+            }
     
     # --- CLASS METHODS FOR QUERIES ---
     
@@ -228,13 +396,6 @@ class EspritBase(SQLModel, table=True):
     async def get_by_element(cls, session: AsyncSession, element: str) -> List["EspritBase"]:
         """Get all Esprits of a specific element"""
         stmt = select(cls).where(cls.element == element.title())
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
-    @classmethod
-    async def get_by_type(cls, session: AsyncSession, esprit_type: str) -> List["EspritBase"]:
-        """Get all Esprits of a specific type"""
-        stmt = select(cls).where(cls.type == esprit_type.lower())
         result = await session.execute(stmt)
         return list(result.scalars().all())
     
@@ -275,7 +436,6 @@ class EspritBase(SQLModel, table=True):
         session: AsyncSession,
         element: Optional[str] = None,
         tier: Optional[int] = None,
-        esprit_type: Optional[str] = None
     ) -> Optional["EspritBase"]:
         """Get a random Esprit matching the given criteria"""
         stmt = select(cls)
@@ -284,8 +444,6 @@ class EspritBase(SQLModel, table=True):
             stmt = stmt.where(cls.element == element.title())
         if tier:
             stmt = stmt.where(cls.base_tier == tier)
-        if esprit_type:
-            stmt = stmt.where(cls.type == esprit_type.lower())
         
         stmt = stmt.order_by(func.random()).limit(1)
         

@@ -1,0 +1,30 @@
+{
+  "esprits": [
+    {
+      "name": "FILL_ME_IN",
+      "element": "Inferno|Verdant|Abyssal|Tempest|Umbral|Radiant",
+      "type": "chaos|order|hunt|wisdom|command",
+      "base_tier": 1,
+      "tier_name": "common",
+      "base_atk": 15,
+      "base_def": 8,
+      "base_hp": 45,
+      "description": "WRITE_SOMETHING_CUTE_HERE",
+      "image_url": "/assets/esprits/tier_X/filename.png",
+      "abilities": null
+    },
+    {
+      "name": "Glacivern the Absolute",
+      "element": "Abyssal",
+      "type": "chaos",
+      "base_tier": 14,
+      "tier_name": "Absolute",
+      "base_atk": 213826957,
+      "base_def": 71275652,
+      "base_hp": 427653740,
+      "description": "Carved from ancient ice and rage, Glacivern freezes time itself before delivering a killing blow.",
+      "image_url": "/assets/esprits/absolute/glacivern_the_absolute.png",
+      "abilities": null
+    }
+  ]
+}
