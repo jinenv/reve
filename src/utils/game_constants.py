@@ -2,6 +2,7 @@
 """
 Unified game constants system combining all element, type, tier, and UI constants.
 Single source of truth for all game data lookups.
+UPDATED: Added stat ranges for more diverse Esprits within tiers
 """
 
 from typing import Dict, List, Optional, Any, Tuple
@@ -105,11 +106,12 @@ class Elements(Enum):
 
 @dataclass
 class TierData:
-    """Complete tier information"""
+    """Complete tier information with stat ranges for variety"""
     tier: int
     name: str
     roman: str
-    base_attack: int
+    stat_range: Tuple[int, int]  # NEW: (min_total, max_total) stats for this tier
+    base_attack: int             # Representative attack for scaling calculations
     combine_success_rate: float
     combine_cost_jijies: int
     fragment_cost: int
@@ -120,30 +122,35 @@ class TierData:
     def display_name(self) -> str:
         """Get full display name"""
         return f"Tier {self.roman} - {self.name}"
+    
+    @property
+    def stat_range_display(self) -> str:
+        """Get formatted stat range"""
+        return f"{self.stat_range[0]}-{self.stat_range[1]} total stats"
 
 
 class Tiers:
-    """Tier management system"""
+    """Tier management system with stat ranges for design variety"""
     
     _TIER_DATA = {
-        1: TierData(1, "Common", "I", 30, 0.80, 500, 10, (1, 3), 0x808080),              # was 15
-        2: TierData(2, "Uncommon", "II", 106, 0.70, 1000, 10, (1, 3), 0x808080),        # was 53
-        3: TierData(3, "Rare", "III", 368, 0.65, 2500, 10, (1, 3), 0x00ff00),          # was 184
-        4: TierData(4, "Epic", "IV", 1288, 0.60, 6000, 25, (2, 5), 0x0099ff),          # was 644
-        5: TierData(5, "Mythic", "V", 4508, 0.55, 15000, 25, (2, 5), 0x9932cc),        # was 2254
-        6: TierData(6, "Celestial", "VI", 15778, 0.50, 40000, 25, (2, 5), 0x9932cc),   # was 7889
-        7: TierData(7, "Divine", "VII", 55224, 0.45, 100000, 50, (3, 8), 0xff8c00),    # was 27612
-        8: TierData(8, "Primal", "VIII", 193284, 0.40, 250000, 50, (3, 8), 0xff0066),  # was 96642
-        9: TierData(9, "Sovereign", "IX", 676494, 0.35, 800000, 50, (3, 8), 0xffff00), # was 338247
-        10: TierData(10, "Astral", "X", 2367730, 0.30, 3000000, 100, (5, 12), 0x00ffff),        # was 1183865
-        11: TierData(11, "Ethereal", "XI", 8287056, 0.25, 10000000, 100, (5, 12), 0x00ffff),    # was 4143528
-        12: TierData(12, "Transcendent", "XII", 29004692, 0.20, 50000000, 100, (5, 12), 0x00ffff), # was 14502346
-        13: TierData(13, "Empyrean", "XIII", 101516422, 0.18, 150000000, 250, (8, 18), 0x00ffff),  # was 50758211
-        14: TierData(14, "Absolute", "XIV", 355307480, 0.16, 500000000, 250, (8, 18), 0x00ffff),   # was 177653740
-        15: TierData(15, "Genesis", "XV", 1243576180, 0.14, 1500000000, 250, (8, 18), 0x00ffff),   # was 621788090
-        16: TierData(16, "Legendary", "XVI", 4352516630, 0.12, 5000000000, 500, (12, 25), 0x00ffff), # was 2176258315
-        17: TierData(17, "Void", "XVII", 15233808206, 0.10, 15000000000, 500, (12, 25), 0x00ffff),   # was 7616904103
-        18: TierData(18, "Singularity", "XVIII", 53318328722, 0.05, 50000000000, 500, (12, 25), 0x00ffff) # was 26659164361
+        1: TierData(1, "Common", "I", (30, 60), 30, 0.80, 500, 10, (1, 3), 0x808080),
+        2: TierData(2, "Uncommon", "II", (80, 140), 106, 0.70, 1000, 10, (1, 3), 0x808080),
+        3: TierData(3, "Rare", "III", (250, 500), 368, 0.65, 2500, 10, (1, 3), 0x00ff00),
+        4: TierData(4, "Epic", "IV", (800, 1800), 1288, 0.60, 6000, 25, (2, 5), 0x0099ff),
+        5: TierData(5, "Mythic", "V", (3000, 6500), 4508, 0.55, 15000, 25, (2, 5), 0x9932cc),
+        6: TierData(6, "Celestial", "VI", (10000, 22000), 15778, 0.50, 40000, 25, (2, 5), 0x9932cc),
+        7: TierData(7, "Divine", "VII", (35000, 75000), 55224, 0.45, 100000, 50, (3, 8), 0xff8c00),
+        8: TierData(8, "Primal", "VIII", (120000, 270000), 193284, 0.40, 250000, 50, (3, 8), 0xff0066),
+        9: TierData(9, "Sovereign", "IX", (420000, 950000), 676494, 0.35, 800000, 50, (3, 8), 0xffff00),
+        10: TierData(10, "Astral", "X", (1500000, 3300000), 2367730, 0.30, 3000000, 100, (5, 12), 0x00ffff),
+        11: TierData(11, "Ethereal", "XI", (5200000, 11500000), 8287056, 0.25, 10000000, 100, (5, 12), 0x00ffff),
+        12: TierData(12, "Transcendent", "XII", (18000000, 40000000), 29004692, 0.20, 50000000, 100, (5, 12), 0x00ffff),
+        13: TierData(13, "Empyrean", "XIII", (65000000, 140000000), 101516422, 0.18, 150000000, 250, (8, 18), 0x00ffff),
+        14: TierData(14, "Absolute", "XIV", (220000000, 490000000), 355307480, 0.16, 500000000, 250, (8, 18), 0x00ffff),
+        15: TierData(15, "Genesis", "XV", (780000000, 1700000000), 1243576180, 0.14, 1500000000, 250, (8, 18), 0x00ffff),
+        16: TierData(16, "Legendary", "XVI", (2700000000, 6000000000), 4352516630, 0.12, 5000000000, 500, (12, 25), 0x00ffff),
+        17: TierData(17, "Void", "XVII", (9500000000, 21000000000), 15233808206, 0.10, 15000000000, 500, (12, 25), 0x00ffff),
+        18: TierData(18, "Singularity", "XVIII", (33000000000, 73000000000), 53318328722, 0.05, 50000000000, 500, (12, 25), 0x00ffff)
     }
     
     @classmethod
@@ -162,9 +169,23 @@ class Tiers:
         return tier in cls._TIER_DATA
     
     @classmethod
+    def get_stat_range(cls, tier: int) -> Optional[Tuple[int, int]]:
+        """Get valid stat range for a tier"""
+        tier_data = cls.get(tier)
+        return tier_data.stat_range if tier_data else None
+    
+    @classmethod
+    def validate_esprit_stats(cls, tier: int, total_stats: int) -> bool:
+        """Validate if an Esprit's total stats are within tier range"""
+        stat_range = cls.get_stat_range(tier)
+        if not stat_range:
+            return False
+        return stat_range[0] <= total_stats <= stat_range[1]
+    
+    @classmethod
     def get_fusion_success_rate(cls, tier: int, same_element: bool) -> float:
         """Get fusion success rate for a tier"""
-        base_rate = cls._TIER_DATA.get(tier, TierData(0, "", "", 0, 0.5, 0, 0, (0, 0), 0)).combine_success_rate
+        base_rate = cls._TIER_DATA.get(tier, TierData(0, "", "", (0, 0), 0, 0.5, 0, 0, (0, 0), 0)).combine_success_rate
         
         # Apply element penalty if different elements
         if not same_element:
@@ -252,6 +273,47 @@ class GameConstants:
         base = 100
         exponent = 1.5
         return int(base * (level ** exponent))
+    
+    @classmethod
+    def calculate_esprit_stats(
+        cls, 
+        element: str, 
+        total_stats: int, 
+        archetype: Optional[str] = None
+    ) -> Dict[str, int]:
+        """
+        Calculate ATK/DEF/HP distribution for an Esprit.
+        
+        Args:
+            element: Element name (inferno, verdant, etc.)
+            total_stats: Total stat budget to distribute
+            archetype: Optional override ('tank', 'dps', 'balanced')
+        """
+        # Get element distribution or use balanced as fallback
+        distribution = cls.ELEMENT_STAT_DISTRIBUTION.get(
+            element.lower(), 
+            {"atk": 0.33, "def": 0.33, "hp": 0.34}  # Balanced fallback
+        )
+        
+        # Apply archetype overrides if specified
+        if archetype == "tank":
+            distribution = {"atk": 0.20, "def": 0.25, "hp": 0.55}
+        elif archetype == "dps":
+            distribution = {"atk": 0.75, "def": 0.05, "hp": 0.20}
+        elif archetype == "balanced":
+            distribution = {"atk": 0.40, "def": 0.20, "hp": 0.40}
+        
+        # Calculate stats
+        atk = max(1, int(total_stats * distribution["atk"]))
+        def_stat = max(1, int(total_stats * distribution["def"]))
+        hp = max(1, total_stats - atk - def_stat)  # HP gets remainder
+        
+        return {
+            "atk": atk,
+            "def": def_stat,
+            "hp": hp,
+            "total": atk + def_stat + hp
+        }
 
 
 # Fusion chart data (element combinations)
