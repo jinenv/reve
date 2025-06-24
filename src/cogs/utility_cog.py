@@ -1,16 +1,17 @@
 # src/cogs/utility.py
+from typing import Optional
 import disnake
 from disnake.ext import commands
 from datetime import datetime
 import platform
 import psutil
 
+from src.utils.config_manager import ConfigManager
 from src.utils.database_service import DatabaseService
 from src.utils.embed_colors import EmbedColors
 from src.utils.redis_service import RedisService
 from src.database.models import Player, Esprit, EspritBase
 from sqlalchemy import select, func
-
 
 class HelpDropdown(disnake.ui.Select):
     """Dropdown for help categories"""
@@ -580,6 +581,310 @@ class Utility(commands.Cog):
         
         await inter.edit_original_response(embed=embed)
 
+    @commands.slash_command(name="profile", description="View your adventure profile and stats")
+    async def profile(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user: Optional[disnake.User] = commands.Param(
+            default=None,
+            description="User to view (defaults to yourself)"
+        )
+    ):
+        """Show player profile with all stats"""
+        await inter.response.defer()
+        
+        # Default to self if no user specified
+        target_user = user or inter.author
+        
+        try:
+            async with DatabaseService.get_session() as session:
+                # Get player
+                stmt = select(Player).where(Player.discord_id == target_user.id)  # type: ignore
+                player = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not player:
+                    embed = disnake.Embed(
+                        title="Profile Not Found",
+                        description=f"{target_user.mention} hasn't started their journey yet!",
+                        color=EmbedColors.WARNING
+                    )
+                    await inter.edit_original_response(embed=embed)
+                    return
+                
+                # Regenerate resources for accurate display
+                player.regenerate_energy()
+                player.regenerate_stamina()
+                
+                # Get total power
+                power_stats = await player.recalculate_total_power(session)
+                
+                # Get leader info if set
+                leader_info = None
+                if player.leader_esprit_stack_id:
+                    from src.database.models import Esprit, EspritBase
+                    stmt = select(Esprit, EspritBase).where(
+                        Esprit.id == player.leader_esprit_stack_id, # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id # type: ignore
+                    )
+                    result = (await session.execute(stmt)).first()
+                    if result:
+                        leader_stack, leader_base = result
+                        leader_info = (leader_stack, leader_base)
+                
+                # Create profile embed
+                embed = disnake.Embed(
+                    title=f"{target_user.display_name}'s Profile",
+                    color=EmbedColors.DEFAULT
+                )
+                
+                # Basic info
+                embed.add_field(
+                    name="📊 Basic Info",
+                    value=(
+                        f"**Level:** {player.level}\n"
+                        f"**XP:** {player.experience:,}/{player.xp_for_next_level():,}\n"
+                        f"**Joined:** {self._format_date(player.created_at)}"
+                    ),
+                    inline=True
+                )
+                
+                # Resources
+                embed.add_field(
+                    name="💰 Resources",
+                    value=(
+                        f"**Jijies:** {player.jijies:,}\n"
+                        f"**Erythl:** {player.erythl}\n"
+                        f"**Energy:** {player.energy}/{player.max_energy} ⚡"
+                    ),
+                    inline=True
+                )
+                
+                # Combat Power
+                total_power = power_stats["total"]
+                embed.add_field(
+                    name="⚔️ Combat Power",
+                    value=(
+                        f"**Total:** {total_power:,}\n"
+                        f"**ATK:** {power_stats['atk']:,}\n"
+                        f"**DEF:** {power_stats['def']:,}"
+                    ),
+                    inline=True
+                )
+                
+                # Leader Esprit
+                if leader_info:
+                    leader_stack, leader_base = leader_info
+                    stars = "⭐" * leader_stack.awakening_level if leader_stack.awakening_level > 0 else ""
+                    embed.add_field(
+                        name="👑 Leader Esprit",
+                        value=(
+                            f"{leader_base.get_element_emoji()} **{leader_base.name}** {stars}\n"
+                            f"Tier {leader_base.base_tier} | {leader_stack.quantity:,} owned"
+                        ),
+                        inline=False
+                    )
+                
+                # Progress Stats
+                embed.add_field(
+                    name="📈 Progress",
+                    value=(
+                        f"**Quests:** {player.total_quests_completed:,}\n"
+                        f"**Fusions:** {player.successful_fusions}/{player.total_fusions}\n"
+                        f"**Echoes:** {player.total_echoes_opened:,}"
+                    ),
+                    inline=True
+                )
+                
+                # Collection Stats
+                from src.database.models import Esprit
+                unique_stmt = select(func.count(Esprit.id)).where(Esprit.owner_id == player.id) # type: ignore
+                unique_count = (await session.execute(unique_stmt)).scalar() or 0
+                
+                embed.add_field(
+                    name="✨ Collection",
+                    value=(
+                        f"**Unique:** {unique_count}\n"
+                        f"**Awakenings:** {player.total_awakenings}\n"
+                        f"**Favorite:** {player.favorite_element or 'None'}"
+                    ),
+                    inline=True
+                )
+                
+                # Activity
+                embed.add_field(
+                    name="🕐 Activity",
+                    value=(
+                        f"**Last Quest:** {self._format_time_ago(player.last_quest)}\n"
+                        f"**Last Active:** {self._format_time_ago(player.last_active)}\n"
+                        f"**Daily Streak:** {player.daily_quest_streak}"
+                    ),
+                    inline=True
+                )
+                
+                # Set thumbnail
+                embed.set_thumbnail(url=target_user.display_avatar.url)
+                
+                # Footer with friend code if they have one
+                footer_text = f"ID: {player.id}"
+                if player.friend_code:
+                    footer_text += f" | Friend Code: {player.friend_code}"
+                embed.set_footer(text=footer_text)
+                
+                await inter.edit_original_response(embed=embed)
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            
+            embed = disnake.Embed(
+                title="Profile Error",
+                description="Couldn't load profile data!",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
+    
+    @commands.slash_command(name="index", description="View your items and fragments")
+    async def index(self, inter: disnake.ApplicationCommandInteraction):
+        """Show inventory index with items and fragments"""
+        await inter.response.defer()
+        
+        try:
+            async with DatabaseService.get_session() as session:
+                # Get player
+                stmt = select(Player).where(Player.discord_id == inter.author.id)  # type: ignore
+                player = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not player:
+                    embed = disnake.Embed(
+                        title="Not Registered!",
+                        description="You need to `/start` your journey first!",
+                        color=EmbedColors.ERROR
+                    )
+                    await inter.edit_original_response(embed=embed)
+                    return
+                
+                embed = disnake.Embed(
+                    title="📦 Your Index",
+                    description="All your items and fragments",
+                    color=EmbedColors.DEFAULT
+                )
+                
+                # Items section
+                if player.inventory:
+                    items_text = ""
+                    items_config = ConfigManager.get("items") or {}
+                    
+                    for item_id, quantity in sorted(player.inventory.items()):
+                        if quantity > 0:
+                            item_data = items_config.get("items", {}).get(item_id, {})
+                            item_name = item_data.get("name", item_id.replace("_", " ").title())
+                            item_emoji = item_data.get("icon", "📦")
+                            items_text += f"{item_emoji} **{item_name}** x{quantity}\n"
+                    
+                    if items_text:
+                        embed.add_field(
+                            name="🎒 Items",
+                            value=items_text[:1024],  # Discord limit
+                            inline=False
+                        )
+                else:
+                    embed.add_field(
+                        name="🎒 Items",
+                        value="*No items yet!*",
+                        inline=False
+                    )
+                
+                # Tier Fragments
+                if player.tier_fragments:
+                    tier_text = ""
+                    for tier, count in sorted(player.tier_fragments.items(), key=lambda x: int(x[0])):
+                        if count > 0:
+                            from src.utils.game_constants import Tiers
+                            tier_data = Tiers.get(int(tier))
+                            tier_name = tier_data.name if tier_data else f"Tier {tier}"
+                            tier_text += f"**{tier_name}** Fragments: {count}\n"
+                    
+                    if tier_text:
+                        embed.add_field(
+                            name="🧩 Tier Fragments",
+                            value=tier_text[:1024],
+                            inline=True
+                        )
+                else:
+                    embed.add_field(
+                        name="🧩 Tier Fragments",
+                        value="*No tier fragments yet!*",
+                        inline=True
+                    )
+                
+                # Element Fragments
+                if player.element_fragments:
+                    element_text = ""
+                    from src.utils.game_constants import Elements
+                    
+                    for element, count in sorted(player.element_fragments.items()):
+                        if count > 0:
+                            elem = Elements.from_string(element)
+                            if elem:
+                                element_text += f"{elem.emoji} **{elem.display_name}**: {count}\n"
+                            else:
+                                element_text += f"**{element.title()}**: {count}\n"
+                    
+                    if element_text:
+                        embed.add_field(
+                            name="🔮 Element Fragments",
+                            value=element_text[:1024],
+                            inline=True
+                        )
+                else:
+                    embed.add_field(
+                        name="🔮 Element Fragments",
+                        value="*No element fragments yet!*",
+                        inline=True
+                    )
+                
+                # Summary stats
+                total_items = sum(player.inventory.values()) if player.inventory else 0
+                total_tier_frags = sum(player.tier_fragments.values()) if player.tier_fragments else 0
+                total_elem_frags = sum(player.element_fragments.values()) if player.element_fragments else 0
+                
+                embed.set_footer(
+                    text=f"Total: {total_items} items | {total_tier_frags} tier frags | {total_elem_frags} element frags"
+                )
+                
+                await inter.edit_original_response(embed=embed)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            
+            embed = disnake.Embed(
+                title="Index Error",
+                description="Couldn't load your inventory!",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
+    
+    def _format_date(self, date: datetime) -> str:
+        """Format date nicely"""
+        return date.strftime("%B %d, %Y")
+
+    def _format_time_ago(self, dt: Optional[datetime]) -> str:
+        """Return a human-readable 'time ago' string from a datetime."""
+        if not dt:
+            return "Never"
+        now = datetime.utcnow()
+        diff = now - dt
+        seconds = int(diff.total_seconds())
+        if seconds < 60:
+            return f"{seconds}s ago"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        days = hours // 24
+        return f"{days}d ago"
 
 def setup(bot):
     bot.add_cog(Utility(bot))

@@ -191,34 +191,100 @@
     "duration_hours": 48
   },
   
-  "daily_rewards": {
-    "enabled": true,
-    "reset_time_utc": "00:00",
-    "rewards": [
-      {"day": 1, "jijies": 1000, "items": {"energy_potion": 1}},
-      {"day": 2, "jijies": 2000, "items": {"xp_orb": 5}},
-      {"day": 3, "jijies": 3000, "items": {"stamina_elixir": 1}},
-      {"day": 4, "jijies": 5000, "items": {"capture_charm": 1}},
-      {"day": 5, "jijies": 7500, "items": {"fragment_bundle_small": 1}},
-      {"day": 6, "jijies": 10000, "items": {"echo_key": 1}},
-      {"day": 7, "erythl": 10, "items": {"fusion_catalyst": 1}}
-    ],
-    "streak_bonuses": {
-      "7": {"erythl": 5},
-      "14": {"erythl": 10, "items": {"skill_reset_token": 1}},
-      "28": {"erythl": 25, "items": {"building_slot": 1}}
+"daily_rewards": {
+  "enabled": true,
+  "reset_time_utc": "00:00",
+  "rewards": [
+    {"day": 1, "jijies": 1000, "items": {"energy_potion": 1}},
+    {"day": 2, "jijies": 2000, "items": {"xp_orb": 5}},
+    {"day": 3, "jijies": 3000, "items": {"stamina_elixir": 1}},
+    {"day": 4, "jijies": 5000, "items": {"capture_charm": 1}},
+    {"day": 5, "jijies": 7500, "items": {"fragment_bundle_small": 1}},
+    {"day": 6, "jijies": 10000, "items": {"echo_key": 1}},
+    {"day": 7, "erythl": 10, "items": {"fusion_catalyst": 1}}
+  ],
+  "streak_bonuses": {
+    "7": {"erythl": 5},
+    "14": {"erythl": 10, "items": {"skill_reset_token": 1}},
+    "28": {"erythl": 25, "items": {"building_slot": 1}}
+  }
+},
+
+"starter_system": {
+    "description": "Configuration for new player onboarding",
+    "version": "1.0"
+  },
+  
+  "starter_pool": {
+    "description": "Pool of possible starter Esprits - must be tier 1",
+    "selection_count": 2,
+    "selection_method": "random",
+    "available_starters": [
+      {
+        "name": "Blazeblob",
+        "element": "Inferno",
+        "weight": 1.0
+      },
+      {
+        "name": "Muddroot",
+        "element": "Verdant",
+        "weight": 1.0
+      },
+      {
+        "name": "Droozle",
+        "element": "Abyssal",
+        "weight": 1.0
+      },
+      {
+        "name": "Jelune",
+        "element": "Tempest",
+        "weight": 1.0
+      },
+      {
+        "name": "Gloomb",
+        "element": "Umbral",
+        "weight": 1.0
+      },
+      {
+        "name": "Shynix",
+        "element": "Radiant",
+        "weight": 1.0
+      }
+    ]
+  },
+  
+  "guaranteed_starters": {
+    "description": "If you want specific starters always given",
+    "enabled": false,
+    "esprits": []
+  },
+  
+  "element_selection": {
+    "description": "Alternative: Let players pick their starter element",
+    "enabled": false,
+    "options": {
+      "inferno": ["Blazeblob", "Emberjaw"],
+      "verdant": ["Muddroot", "Verdiant"],
+      "abyssal": ["Droozle", "Crysthide"],
+      "tempest": ["Jelune", "Mistral"],
+      "umbral": ["Gloomb", "Cyghost"],
+      "radiant": ["Shynix"]
     }
   },
   
-  "starter_rewards": {
+  "starter_bonuses": {
+    "description": "Additional items/currency for new players",
     "jijies": 5000,
     "erythl": 10,
     "energy": 100,
-    "faded_echo": 1,
-    "tier_1_fragments": 5,
+    "stamina": 50,
     "items": {
       "energy_potion": 5,
-      "xp_orb": 10
+      "xp_orb": 10,
+      "faded_echo": 1
+    },
+    "tier_fragments": {
+      "1": 5
     }
   },
   

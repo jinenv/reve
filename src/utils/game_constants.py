@@ -1,8 +1,7 @@
 # src/utils/game_constants.py
 """
-Unified game constants system combining all element, type, tier, and UI constants.
-Single source of truth for all game data lookups.
-UPDATED: Added stat ranges for more diverse Esprits within tiers
+Unified game constants system combining all element, type, tier, UI constants, and colors.
+Single source of truth for all game data lookups and visual styling.
 """
 
 from typing import Dict, List, Optional, Any, Tuple
@@ -110,7 +109,7 @@ class TierData:
     tier: int
     name: str
     roman: str
-    stat_range: Tuple[int, int]  # NEW: (min_total, max_total) stats for this tier
+    stat_range: Tuple[int, int]  # (min_total, max_total) stats for this tier
     base_attack: int             # Representative attack for scaling calculations
     combine_success_rate: float
     combine_cost_jijies: int
@@ -192,6 +191,81 @@ class Tiers:
             return base_rate * 0.75  # 25% penalty for different elements
         
         return base_rate
+
+
+class EmbedColors:
+    """Dynamic embed color system for Jiji bot - now integrated with game constants"""
+    
+    # Base colors
+    DEFAULT = 0x2c2d31  # Default dark theme
+    
+    # Status colors
+    SUCCESS = 0x00ff00  # Bright green for victories/success
+    ERROR = 0xff0000    # Red for defeats/errors
+    WARNING = 0xffa500  # Orange for warnings
+    INFO = 0x3498db     # Blue for information
+    
+    # Action colors
+    FUSION_SUCCESS = 0x00ff00  # Green for successful fusion
+    FUSION_FAIL = 0xff6b6b    # Softer red for failed fusion
+    AWAKENING = 0xffd700      # Gold for awakening
+    CAPTURE = 0x9b59b6        # Purple for captures
+    LEVEL_UP = 0x00ffff       # Cyan for level ups
+    
+    # Element colors are now pulled from Elements enum
+    @classmethod
+    def get_element_color(cls, element: str) -> int:
+        """Get color for specific element from Elements enum"""
+        elem = Elements.from_string(element)
+        return elem.color if elem else cls.DEFAULT
+    
+    @classmethod
+    def get_tier_color(cls, tier: int) -> int:
+        """Get color based on tier from Tiers data"""
+        tier_data = Tiers.get(tier)
+        return tier_data.color if tier_data else cls.DEFAULT
+    
+    @classmethod
+    def get_context_color(cls, context: str, **kwargs) -> int:
+        """Get appropriate color based on context"""
+        context_map = {
+            "default": cls.DEFAULT,
+            "success": cls.SUCCESS,
+            "error": cls.ERROR,
+            "warning": cls.WARNING,
+            "info": cls.INFO,
+            "fusion_success": cls.FUSION_SUCCESS,
+            "fusion_fail": cls.FUSION_FAIL,
+            "awakening": cls.AWAKENING,
+            "capture": cls.CAPTURE,
+            "level_up": cls.LEVEL_UP,
+            "victory": cls.SUCCESS,
+            "defeat": cls.ERROR,
+            "quest_complete": cls.SUCCESS,
+            "boss_victory": 0xff8c00,  # Orange/Legendary color
+            "fragment_gained": cls.WARNING,
+            "echo_open": cls.DEFAULT,
+            "profile": cls.DEFAULT,
+            "collection": cls.DEFAULT,
+            "leader_set": cls.INFO
+        }
+        
+        # Handle special cases with kwargs
+        if context == "element" and "element" in kwargs:
+            return cls.get_element_color(kwargs["element"])
+        elif context == "tier" and "tier" in kwargs:
+            return cls.get_tier_color(kwargs["tier"])
+        
+        return context_map.get(context, cls.DEFAULT)
+    
+    @classmethod
+    def get_rarity_color_by_name(cls, rarity: str) -> int:
+        """Get color by rarity name using Tiers data"""
+        # Map rarity names to tiers
+        for tier_data in Tiers.get_all().values():
+            if tier_data.name.lower() == rarity.lower():
+                return tier_data.color
+        return cls.DEFAULT
 
 
 class GameConstants:

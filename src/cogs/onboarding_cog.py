@@ -6,12 +6,15 @@ from datetime import datetime
 import random
 
 from src.utils.database_service import DatabaseService
-from src.utils.embed_colors import EmbedColors
+from src.utils.embed_colors import EmbedColors  # Use the wrapper instead
 from src.utils.config_manager import ConfigManager
 from src.utils.transaction_logger import transaction_logger, TransactionType
 from src.utils.redis_service import RedisService
 from src.database.models import Player, Esprit, EspritBase
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from typing import cast
+import sqlalchemy as sa
 
 
 class Onboarding(commands.Cog):
@@ -50,8 +53,13 @@ class Onboarding(commands.Cog):
                     return
                 
                 # Get starter rewards from config
-                starter_config = ConfigManager.get("global_config")
-                starter_rewards = starter_config.get("starter_rewards", {}) if starter_config else {}
+                starter_config = ConfigManager.get("starter")
+                if not starter_config:
+                    # Fallback to global config
+                    global_config = ConfigManager.get("global_config")
+                    starter_rewards = global_config.get("starter_rewards", {}) if global_config else {}
+                else:
+                    starter_rewards = starter_config.get("starter_bonuses", {})
                 
                 # Create new player
                 new_player = Player(
@@ -62,7 +70,7 @@ class Onboarding(commands.Cog):
                     experience=0,
                     energy=starter_rewards.get("energy", 100),
                     max_energy=100,
-                    stamina=50,
+                    stamina=starter_rewards.get("stamina", 50),
                     max_stamina=50,
                     jijies=starter_rewards.get("jijies", 5000),
                     erythl=starter_rewards.get("erythl", 10),
@@ -75,8 +83,8 @@ class Onboarding(commands.Cog):
                 )
                 
                 # Add starter fragments if configured
-                if "tier_1_fragments" in starter_rewards:
-                    new_player.tier_fragments = {"1": starter_rewards["tier_1_fragments"]}
+                if "tier_fragments" in starter_rewards:
+                    new_player.tier_fragments = starter_rewards["tier_fragments"].copy()
                 
                 session.add(new_player)
                 await session.flush()  # Get the player ID
@@ -93,12 +101,11 @@ class Onboarding(commands.Cog):
                         }
                     )
                 
-                # Get starter Esprits
-                starter_esprits = await self._get_starter_esprits(session)
+                # Get starter Esprits using config-driven method
+                starter_esprits = await self._get_starter_esprits(session, starter_config)
                 
                 if not starter_esprits:
-                    # Fallback if no starter Esprits configured
-                    # Get any tier 1 Esprit
+                    # Emergency fallback if no starter Esprits configured
                     stmt = select(EspritBase).where(EspritBase.base_tier == 1).limit(1)  # type: ignore
                     fallback_esprit = (await session.execute(stmt)).scalar_one_or_none()
                     if fallback_esprit:
@@ -136,12 +143,6 @@ class Onboarding(commands.Cog):
                 if "items" in starter_rewards:
                     new_player.inventory = starter_rewards["items"].copy()
                 
-                # Give starter echo if configured
-                if "faded_echo" in starter_rewards:
-                    if new_player.inventory is None:
-                        new_player.inventory = {}
-                    new_player.inventory["faded_echo"] = starter_rewards.get("faded_echo", 1)
-                
                 # Calculate initial power
                 await new_player.recalculate_total_power(session)
                 
@@ -168,11 +169,8 @@ class Onboarding(commands.Cog):
                     for esprit in given_esprits[:3]:  # Show max 3
                         rewards_text += f"{esprit.get_element_emoji()} **{esprit.name}** (Tier {esprit.base_tier})\n"
                 
-                if "faded_echo" in starter_rewards:
-                    rewards_text += f"\n📦 **{starter_rewards.get('faded_echo', 1)}x** Faded Echo"
-                
                 if "items" in starter_rewards:
-                    rewards_text += f"\n\n**Starter Items:**\n"
+                    rewards_text += f"\n**Starter Items:**\n"
                     for item, qty in list(starter_rewards["items"].items())[:3]:
                         rewards_text += f"• **{qty}x** {item.replace('_', ' ').title()}\n"
                 
@@ -217,28 +215,60 @@ class Onboarding(commands.Cog):
             )
             await inter.edit_original_response(embed=embed)
     
-    async def _get_starter_esprits(self, session) -> List[EspritBase]:
-        """Get configured starter Esprits"""
-        # Default starter Esprits - one of each element at tier 1
-        starter_names = [
-            "Blazeblob",    # Inferno
-            "Muddroot",     # Verdant  
-            "Droozle",      # Abyssal
-            "Jelune",       # Tempest
-            "Gloomb",       # Umbral
-            "Shynix"        # Radiant
-        ]
+    async def _get_starter_esprits(self, session, starter_config: Optional[dict] = None) -> List[EspritBase]:
+        """Get configured starter Esprits from config"""
+        if not starter_config:
+            starter_config = ConfigManager.get("starter") or {}
         
-        # Pick 2 random starters
-        chosen_starters = random.sample(starter_names, 2)
+        starter_pool = starter_config.get("starter_pool", {}) if starter_config else {}
+        available_starters = starter_pool.get("available_starters", [])
+        selection_count = starter_pool.get("selection_count", 2)
         
-        # Query for the chosen starters
-        stmt = select(EspritBase).where(EspritBase.name.in_(chosen_starters))  # type: ignore
+        if not available_starters:
+            # Fallback to any tier 1 Esprits
+            stmt = select(EspritBase).where(EspritBase.base_tier == 1).limit(selection_count)  # type: ignore
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+        
+        # Get weighted random selection
+        starter_names = []
+        weights = []
+        
+        for starter in available_starters:
+            starter_names.append(starter["name"])
+            weights.append(starter.get("weight", 1.0))
+        
+        # Select with weights
+        chosen_names = []
+        if len(starter_names) <= selection_count:
+            chosen_names = starter_names
+        else:
+            # Weighted random selection without replacement
+            chosen_names = []
+            available_names = starter_names.copy()
+            available_weights = weights.copy()
+            
+            for _ in range(selection_count):
+                if not available_names:
+                    break
+                    
+                # Normalize weights
+                total_weight = sum(available_weights)
+                normalized_weights = [w/total_weight for w in available_weights]
+                
+                # Choose one
+                chosen_index = random.choices(range(len(available_names)), weights=normalized_weights, k=1)[0]
+                chosen_names.append(available_names[chosen_index])
+                
+                # Remove chosen from pools
+                available_names.pop(chosen_index)
+                available_weights.pop(chosen_index)
+        
+        # Query for the chosen starters - using in_ properly
+        stmt = select(EspritBase).where(EspritBase.name.in_(chosen_names))  # type: ignore
         
         result = await session.execute(stmt)
         return list(result.scalars().all())
-    
-
 
 
 def setup(bot):
