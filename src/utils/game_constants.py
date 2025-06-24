@@ -211,6 +211,17 @@ class GameConstants:
     AWAKENING_BONUS_PER_STAR = 0.20
     MAX_AWAKENING_STARS = 5
     
+    # Element stat distribution
+    # Percentages for each element's stats, summing to 1.0
+    ELEMENT_STAT_DISTRIBUTION = {
+        "inferno": {"atk": 0.70, "def": 0.05, "hp": 0.25},    # Pure offense
+        "verdant": {"atk": 0.35, "def": 0.15, "hp": 0.50},    # Tank/regen wall  
+        "abyssal": {"atk": 0.30, "def": 0.10, "hp": 0.60},    # Bulky and reactive
+        "tempest": {"atk": 0.50, "def": 0.10, "hp": 0.40},    # Agile striker
+        "umbral": {"atk": 0.80, "def": 0.05, "hp": 0.15},     # Glass cannon
+        "radiant": {"atk": 0.25, "def": 0.10, "hp": 0.65}     # Healing & sustain
+    }
+
     @classmethod
     def create_progress_bar(cls, current: int, maximum: int, length: Optional[int] = None) -> str:
         """Create a progress bar string"""
