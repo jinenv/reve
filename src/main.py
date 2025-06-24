@@ -1,4 +1,3 @@
-
 # src/main.py
 import os
 import logging
@@ -11,6 +10,10 @@ from src.utils.config_manager import ConfigManager
 
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s')
 logger = logging.getLogger(__name__)
+
+# Suppress Discord gateway debug messages
+logging.getLogger("disnake.gateway").setLevel(logging.WARNING)
+logging.getLogger("disnake.client").setLevel(logging.WARNING)
 
 def main():
     """The main entry point for the bot."""
