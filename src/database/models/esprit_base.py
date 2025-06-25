@@ -3,7 +3,7 @@ from typing import Dict, Optional, List, Any
 from sqlmodel import SQLModel, Field, select, col
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB, JSON
-from sqlalchemy import Column, Index, desc, func
+from sqlalchemy import BigInteger, Column, Index, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import validator
 from src.utils.game_constants import Elements, Tiers
@@ -27,9 +27,9 @@ class EspritBase(SQLModel, table=True):
     tier_name: Optional[str] = Field(default=None, index=True)  # Cached tier name
     
     # Base stats (before tier/awakening multipliers)
-    base_atk: int
-    base_def: int  
-    base_hp: int
+    base_atk: int = Field(sa_column=Column(BigInteger))
+    base_def: int = Field(sa_column=Column(BigInteger))
+    base_hp: int = Field(sa_column=Column(BigInteger))
     
     # Flavor/display
     description: str

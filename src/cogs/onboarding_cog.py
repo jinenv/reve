@@ -1,12 +1,12 @@
 # src/cogs/onboarding.py
 import disnake
 from disnake.ext import commands
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import datetime
 import random
 
 from src.utils.database_service import DatabaseService
-from src.utils.embed_colors import EmbedColors  # Use the wrapper instead
+from src.utils.embed_colors import EmbedColors
 from src.utils.config_manager import ConfigManager
 from src.utils.transaction_logger import transaction_logger, TransactionType
 from src.utils.redis_service import RedisService
@@ -53,13 +53,20 @@ class Onboarding(commands.Cog):
                     return
                 
                 # Get starter rewards from config
-                starter_config = ConfigManager.get("starter")
-                if not starter_config:
-                    # Fallback to global config
-                    global_config = ConfigManager.get("global_config")
-                    starter_rewards = global_config.get("starter_rewards", {}) if global_config else {}
-                else:
-                    starter_rewards = starter_config.get("starter_bonuses", {})
+                global_config = ConfigManager.get("global_config") or {}
+                
+                # Your config has these at root level
+                starter_bonuses = global_config.get("starter_bonuses", {})
+                starter_pool = global_config.get("starter_pool", {})
+                
+                # Fallback values if not in config
+                if not starter_bonuses:
+                    starter_bonuses = {
+                        "jijies": 5000,
+                        "erythl": 10,
+                        "energy": 100,
+                        "stamina": 50
+                    }
                 
                 # Create new player
                 new_player = Player(
@@ -68,23 +75,23 @@ class Onboarding(commands.Cog):
                     created_at=datetime.utcnow(),
                     level=1,
                     experience=0,
-                    energy=starter_rewards.get("energy", 100),
+                    energy=starter_bonuses.get("energy", 100),
                     max_energy=100,
-                    stamina=starter_rewards.get("stamina", 50),
+                    stamina=starter_bonuses.get("stamina", 50),
                     max_stamina=50,
-                    jijies=starter_rewards.get("jijies", 5000),
-                    erythl=starter_rewards.get("erythl", 10),
+                    jijies=starter_bonuses.get("jijies", 5000),
+                    erythl=starter_bonuses.get("erythl", 10),
                     skill_points=0,
-                    total_jijies_earned=starter_rewards.get("jijies", 5000),
-                    total_erythl_earned=starter_rewards.get("erythl", 10),
+                    total_jijies_earned=starter_bonuses.get("jijies", 5000),
+                    total_erythl_earned=starter_bonuses.get("erythl", 10),
                     last_energy_update=datetime.utcnow(),
                     last_stamina_update=datetime.utcnow(),
                     last_active=datetime.utcnow()
                 )
                 
                 # Add starter fragments if configured
-                if "tier_fragments" in starter_rewards:
-                    new_player.tier_fragments = starter_rewards["tier_fragments"].copy()
+                if "tier_fragments" in starter_bonuses:
+                    new_player.tier_fragments = starter_bonuses["tier_fragments"].copy()  # type: ignore
                 
                 session.add(new_player)
                 await session.flush()  # Get the player ID
@@ -97,12 +104,12 @@ class Onboarding(commands.Cog):
                         {
                             "discord_id": str(inter.author.id),
                             "username": inter.author.name,
-                            "starter_rewards": starter_rewards
+                            "starter_rewards": starter_bonuses
                         }
                     )
                 
-                # Get starter Esprits using config-driven method
-                starter_esprits = await self._get_starter_esprits(session, starter_config)
+                # Get starter Esprits - pass the starter_pool config
+                starter_esprits = await self._get_starter_esprits(session, {"starter_pool": starter_pool})
                 
                 if not starter_esprits:
                     # Emergency fallback if no starter Esprits configured
@@ -113,6 +120,8 @@ class Onboarding(commands.Cog):
                 
                 # Give starter Esprits
                 given_esprits = []
+                first_esprit_id = None
+                
                 for esprit_base in starter_esprits:
                     if new_player.id is not None:
                         stack = await Esprit.add_to_collection(
@@ -123,6 +132,10 @@ class Onboarding(commands.Cog):
                         )
                         given_esprits.append(esprit_base)
                         
+                        # Store first esprit ID for leader
+                        if first_esprit_id is None and stack.id is not None:
+                            first_esprit_id = stack.id
+                        
                         # Log the capture
                         transaction_logger.log_esprit_captured(
                             new_player.id,
@@ -132,16 +145,17 @@ class Onboarding(commands.Cog):
                             "starter_reward"
                         )
                 
-                # Set first Esprit as leader if we gave any
-                if given_esprits and new_player.id is not None:
-                    first_esprit_stmt = select(Esprit).where(Esprit.owner_id == new_player.id).limit(1)  # type: ignore
-                    first_esprit = (await session.execute(first_esprit_stmt)).scalar_one_or_none()
-                    if first_esprit:
-                        new_player.leader_esprit_stack_id = first_esprit.id
+                # Set first Esprit as leader
+                if first_esprit_id:
+                    new_player.leader_esprit_stack_id = first_esprit_id
                 
                 # Give starter items if configured
-                if "items" in starter_rewards:
-                    new_player.inventory = starter_rewards["items"].copy()
+                if "items" in starter_bonuses:
+                    items = starter_bonuses["items"]
+                    if isinstance(items, dict):
+                        new_player.inventory = items.copy()
+                    else:
+                        new_player.inventory = {}
                 
                 # Calculate initial power
                 await new_player.recalculate_total_power(session)
@@ -160,18 +174,18 @@ class Onboarding(commands.Cog):
                 )
                 
                 # Add starter rewards field
-                rewards_text = f"💰 **{starter_rewards.get('jijies', 5000):,}** Jijies\n"
-                rewards_text += f"💎 **{starter_rewards.get('erythl', 10)}** Erythl\n"
-                rewards_text += f"⚡ **{starter_rewards.get('energy', 100)}** Energy\n"
+                rewards_text = f"💰 **{starter_bonuses.get('jijies', 5000):,}** Jijies\n"
+                rewards_text += f"💎 **{starter_bonuses.get('erythl', 10)}** Erythl\n"
+                rewards_text += f"⚡ **{starter_bonuses.get('energy', 100)}** Energy\n"
                 
                 if given_esprits:
                     rewards_text += f"\n**Starter Esprits:**\n"
                     for esprit in given_esprits[:3]:  # Show max 3
                         rewards_text += f"{esprit.get_element_emoji()} **{esprit.name}** (Tier {esprit.base_tier})\n"
                 
-                if "items" in starter_rewards:
+                if "items" in starter_bonuses and isinstance(starter_bonuses["items"], dict):
                     rewards_text += f"\n**Starter Items:**\n"
-                    for item, qty in list(starter_rewards["items"].items())[:3]:
+                    for item, qty in list(starter_bonuses["items"].items())[:3]: # type: ignore
                         rewards_text += f"• **{qty}x** {item.replace('_', ' ').title()}\n"
                 
                 embed.add_field(
@@ -218,15 +232,20 @@ class Onboarding(commands.Cog):
     async def _get_starter_esprits(self, session, starter_config: Optional[dict] = None) -> List[EspritBase]:
         """Get configured starter Esprits from config"""
         if not starter_config:
-            starter_config = ConfigManager.get("starter") or {}
+            global_config = ConfigManager.get("global_config") or {}
+            starter_pool = global_config.get("starter_pool", {})
+        else:
+            starter_pool = starter_config.get("starter_pool", {})
         
-        starter_pool = starter_config.get("starter_pool", {}) if starter_config else {}
         available_starters = starter_pool.get("available_starters", [])
         selection_count = starter_pool.get("selection_count", 2)
         
+        print(f"DEBUG: Found {len(available_starters)} available starters in config")
+        
         if not available_starters:
             # Fallback to any tier 1 Esprits
-            stmt = select(EspritBase).where(EspritBase.base_tier == 1).limit(selection_count)  # type: ignore
+            print("DEBUG: No starters configured, falling back to tier 1 esprits")
+            stmt = select(EspritBase).where(EspritBase.base_tier == 1).limit(selection_count) # type: ignore
             result = await session.execute(stmt)
             return list(result.scalars().all())
         
@@ -237,6 +256,8 @@ class Onboarding(commands.Cog):
         for starter in available_starters:
             starter_names.append(starter["name"])
             weights.append(starter.get("weight", 1.0))
+        
+        print(f"DEBUG: Starter names: {starter_names}")
         
         # Select with weights
         chosen_names = []
@@ -264,11 +285,67 @@ class Onboarding(commands.Cog):
                 available_names.pop(chosen_index)
                 available_weights.pop(chosen_index)
         
-        # Query for the chosen starters - using in_ properly
-        stmt = select(EspritBase).where(EspritBase.name.in_(chosen_names))  # type: ignore
+        print(f"DEBUG: Chosen starters: {chosen_names}")
         
+        # Query for the chosen starters by NAME
+        stmt = select(EspritBase).where(EspritBase.name.in_(chosen_names))  # type: ignore
         result = await session.execute(stmt)
-        return list(result.scalars().all())
+        starters = list(result.scalars().all())
+        
+        print(f"DEBUG: Found {len(starters)} starters in database")
+        for s in starters:
+            print(f"DEBUG: - {s.name} (Tier {s.base_tier}, {s.element})")
+        
+        return starters
+    
+    @commands.slash_command(name="debug_starters", description="Debug: Check tier 1 esprits")
+    async def debug_starters(self, inter: disnake.ApplicationCommandInteraction):
+        """Debug command to check what tier 1 esprits exist"""
+        await inter.response.defer()
+        
+        try:
+            async with DatabaseService.get_transaction() as session:
+                # Get ALL tier 1 esprits
+                stmt = select(EspritBase).where(EspritBase.base_tier == 1) # type: ignore
+                result = await session.execute(stmt)
+                tier1_esprits = list(result.scalars().all())
+                
+                response = "**Tier 1 Esprits in Database:**\n"
+                response += f"Total found: {len(tier1_esprits)}\n\n"
+                
+                if tier1_esprits:
+                    for esprit in tier1_esprits:
+                        response += f"• {esprit.name} ({esprit.element})\n"
+                else:
+                    response += "❌ **NO TIER 1 ESPRITS FOUND!**\n"
+                
+                # Check starter names
+                response += f"\n**Checking Config Starters:**\n"
+                starter_names = ['Blazeblob', 'Muddroot', 'Droozle', 'Jelune', 'Gloomb', 'Shynix']
+                
+                for name in starter_names:
+                    stmt = select(EspritBase).where(EspritBase.name == name) # type: ignore
+                    result = await session.execute(stmt)
+                    exists = result.scalar_one_or_none()
+                    if exists:
+                        response += f"✅ {name} - Found (Tier {exists.base_tier})\n"
+                    else:
+                        response += f"❌ {name} - Not in database\n"
+                
+                # Send response
+                embed = disnake.Embed(
+                    title="Debug: Starter Esprits",
+                    description=response[:4000],
+                    color=EmbedColors.INFO
+                )
+                await inter.edit_original_response(embed=embed)
+        except Exception as e:
+            embed = disnake.Embed(
+                title="Debug Error",
+                description=f"Error: {str(e)}",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
 
 
 def setup(bot):
