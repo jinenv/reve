@@ -55,7 +55,8 @@ async def on_ready():
         from src.utils.emoji_manager import setup_emoji_manager
         
         # Get the ACTUAL config path
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "emoji_mapping.json")
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "config", "emoji_mapping.json")
+
         logger.info(f"Looking for emoji config at: {config_path}")
         
         if os.path.exists(config_path):
@@ -85,31 +86,32 @@ def load_cogs():
         cog_name = cog_file.stem
         try:
             bot.load_extension(f"src.cogs.{cog_name}")
-            logger.info(f"✅ Loaded: {cog_name}")
+            logger.info(f"Loaded: {cog_name}")
         except Exception as e:
-            logger.error(f"❌ Failed to load {cog_name}: {e}")
+            logger.error(f"Failed to load {cog_name}: {e}")
 
 def initialize_services():
     """Initialize all services"""
     try:
-        # Config Manager - it initializes on import
+        # Config Manager - ACTUALLY INITIALIZE IT
         from src.utils.config_manager import ConfigManager
+        ConfigManager.load_all()  # ADD THIS
         logger.info(f"ConfigManager loaded: {len(ConfigManager._configs)} configs")
         
-        # Database - already initialized on import
+        # Database - ACTUALLY INITIALIZE IT
         from src.utils.database_service import DatabaseService
+        DatabaseService.init()  # ADD THIS
         logger.info("DatabaseService ready")
         
-        # Redis - already initialized on import
+        # Redis - ACTUALLY INITIALIZE IT
         from src.utils.redis_service import RedisService
+        RedisService.init()  # ADD THIS TOO WHY NOT
         if RedisService.is_available():
             logger.info("RedisService connected")
         else:
             logger.warning("Redis not available - running without cache")
-            
     except Exception as e:
-        logger.error(f"Service initialization failed: {e}")
-        sys.exit(1)
+        logger.error(f"Error initializing services: {e}")
 
 def main():
     """Main entry point"""

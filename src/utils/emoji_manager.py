@@ -22,11 +22,7 @@ class EspritEmojiManager:
         self.loaded = False
 
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        self.config_path = os.path.join(base_dir, "config", "emoji_mapping.json")
-        self.load_config()
-        
-        # Load config
-        self.config_path = "config/emoji_mapping.json"
+        self.config_path = os.path.join(base_dir, "data", "config", "emoji_mapping.json")
         self.load_config()
     
     def load_config(self):

@@ -1,7 +1,7 @@
 # src/database/models/esprit.py
 from typing import Optional, Dict, List, TYPE_CHECKING, Any
 from sqlmodel import SQLModel, Field, select, func, col 
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, BigInteger
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import random
@@ -25,7 +25,7 @@ class Esprit(SQLModel, table=True):
     owner_id: int = Field(foreign_key="player.id", index=True)
     
     # Universal Stack Properties
-    quantity: int = Field(default=1)  # Total copies in this stack (can be thousands)
+    quantity: int = Field(sa_column=Column(BigInteger), default=1)
     tier: int = Field(default=1)      # ALL copies share this tier
     awakening_level: int = Field(default=0, ge=0, le=5)  # 0-5 stars
     element: str = Field(sa_column=Column(String))  # Cached from base for quick access

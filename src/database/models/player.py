@@ -45,9 +45,10 @@ class Player(SQLModel, table=True):
     leader_esprit_stack_id: Optional[int] = Field(default=None, foreign_key="esprit.id")
     
     # --- Combat Power (Sigil) ---
-    total_attack_power: int = Field(default=0)  # Cached total of ALL Esprits
-    total_defense_power: int = Field(default=0)
-    total_hp: int = Field(default=0)
+    total_attack_power: int = Field(sa_column=Column(BigInteger), default=0)
+    total_defense_power: int = Field(sa_column=Column(BigInteger), default=0)
+    total_hp: int = Field(sa_column=Column(BigInteger), default=0)
+
     
     # --- Quest & Progression Systems ---
     current_area_id: str = Field(default="area_1")
