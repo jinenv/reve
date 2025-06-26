@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from src.database.models.esprit_base import EspritBase
 
 class Esprit(SQLModel, table=True):
-    __tablename__: str = "esprit"
+    __tablename__: str = "esprit" # type: ignore
     """Universal Stack System - Each row represents ALL copies of an Esprit type a player owns"""
     
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -363,6 +363,7 @@ class Esprit(SQLModel, table=True):
             cls.element == base.element
         )
         esprit = (await session.execute(esprit_stmt)).scalar_one_or_none()
+        
         if esprit:
             esprit.quantity += quantity
             esprit.last_modified = datetime.utcnow()
@@ -380,9 +381,11 @@ class Esprit(SQLModel, table=True):
                 last_modified=datetime.utcnow()
             )
             session.add(esprit)
-        await session.commit()
+        
+        # Don't commit here! Let the calling transaction handle it
+        # await session.commit()  # REMOVE THIS LINE
+        
         return esprit
-
     @classmethod
     async def get_player_collection_stats(
         cls,

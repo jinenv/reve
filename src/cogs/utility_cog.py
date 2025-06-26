@@ -743,9 +743,9 @@ class Utility(commands.Cog):
             )
             await inter.edit_original_response(embed=embed)
     
-    @commands.slash_command(name="index", description="View your items and fragments")
-    async def index(self, inter: disnake.ApplicationCommandInteraction):
-        """Show inventory index with items and fragments"""
+    @commands.slash_command(name="inventory", description="View your items and fragments")
+    async def inventory(self, inter: disnake.ApplicationCommandInteraction):
+        """Show inventory with items and fragments"""
         await inter.response.defer()
         
         try:
@@ -764,7 +764,7 @@ class Utility(commands.Cog):
                     return
                 
                 embed = disnake.Embed(
-                    title="📦 Your Index",
+                    title="📦 Your Inventory",
                     description="All your items and fragments",
                     color=EmbedColors.DEFAULT
                 )
@@ -858,7 +858,7 @@ class Utility(commands.Cog):
             traceback.print_exc()
             
             embed = disnake.Embed(
-                title="Index Error",
+                title="Inventory Error",
                 description="Couldn't load your inventory!",
                 color=EmbedColors.ERROR
             )

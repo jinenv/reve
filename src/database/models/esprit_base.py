@@ -12,7 +12,7 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 class EspritBase(SQLModel, table=True):
-    __tablename__: str = "esprit_base"
+    __tablename__: str = "esprit_base" # type: ignore
     # SQLModel will use "espritbase" as table name by default
     __table_args__ = (
         Index("ix_espritbase_element_tier", "element", "base_tier"),

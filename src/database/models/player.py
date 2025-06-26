@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
 
 class Player(SQLModel, table=True):
-    __tablename__: str = "player" 
+    __tablename__: str = "player"  # type: ignore
     # SQLModel will automatically use "player" as table name
     __table_args__ = (
         Index("ix_player_level", "level"),

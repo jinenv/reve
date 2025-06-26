@@ -85,6 +85,35 @@ class Admin(commands.Cog):
             )
             await inter.edit_original_response(embed=embed)
 
+    @commands.slash_command(name="sync_emojis")
+    @commands.is_owner()
+    async def sync_emojis(self, inter):
+        await inter.response.defer()
+        
+        from src.utils.emoji_manager import get_emoji_manager
+        manager = get_emoji_manager()
+        
+        # ADD THIS CHECK
+        if not manager:
+            await inter.edit_original_response(content="❌ Emoji manager not initialized! Did you add it to on_ready?")
+            return
+        
+        count = 0
+        for server_id in manager.emoji_servers:
+            guild = self.bot.get_guild(server_id)
+            if guild:
+                for emoji in guild.emojis:
+                    # Handle t1name, t2name, etc format
+                    name = emoji.name
+                    if name.startswith("t") and len(name) > 2 and name[1:].split(name[2:])[0].isdigit():
+                        # Extract: t1blazeblob → blazeblob
+                        parts = name.split(name[2:], 1)
+                        actual_name = name[2:] if len(parts) > 1 else name
+                        manager.emoji_cache[actual_name.lower()] = f"<:{emoji.name}:{emoji.id}>"
+                        count += 1
+        
+        manager.save_config()
+        await inter.edit_original_response(content=f"✅ Synced {count} emojis!")
 
 def setup(bot):
     bot.add_cog(Admin(bot))

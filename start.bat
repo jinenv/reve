@@ -1,21 +1,9 @@
 @echo off
-echo [JIJI] Activating virtual environment...
+echo [JIJI] Starting Bot...
+cd /d C:\jiji
 call .\venv\Scripts\activate.bat
 
-if not exist .env (
-    echo [ERROR] .env file is missing.
-    pause
-    exit /b
-)
+echo [JIJI] Running bot directly...
+python bot.py
 
-echo [JIJI] Updating dependencies...
-pip install -r requirements.txt
-
-echo [JIJI] Applying database migrations...
-alembic upgrade head
-
-echo [JIJI] Starting Bot...
-python run.py
-
-echo [JIJI] Bot shut down.
 pause
