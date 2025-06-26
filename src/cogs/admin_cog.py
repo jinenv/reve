@@ -216,6 +216,74 @@ class Admin(commands.Cog):
             import traceback
             traceback.print_exc()
             await inter.edit_original_response(content=f"❌ Error: {str(e)}")
+
+    @admin_give.sub_command(name="all_esprits", description="Give ALL esprits (WARNING: This is insane)")
+    async def give_all_esprits(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user: disnake.User = commands.Param(description="Target player"),
+        quantity: int = commands.Param(default=1, min_value=1, max_value=1000, description="How many of EACH"),
+        awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level")
+    ):
+        """Give one of every esprit because testing"""
+        await inter.response.defer(ephemeral=True)
+        
+        try:
+            async with DatabaseService.get_transaction() as session:
+                # Get player
+                stmt = select(Player).where(Player.discord_id == user.id) # type: ignore
+                player = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not player or player.id is None:
+                    await inter.edit_original_response(content=f"❌ {user.mention} isn't registered!")
+                    return
+                
+                # Get ALL esprits
+                stmt = select(EspritBase).order_by(EspritBase.base_tier) # type: ignore
+                all_esprits = (await session.execute(stmt)).scalars().all()
+                
+                count = 0
+                for esprit_base in all_esprits:
+                    # Add to collection
+                    stack = await Esprit.add_to_collection(
+                        session=session,
+                        owner_id=player.id,
+                        base=esprit_base,
+                        quantity=quantity
+                    )
+                    
+                    if awakening > 0:
+                        stack.awakening_level = awakening
+                    
+                    count += 1
+                
+                await session.commit()
+                
+                # Invalidate cache
+                if RedisService.is_available():
+                    await RedisService.invalidate_player_cache(player.id)
+                
+                embed = disnake.Embed(
+                    title="✅ ALL Esprits Given!",
+                    description=(
+                        f"Gave {user.mention}:\n"
+                        f"**{quantity}x** of EVERY esprit ({count} types)\n"
+                        f"Total: {count * quantity} esprits"
+                    ),
+                    color=EmbedColors.SUCCESS
+                )
+                
+                if awakening > 0:
+                    embed.add_field(name="Awakening", value=f"All at {'⭐' * awakening}")
+                
+                embed.set_footer(text="Their power level is probably illegal now")
+                
+                await inter.edit_original_response(embed=embed)
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            await inter.edit_original_response(content=f"❌ Error: {str(e)}")
     
     @give_esprit.autocomplete("esprit_name")
     async def esprit_autocomplete(self, inter: disnake.ApplicationCommandInteraction, query: str):
