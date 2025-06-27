@@ -12,6 +12,8 @@ from src.utils.emoji_manager import get_emoji_manager
 from src.database.models import Player, Esprit, EspritBase
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from src.utils.image_generator import generate_esprit_card, ImageQuality, generate_esprit_portrait
+from src.utils.redis_service import ratelimit
 
 logger = get_logger(__name__)
 
@@ -301,6 +303,238 @@ class Collection(commands.Cog):
             )
             await inter.edit_original_response(embed=embed)
 
+    
+    @commands.slash_command(name="view", description="View a detailed card of your Esprit")
+    @ratelimit(uses=5, per_seconds=60, command_name="view")
+    async def view_esprit(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        esprit_id: int = commands.Param(description="ID of the Esprit to view")
+    ):
+        """View a beautiful card of your Esprit"""
+        await inter.response.defer()
+        
+        try:
+            async with DatabaseService.get_session() as session:
+                # Get player
+                stmt = select(Player).where(Player.discord_id == inter.author.id) # type: ignore
+                player = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not player:
+                    embed = disnake.Embed(
+                        title="Not Registered!",
+                        description="You need to `/start` first!",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
+                
+                # Get the esprit with base info
+                stmt = select(Esprit, EspritBase).where(
+                    Esprit.id == esprit_id, # type: ignore
+                    Esprit.owner_id == player.id, # type: ignore
+                    Esprit.esprit_base_id == EspritBase.id # type: ignore
+                )
+                result = await session.execute(stmt)
+                esprit_data = result.one_or_none()
+                
+                if not esprit_data:
+                    embed = disnake.Embed(
+                        title="Esprit Not Found",
+                        description="You don't own an Esprit with that ID! 😭",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
+                
+                esprit, base = esprit_data
+                
+                # Calculate actual stats
+                power = esprit.get_individual_power(base)
+                
+                # Prepare data for card generation
+                card_data = {
+                    "name": base.name,
+                    "element": base.element,
+                    "tier": base.base_tier,
+                    "base_tier": base.base_tier,
+                    "base_atk": power['atk'],
+                    "base_def": power['def'],
+                    "base_hp": power['hp'],
+                    "awakening_level": esprit.awakening_level,
+                    "quantity": esprit.quantity
+                }
+                
+                # Generate the card!
+                logger.info(f"Generating card for {base.name} (ID: {esprit_id})")
+                card_file = await generate_esprit_card(
+                    card_data,
+                    quality=ImageQuality.HIGH
+                )
+                
+                # Create info embed
+                embed = disnake.Embed(
+                    title=f"✨ {base.name}",
+                    color=EmbedColors.DEFAULT
+                )
+                
+                # Add detailed info
+                elem = Elements.from_string(base.element)
+                tier_info = Tiers.get(base.base_tier)
+                
+                embed.add_field(
+                    name="Details",
+                    value=f"**Element:** {elem.emoji if elem else '❓'} {base.element}\n"
+                          f"**Tier:** {tier_info.roman if tier_info else base.base_tier}\n"
+                          f"**ID:** #{esprit_id}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="Combat Stats",
+                    value=f"⚔️ **ATK:** {power['atk']:,}\n"
+                          f"🛡️ **DEF:** {power['def']:,}\n"
+                          f"💪 **Power:** {power['atk'] + power['def']:,}",
+                    inline=True
+                )
+                
+                if esprit.awakening_level > 0:
+                    embed.add_field(
+                        name="Awakening",
+                        value="⭐" * esprit.awakening_level,
+                        inline=True
+                    )
+                
+                embed.set_footer(text=f"Owned by {player.username}")
+                
+                await inter.edit_original_response(
+                    embed=embed,
+                    file=card_file
+                )
+                
+        except Exception as e:
+            logger.error(f"Error viewing esprit: {e}", exc_info=True)
+            embed = disnake.Embed(
+                title="Error",
+                description="Couldn't generate the card! Something went wrong 😭",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
+    
+    @commands.slash_command(name="showcase", description="Show off your Esprit to everyone!")
+    @ratelimit(uses=3, per_seconds=300, command_name="showcase")
+    async def showcase_esprit(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        esprit_id: Optional[int] = commands.Param(
+            default=None,
+            description="Esprit ID (uses your leader if not specified)"
+        )
+    ):
+        """Showcase an Esprit in the channel"""
+        await inter.response.defer()
+        
+        try:
+            async with DatabaseService.get_session() as session:
+                # Get player
+                stmt = select(Player).where(Player.discord_id == inter.author.id) # type: ignore
+                player = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not player:
+                    embed = disnake.Embed(
+                        title="Not Registered!",
+                        description="You need to `/start` first!",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
+                
+                # Use leader if no ID specified
+                if esprit_id is None:
+                    # Try to get leader_id from the correct attribute or relationship
+                    leader_id = getattr(player, "leader_id", None)
+                    if not leader_id:
+                        embed = disnake.Embed(
+                            title="No Leader Set",
+                            description="Set a leader with `/team leader` or specify an Esprit ID!",
+                            color=EmbedColors.ERROR
+                        )
+                        return await inter.edit_original_response(embed=embed)
+                    esprit_id = leader_id
+                
+                # Get the esprit
+                stmt = select(Esprit, EspritBase).where(
+                    Esprit.id == esprit_id, # type: ignore
+                    Esprit.owner_id == player.id, # type: ignore
+                    Esprit.esprit_base_id == EspritBase.id # type: ignore
+                )
+                result = await session.execute(stmt)
+                esprit_data = result.one_or_none()
+                
+                if not esprit_data:
+                    embed = disnake.Embed(
+                        title="Not Your Esprit",
+                        description="You can only showcase Esprits you own!",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
+                
+                esprit, base = esprit_data
+                power = esprit.get_individual_power(base)
+                
+                # Generate card
+                card_data = {
+                    "name": base.name,
+                    "element": base.element,
+                    "tier": base.base_tier,
+                    "base_tier": base.base_tier,
+                    "base_atk": power['atk'],
+                    "base_def": power['def'],
+                    "base_hp": power['hp'],
+                    "awakening_level": esprit.awakening_level
+                }
+                
+                card_file = await generate_esprit_card(
+                    card_data,
+                    quality=ImageQuality.HIGH
+                )
+                
+                # Create showcase embed
+                elem = Elements.from_string(base.element)
+                tier_info = Tiers.get(base.base_tier)
+                
+                embed = disnake.Embed(
+                    description=f"**{inter.author.mention} is showing off their {base.name}!**",
+                    color=elem.color if elem else EmbedColors.SUCCESS
+                )
+                
+                total_power = power['atk'] + power['def']
+                embed.add_field(
+                    name="Stats",
+                    value=f"⚡ **Power:** {total_power:,}\n"
+                          f"⚔️ **ATK:** {power['atk']:,}\n"
+                          f"🛡️ **DEF:** {power['def']:,}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="Info",
+                    value=f"**Element:** {elem.emoji if elem else '❓'} {base.element}\n"
+                          f"**Tier:** {tier_info.roman if tier_info else base.base_tier}\n"
+                          f"{'⭐' * esprit.awakening_level if esprit.awakening_level else ''}",
+                    inline=True
+                )
+                
+                await inter.edit_original_response(
+                    embed=embed,
+                    file=card_file
+                )
+                
+        except Exception as e:
+            logger.error(f"Error in showcase: {e}", exc_info=True)
+            embed = disnake.Embed(
+                title="Error",
+                description="Couldn't showcase your Esprit 😭",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
 
 def setup(bot):
     bot.add_cog(Collection(bot))
