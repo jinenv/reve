@@ -248,7 +248,7 @@ class Collection(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    @commands.slash_command(name="index", description="View your Esprit collection")
+    @commands.slash_command(name="index", description="View your index of Esprits")
     async def index(self, inter: disnake.ApplicationCommandInteraction):
         """Simple collection index command"""
         await inter.response.defer()

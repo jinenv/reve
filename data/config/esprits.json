@@ -469,7 +469,7 @@
       "abilities": null
     },
     {
-      "name": "Pyritha",
+      "name": "Voria",
       "element": "Inferno",
       "base_tier": 17,
       "tier_name": "void",
@@ -477,8 +477,8 @@
       "base_def": 761690410,
       "base_hp": 3808452051,
       "description": "A master of flame elevated to divine levels. Her fires burn with perfect precision, purifying corruption without harming the pure.",
-      "image_url": "/assets/esprits/void/pyritha.png",
-      "portrait_url": "/assets/portraits/void/pyritha_portrait.png",
+      "image_url": "/assets/esprits/void/voria.png",
+      "portrait_url": "/assets/portraits/void/voria_portrait.png",
       "abilities": null
     },
     {
