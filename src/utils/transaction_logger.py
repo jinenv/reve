@@ -2,9 +2,28 @@
 import json
 import logging
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Dict, Any, Optional
 from enum import Enum
+
+class JijiJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder for Jiji transaction logging"""
+    
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)  # Convert Decimal to float
+        elif isinstance(obj, datetime):
+            return obj.isoformat()  # Convert datetime to ISO string
+        elif hasattr(obj, '__dict__') and hasattr(obj, '__table__'):
+            # Handle SQLAlchemy model objects - just use their string representation
+            return str(obj)
+        else:
+            # For any other non-serializable objects, convert to string
+            try:
+                return str(obj)
+            except:
+                return f"<non-serializable: {type(obj).__name__}>"
 
 class TransactionType(Enum):
     """Types of transactions to log"""
@@ -24,6 +43,8 @@ class TransactionType(Enum):
     FRAGMENT_CONSUMED = "fragment_consumed"
     LEADER_CHANGED = "leader_changed"
     REGISTRATION = "registration"
+    ESPRIT_BASE_DELETED = "esprit_base_deleted"
+    ADMIN_DELETION = "admin_deletion"
 
 class TransactionLogger:
     """Handles structured logging of all game state changes"""
@@ -75,7 +96,7 @@ class TransactionLogger:
         Args:
             player_id: The player's database ID
             transaction_type: Type of transaction
-            details: Transaction-specific details
+            details: Transaction-specific details (can contain Decimals, datetimes, etc.)
             metadata: Additional context (command used, etc.)
         """
         transaction = {
@@ -86,7 +107,13 @@ class TransactionLogger:
             "metadata": metadata or {}
         }
         
-        self.logger.info(json.dumps(transaction))
+        try:
+            # Use custom encoder to handle Decimal and other types
+            self.logger.info(json.dumps(transaction, cls=JijiJSONEncoder))
+        except Exception as e:
+            # Fallback: log without JSON serialization
+            self.logger.error(f"Transaction logging failed for player {player_id}: {e}")
+            self.logger.info(f"Transaction: {transaction_type.value} - Player: {player_id}")
     
     def log_currency_change(
         self,
@@ -219,6 +246,45 @@ class TransactionLogger:
             },
             metadata=metadata
         )
+
+    # Legacy method for backward compatibility with existing code
+    def log_transaction_legacy(
+        self,
+        player_id: int,
+        action: str,
+        details: Dict[str, Any]
+    ):
+        """
+        Legacy method for backward compatibility.
+        Converts old-style action strings to TransactionType enum.
+        """
+        # Map old action strings to new TransactionType
+        action_mapping = {
+            "admin_remove_esprit_base": TransactionType.ADMIN_DELETION,
+            "remove_esprit_base": TransactionType.ESPRIT_BASE_DELETED,
+            "currency_spend": TransactionType.CURRENCY_SPEND,
+            "currency_gain": TransactionType.CURRENCY_GAIN,
+            # Add more mappings as needed
+        }
+        
+        transaction_type = action_mapping.get(action)
+        if transaction_type:
+            self.log_transaction(player_id, transaction_type, details)
+        else:
+            # Fallback for unmapped actions
+            transaction = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "player_id": player_id,
+                "type": action,  # Use original action string
+                "details": details,
+                "metadata": {"legacy": True}
+            }
+            
+            try:
+                self.logger.info(json.dumps(transaction, cls=JijiJSONEncoder))
+            except Exception as e:
+                self.logger.error(f"Legacy transaction logging failed for player {player_id}: {e}")
+                self.logger.info(f"Transaction: {action} - Player: {player_id}")
 
 # Global instance
 transaction_logger = TransactionLogger()
