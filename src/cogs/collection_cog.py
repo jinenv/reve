@@ -256,8 +256,8 @@ class EspritCog(commands.Cog):
         """Parent command for all esprit operations"""
         pass
     
-    @esprit.sub_command(name="collection", description="View your collection of Esprits")
-    @ratelimit(uses=10, per_seconds=60, command_name="esprit_collection")
+    @esprit.sub_command(name="index", description="View your index of Esprits")
+    @ratelimit(uses=10, per_seconds=60, command_name="esprit_index")
     async def collection(self, inter: disnake.ApplicationCommandInteraction):
         """View your Esprit collection with sorting and pagination"""
         
@@ -287,7 +287,7 @@ class EspritCog(commands.Cog):
                 
                 if not esprits:
                     embed = disnake.Embed(
-                        title="Empty Collection",
+                        title="Empty Index",
                         description="You don't have any Esprits yet!\nUse `/quest` to find some!",
                         color=EmbedColors.WARNING
                     )

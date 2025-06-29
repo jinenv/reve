@@ -1,195 +1,194 @@
 {
-  "image_generation": {
-    "background": {
-      "star_count": 300,
-      "star_sizes": [1, 2, 3, 4, 5],
-      "star_weights": [40, 30, 20, 8, 2],
-      "gradient": {
-        "enabled": true,
-        "strength": 120,
-        "color": [2, 5, 15]
-      }
-    },
-    "background_color": [5, 8, 20],
-    "text_color": [255, 255, 255],
-    "line_color": [150, 150, 150],
-    "star_empty_color": [60, 60, 60],
-    "star_filled_color": [255, 215, 0],
-    
-    "fonts": {
-      "search_paths": [
-        "arial.ttf",
-        "Arial.ttf", 
-        "DejaVuSans.ttf",
-        "Helvetica.ttc",
-        "calibri.ttf",
-        "Calibri.ttf",
-        "segoeui.ttf",
-        "tahoma.ttf",
-        "verdana.ttf"
-      ],
-      "sizes": {
-        "normal": 16,
-        "large": 20,
-        "header": 24
-      }
-    },
-    
-    "dividers": {
-      "padding": 20,
-      "highlight_enabled": false,
-      "highlight_color": [200, 200, 200, 120]
-    },
-    
-    "sprites": {
-      "target_size": 256,
-      "scaling_method": "lanczos",
-      "canvas_background": "transparent"
-    },
-    
-    "placeholders": {
-      "size": 320,
-      "background_colors": [
-        [80, 80, 120],
-        [60, 60, 100], 
-        [40, 40, 80]
-      ],
-      "border": {
-        "color": [180, 180, 200, 255],
-        "width": 3,
-        "margin": 25
-      },
-      "text_shadow_offset": 2,
-      "text_shadow_color": [0, 0, 0, 150]
-    },
-    
-    "color_extraction": {
-      "method": "frequency",
-      "enhancement_factor": 4.0,
-      "minimum_brightness": 120,
-      "saturation_boost": 2.5
-    },
-    
-    "tier_effects": {
-      "thresholds": {
-        "common": [1, 4],
-        "rare": [5, 9],
-        "epic": [10, 14],
-        "legendary": [15, 18],
-        "mythic": [19, 22]
-      },
-      "effects": {
-        "common": {
-          "glow_intensity": 3.5,
-          "particle_count": 100,
-          "glow_radius": 25,
-          "background_overlay": null
-        },
-        "rare": {
-          "glow_intensity": 5.5,
-          "particle_count": 180,
-          "glow_radius": 35,
-          "background_overlay": "shimmer"
-        },
-        "epic": {
-          "glow_intensity": 8.0,
-          "particle_count": 280,
-          "glow_radius": 50,
-          "background_overlay": "gold"
-        },
-        "legendary": {
-          "glow_intensity": 12.0,
-          "particle_count": 400,
-          "glow_radius": 70,
-          "background_overlay": "rainbow"
-        },
-        "mythic": {
-          "glow_intensity": 18.0,
-          "particle_count": 600,
-          "glow_radius": 95,
-          "background_overlay": "cosmic"
-        }
-      }
-    },
-    
-    "awakening": {
-      "max_level": 5
-    },
-    
-    "text": {
-      "name_star_gap": 100,
-      "line_spacing": 35,
-      "shadow": {
-        "enabled": true,
-        "offset": 2,
-        "color": [0, 0, 0, 180]
-      },
-      "skill_color": [220, 220, 220],
-      "none_color": [140, 140, 140],
-      "relic_label_color": [200, 200, 200],
-      "relic_empty_color": [120, 120, 120],
-      "relic_equipped_color": [255, 255, 255]
-    },
-    
-    "layout": {
-      "left_margin": 75,
-      "right_margin": 75,
-      "main_stat_spacing": 32,
-      "secondary_stat_spacing": 24,
-      "section_spacing": 6,
-      "header_spacing": 16,
-      "skill_line_spacing": 18,
-      "relic_spacing": 24,
-      "relic_label_gap": 12,
-      "section_gap": 12,
-      "divider_gap": 6
-    },
-    
-    "compression": {
-      "max_size_mb": 8.0,
-      "quality_levels": [95, 85, 75, 65],
-      "compress_level": 6,
-      "resize_factor": 0.8
-    },
-    
-    "content_box": {
+  "background": {
+    "star_count": 300,
+    "star_sizes": [1, 2, 3, 4, 5],
+    "star_weights": [40, 30, 20, 8, 2],
+    "gradient": {
       "enabled": true,
-      "left_margin": 50,
-      "right_margin": 50,
-      "top_margin": 0,
-      "bottom_margin": 25,
-      "background": {
-        "enabled": false,
-        "color": [0, 0, 0, 30]
-      },
-      "border": {
-        "enabled": true,
-        "color": [150, 150, 150],
-        "width": 2,
-        "corner_radius": 0,
-        "inner_shadow": {
-          "enabled": false,
-          "color": [0, 0, 0, 60],
-          "offset": 2
-        }
-      }
+      "strength": 120,
+      "color": [2, 5, 15]
+    }
+  },
+  "background_color": [5, 8, 20],
+  "text_color": [255, 255, 255],
+  "line_color": [150, 150, 150],
+  "star_empty_color": [60, 60, 60],
+  "star_filled_color": [255, 215, 0],
+  
+  "fonts": {
+    "search_paths": [
+      "arial.ttf",
+      "Arial.ttf", 
+      "DejaVuSans.ttf",
+      "Helvetica.ttc",
+      "calibri.ttf",
+      "Calibri.ttf",
+      "segoeui.ttf",
+      "tahoma.ttf",
+      "verdana.ttf"
+    ],
+    "sizes": {
+      "small": 12,
+      "normal": 16,
+      "large": 20,
+      "header": 24
+    }
+  },
+  
+  "dividers": {
+    "padding": 20,
+    "highlight_enabled": false,
+    "highlight_color": [200, 200, 200, 120]
+  },
+  
+  "sprites": {
+    "target_size": 256,
+    "scaling_method": "lanczos",
+    "canvas_background": "transparent"
+  },
+  
+  "placeholders": {
+    "size": 320,
+    "background_colors": [
+      [80, 80, 120],
+      [60, 60, 100], 
+      [40, 40, 80]
+    ],
+    "border": {
+      "color": [180, 180, 200, 255],
+      "width": 3,
+      "margin": 25
     },
-    
-    "card_closure": {
-      "bottom_divider": {
-        "enabled": false,
-        "margin_from_bottom": 25,
-        "min_gap_from_content": 15
+    "text_shadow_offset": 2,
+    "text_shadow_color": [0, 0, 0, 150]
+  },
+  
+  "color_extraction": {
+    "method": "frequency",
+    "enhancement_factor": 4.0,
+    "minimum_brightness": 120,
+    "saturation_boost": 2.5
+  },
+  
+  "tier_effects": {
+    "thresholds": {
+      "common": [1, 4],
+      "rare": [5, 9],
+      "epic": [10, 14],
+      "legendary": [15, 18],
+      "mythic": [19, 22]
+    },
+    "effects": {
+      "common": {
+        "glow_intensity": 3.5,
+        "particle_count": 100,
+        "glow_radius": 25,
+        "background_overlay": null
       },
-      "card_frame": {
-        "enabled": true,
-        "border_color": [150, 150, 150],
-        "border_width": 2,
-        "margin": 2,
-        "corner_style": "square",
-        "inner_highlight": true,
-        "highlight_color": [255, 255, 255, 40]
+      "rare": {
+        "glow_intensity": 5.5,
+        "particle_count": 180,
+        "glow_radius": 35,
+        "background_overlay": "shimmer"
+      },
+      "epic": {
+        "glow_intensity": 8.0,
+        "particle_count": 280,
+        "glow_radius": 50,
+        "background_overlay": "gold"
+      },
+      "legendary": {
+        "glow_intensity": 12.0,
+        "particle_count": 400,
+        "glow_radius": 70,
+        "background_overlay": "rainbow"
+      },
+      "mythic": {
+        "glow_intensity": 18.0,
+        "particle_count": 600,
+        "glow_radius": 95,
+        "background_overlay": "cosmic"
       }
+    }
+  },
+  
+  "awakening": {
+    "max_level": 5
+  },
+  
+  "text": {
+    "name_star_gap": 100,
+    "line_spacing": 35,
+    "shadow": {
+      "enabled": true,
+      "offset": 2,
+      "color": [0, 0, 0, 180]
+    },
+    "skill_color": [220, 220, 220],
+    "none_color": [140, 140, 140],
+    "relic_label_color": [200, 200, 200],
+    "relic_empty_color": [120, 120, 120],
+    "relic_equipped_color": [255, 255, 255]
+  },
+  
+  "layout": {
+    "left_margin": 75,
+    "right_margin": 75,
+    "main_stat_spacing": 24,
+    "secondary_stat_spacing": 20,
+    "section_spacing": 6,
+    "header_spacing": 16,
+    "skill_line_spacing": 18,
+    "relic_spacing": 24,
+    "relic_label_gap": 12,
+    "section_gap": 12,
+    "divider_gap": 6
+  },
+  
+  "compression": {
+    "max_size_mb": 8.0,
+    "quality_levels": [95, 85, 75, 65],
+    "compress_level": 6,
+    "resize_factor": 0.8
+  },
+  
+  "content_box": {
+    "enabled": true,
+    "left_margin": 50,
+    "right_margin": 50,
+    "top_margin": 0,
+    "bottom_margin": 25,
+    "background": {
+      "enabled": false,
+      "color": [0, 0, 0, 30]
+    },
+    "border": {
+      "enabled": true,
+      "color": [150, 150, 150],
+      "width": 2,
+      "corner_radius": 0,
+      "inner_shadow": {
+        "enabled": false,
+        "color": [0, 0, 0, 60],
+        "offset": 2
+      }
+    }
+  },
+  
+  "card_closure": {
+    "bottom_divider": {
+      "enabled": false,
+      "margin_from_bottom": 25,
+      "min_gap_from_content": 15
+    },
+    "card_frame": {
+      "enabled": true,
+      "border_color": [150, 150, 150],
+      "border_width": 3,
+      "margin": 1,
+      "corner_style": "square",
+      "inner_highlight": true,
+      "highlight_color": [255, 255, 255, 40]
     }
   }
 }

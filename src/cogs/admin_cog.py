@@ -797,6 +797,106 @@ class Admin(commands.Cog):
                color=EmbedColors.ERROR
            )
            await inter.edit_original_response(embed=embed)
+    
+   @admin.sub_command(name="debug_image_config", description="🔥 Debug image generation configuration")
+   async def debug_image_config(self, inter: disnake.ApplicationCommandInteraction):
+       """Debug command to verify image config is working (Ember's diagnostic tool)"""
        
+       await inter.response.defer()
+       
+       try:
+           # Test 1: Raw ConfigManager access
+           raw_config = ConfigManager.get("image_generation")
+           
+           # Test 2: ImageConfig methods
+           from src.utils.image_generator import ImageConfig
+           
+           # Test basic values
+           bg_color = ImageConfig.get_background_color()
+           text_color = ImageConfig.get_text_color()
+           line_color = ImageConfig.get_line_color()
+           
+           # Test nested access
+           tier_10_effects = ImageConfig.get_tier_effects(10)
+           tier_1_effects = ImageConfig.get_tier_effects(1)
+           tier_20_effects = ImageConfig.get_tier_effects(20)
+           
+           # Test fonts config
+           fonts = ImageConfig.get("fonts", {})
+           font_sizes = fonts.get("sizes", {}) if isinstance(fonts, dict) else {}
+           
+           # Test layout config
+           layout = ImageConfig.get("layout", {})
+           left_margin = layout.get("left_margin", "NOT FOUND") if isinstance(layout, dict) else "NOT FOUND"
+           
+           # Test content box
+           content_box = ImageConfig.get("content_box", {})
+           content_enabled = content_box.get("enabled", "NOT FOUND") if isinstance(content_box, dict) else "NOT FOUND"
+           
+           # Test tier thresholds specifically
+           thresholds = ImageConfig.get_nested("tier_effects", "thresholds", default="NOT FOUND")
+           
+           embed = disnake.Embed(
+               title="🔥 Image Config Debug Results",
+               description="**Ember's Config Diagnostic Report**",
+               color=0xFF4500
+           )
+           
+           # Basic results
+           embed.add_field(
+               name="🎨 Colors",
+               value=f"**Background:** {bg_color}\n**Text:** {text_color}\n**Lines:** {line_color}",
+               inline=False
+           )
+           
+           # Tier effects
+           embed.add_field(
+               name="⭐ Tier Effects",
+               value=f"**Tier 1:** {tier_1_effects.get('glow_intensity', 'MISSING')}\n**Tier 10:** {tier_10_effects.get('glow_intensity', 'MISSING')}\n**Tier 20:** {tier_20_effects.get('glow_intensity', 'MISSING')}",
+               inline=False
+           )
+           
+           # Layout
+           embed.add_field(
+               name="📐 Layout",
+               value=f"**Left Margin:** {left_margin}\n**Content Box Enabled:** {content_enabled}",
+               inline=False
+           )
+           
+           # Config status
+           config_status = "✅ WORKING" if raw_config is not None else "❌ BROKEN"
+           embed.add_field(
+               name="⚙️ Config Status",
+               value=f"**File Loading:** {config_status}\n**Thresholds Found:** {'✅ YES' if thresholds != 'NOT FOUND' else '❌ NO'}",
+               inline=False
+           )
+           
+           # Font status
+           font_status = "✅ LOADED" if font_sizes else "❌ MISSING"
+           embed.add_field(
+               name="🔤 Fonts",
+               value=f"**Status:** {font_status}\n**Sizes:** {list(font_sizes.keys()) if font_sizes else 'NONE'}",
+               inline=False
+           )
+           
+           embed.set_footer(text="🔥 If anything shows MISSING/NOT FOUND, your config isn't loading properly")
+           
+           await inter.edit_original_response(embed=embed)
+           
+           # Also log detailed info to console
+           logger.info(f"[DEBUG] Raw config type: {type(raw_config)}")
+           logger.info(f"[DEBUG] Raw config keys: {list(raw_config.keys()) if isinstance(raw_config, dict) else 'NOT A DICT'}")
+           logger.info(f"[DEBUG] Tier 10 full effects: {tier_10_effects}")
+           logger.info(f"[DEBUG] Thresholds: {thresholds}")
+           
+       except Exception as e:
+           error_embed = disnake.Embed(
+               title="💀 Config Debug Failed",
+               description=f"**Error:** {str(e)}\n\n*Ember has died and needs to be reborn...*",
+               color=0xFF0000
+           )
+           await inter.edit_original_response(embed=error_embed)
+           logger.error(f"Config debug failed: {e}", exc_info=True)
+           
 def setup(bot):
    bot.add_cog(Admin(bot))
