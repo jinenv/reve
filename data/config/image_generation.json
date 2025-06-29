@@ -125,7 +125,10 @@
         "color": [0, 0, 0, 180]
       },
       "skill_color": [220, 220, 220],
-      "none_color": [140, 140, 140]
+      "none_color": [140, 140, 140],
+      "relic_label_color": [200, 200, 200],
+      "relic_empty_color": [120, 120, 120],
+      "relic_equipped_color": [255, 255, 255]
     },
     
     "layout": {
@@ -133,9 +136,13 @@
       "right_margin": 75,
       "main_stat_spacing": 32,
       "secondary_stat_spacing": 24,
-      "section_spacing": 18,
-      "header_spacing": 24,
-      "skill_line_spacing": 18
+      "section_spacing": 6,
+      "header_spacing": 16,
+      "skill_line_spacing": 18,
+      "relic_spacing": 24,
+      "relic_label_gap": 12,
+      "section_gap": 12,
+      "divider_gap": 6
     },
     
     "compression": {
@@ -170,7 +177,7 @@
     
     "card_closure": {
       "bottom_divider": {
-        "enabled": true,
+        "enabled": false,
         "margin_from_bottom": 25,
         "min_gap_from_content": 15
       },

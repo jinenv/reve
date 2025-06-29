@@ -611,7 +611,7 @@ class ImageGenerator:
         b = min(255, int(b * enhancement))
         
         # Ensure minimum brightness
-        brightness = (r + g + b) / 3
+        brightness = max(1, (r + g + b) / 3)  # ← never zero
         if brightness < min_brightness:
             boost_factor = min_brightness / brightness
             r = min(255, int(r * boost_factor))
@@ -799,8 +799,8 @@ class ImageGenerator:
     ) -> int:
         """Render stats with enhanced formatting"""
         layout_config = self.config.get("layout", {})
-        left_margin = layout_config.get("left_margin", 60)
-        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 60)
+        left_margin = layout_config.get("left_margin", 70)  # Fixed inconsistent margin
+        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 70)
         
         text_color = self.config.get_text_color()
         
@@ -836,15 +836,14 @@ class ImageGenerator:
             y += layout_config.get("secondary_stat_spacing", 24)
         
         return y + layout_config.get("section_spacing", 15)
-    
+
     def _render_leader_skill(
-        self, 
-        draw: ImageDraw.ImageDraw, 
-        y: int, 
-        leader_skill: str,
-        stats: Dict[str, Any] = {}  # Add stats parameter
+        self,
+        draw: ImageDraw.ImageDraw,
+        y: int,
+        leader_skill: str
     ) -> int:
-        """Render leader skill AND relic slots together"""
+        """Render JUST the leader skill (relics moved to separate method)"""
         layout_config = self.config.get("layout", {})
         left_margin = layout_config.get("left_margin", 70)
         right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 70)
@@ -852,12 +851,12 @@ class ImageGenerator:
         
         text_color = self.config.get_text_color()
         
-        # Leader Skill section first
+        # Leader Skill header
         draw.text((left_margin, y), "Leader Skill", fill=text_color, font=self.font_normal)
         y += layout_config.get("header_spacing", 22)
         
         if leader_skill and leader_skill.lower() != "none":
-            # Text wrapping for leader skill
+            # Text wrapping
             words = leader_skill.split()
             lines = []
             current_line = []
@@ -890,67 +889,77 @@ class ImageGenerator:
             draw.text((left_margin, y), "None", fill=none_color, font=self.font_normal)
             y += 18
         
-        # Add spacing between leader skill and relics
-        y += 15
-        
-        # MW-STYLE RELIC SLOTS (moved here from stats section)
-        if stats and "equipped_relics" in stats and "max_relic_slots" in stats:
-            equipped_relics = stats["equipped_relics"]
-            max_slots = stats["max_relic_slots"]
-            
-            # Section header
-            draw.text((left_margin, y), "Relics", fill=text_color, font=self.font_normal)
-            y += layout_config.get("header_spacing", 22)
-            
-            # Show each slot individually
-            for slot_num in range(max_slots):
-                slot_label = f"Slot {slot_num + 1}:"
-                
-                # Get relic in this slot
-                if slot_num < len(equipped_relics) and equipped_relics[slot_num] is not None:
-                    relic_name = equipped_relics[slot_num]
-                    from src.utils.relic_system import RelicSystem
-                    
-                    # Get relic data for display
-                    relic_data = RelicSystem.get_relic_data(relic_name)
-                    if relic_data:
-                        display_name = relic_data.get("display_name", relic_name)
-                        
-                        # Build effect summary
-                        effects = []
-                        if relic_data.get("atk_boost", 0) > 0:
-                            effects.append(f"ATK +{relic_data['atk_boost']}%")
-                        if relic_data.get("def_boost", 0) > 0:
-                            effects.append(f"DEF +{relic_data['def_boost']}%")
-                        if relic_data.get("hp_boost", 0) > 0:
-                            effects.append(f"HP +{relic_data['hp_boost']}%")
-                        if relic_data.get("def_to_atk", 0) > 0:
-                            effects.append(f"DEF→ATK {relic_data['def_to_atk']}%")
-                        if relic_data.get("atk_to_def", 0) > 0:
-                            effects.append(f"ATK→DEF {relic_data['atk_to_def']}%")
-                        if relic_data.get("hp_to_atk", 0) > 0:
-                            effects.append(f"HP→ATK {relic_data['hp_to_atk']}%")
-                        
-                        effect_text = f" ({', '.join(effects)})" if effects else ""
-                        slot_value = f"{display_name}{effect_text}"
-                    else:
-                        slot_value = relic_name
-                else:
-                    slot_value = "-"
-                
-                # Draw slot label and value
-                draw.text((left_margin, y), slot_label, fill=text_color, font=self.font_normal)
-                
-                slot_bbox = draw.textbbox((0, 0), slot_label, font=self.font_normal)
-                slot_label_width = slot_bbox[2] - slot_bbox[0]
-                value_x = left_margin + slot_label_width + 10
-                
-                draw.text((value_x, y), slot_value, fill=text_color, font=self.font_normal)
-                
-                y += 18
-        
         return y
     
+    def _render_relics_section(
+        self,
+        draw: ImageDraw.ImageDraw,
+        y: int,
+        stats: Dict[str, Any]
+    ) -> int:
+        """Render MW-style relic slots"""
+        layout_config = self.config.get("layout", {})
+        left_margin = layout_config.get("left_margin", 70)
+        text_color = self.config.get_text_color()
+        
+        equipped_relics = stats.get("equipped_relics", [])
+        max_slots = stats.get("max_relic_slots", 0)
+        
+        # Only render if this esprit has slots
+        if max_slots <= 0:
+            return y
+        
+        # Section header
+        draw.text((left_margin, y), "Relics", fill=text_color, font=self.font_normal)
+        y += layout_config.get("header_spacing", 22)
+        
+        # Show each slot
+        for slot_num in range(max_slots):
+            slot_label = f"Slot {slot_num + 1}:"
+            
+            # Get relic in this slot
+            if slot_num < len(equipped_relics) and equipped_relics[slot_num] is not None:
+                relic_name = equipped_relics[slot_num]
+                from src.utils.relic_system import RelicSystem
+                
+                relic_data = RelicSystem.get_relic_data(relic_name)
+                if relic_data:
+                    display_name = relic_data.get("display_name", relic_name)
+                    
+                    # Build effect summary
+                    effects = []
+                    if relic_data.get("atk_boost", 0) > 0:
+                        effects.append(f"ATK +{relic_data['atk_boost']}%")
+                    if relic_data.get("def_boost", 0) > 0:
+                        effects.append(f"DEF +{relic_data['def_boost']}%")
+                    if relic_data.get("hp_boost", 0) > 0:
+                        effects.append(f"HP +{relic_data['hp_boost']}%")
+                    if relic_data.get("def_to_atk", 0) > 0:
+                        effects.append(f"DEF→ATK {relic_data['def_to_atk']}%")
+                    if relic_data.get("atk_to_def", 0) > 0:
+                        effects.append(f"ATK→DEF {relic_data['atk_to_def']}%")
+                    if relic_data.get("hp_to_atk", 0) > 0:
+                        effects.append(f"HP→ATK {relic_data['hp_to_atk']}%")
+                    
+                    effect_text = f" ({', '.join(effects)})" if effects else ""
+                    slot_value = f"{display_name}{effect_text}"
+                else:
+                    slot_value = relic_name
+            else:
+                slot_value = "-"
+            
+            # Draw slot
+            draw.text((left_margin, y), slot_label, fill=text_color, font=self.font_normal)
+            
+            slot_bbox = draw.textbbox((0, 0), slot_label, font=self.font_normal)
+            slot_label_width = slot_bbox[2] - slot_bbox[0]
+            value_x = left_margin + slot_label_width + 10
+            
+            draw.text((value_x, y), slot_value, fill=text_color, font=self.font_normal)
+            y += 18
+        
+        return y + 15  # Add spacing after relics
+
     def _calculate_content_box_area(self, content_start_y: int) -> Tuple[int, int, int, int]:
         """Calculate the coordinates for the content box area"""
         content_box_config = self.config.get("content_box", {})
@@ -1167,14 +1176,19 @@ class ImageGenerator:
         y = self._render_name_and_stars(draw, y, name, awakening)
         
         # Stats section
-        self._draw_enhanced_divider(draw, y - 10)
-        y += 15
+        self._draw_enhanced_divider(draw, y - 5)
+        y += 12
         y = self._render_stats_section(draw, y, stats)
-        
-        # Leader skill section
-        self._draw_enhanced_divider(draw, y - 15)
-        y += 16
-        final_y = self._render_leader_skill(draw, y, leader_skill)
+
+        # Relics section (NEW - moved before leader skill)
+        self._draw_enhanced_divider(draw, y - 5)
+        y += 0
+        y = self._render_relics_section(draw, y, stats)
+
+        # Leader skill section (MOVED TO LAST)
+        self._draw_enhanced_divider(draw, y - 10)
+        y += 5
+        final_y = self._render_leader_skill(draw, y, leader_skill) 
         
         # CARD CLOSURE: Bottom divider and frame from config
         self._add_card_closure(draw, final_y)
