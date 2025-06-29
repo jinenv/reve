@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from sqlalchemy import BigInteger, Column, Index, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 from pydantic import validator
 from src.utils.game_constants import Elements, Tiers
 from src.utils.logger import get_logger
@@ -42,6 +43,12 @@ class EspritBase(SQLModel, table=True):
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     
+    # Universal relic slots - just a list of relic names
+    equipped_relics: List[Optional[str]] = Field(
+        default_factory=list,
+        sa_column=Column(JSON)
+    )
+
     # --- VALIDATORS ---
     
     @validator('element')
@@ -389,6 +396,127 @@ class EspritBase(SQLModel, table=True):
                 "passive_count": 0,
                 "expected_passive_count": 0
             }
+        
+    def get_max_relic_slots(self) -> int:
+        """Tier-based slot progression: 1-6=1 slot, 7-12=2 slots, 13-18=3 slots"""
+        if self.base_tier <= 6:
+            return 1
+        elif self.base_tier <= 12:
+            return 2
+        else:
+            return 3
+    
+    def get_equipped_count(self) -> int:
+        """Count actually equipped relics"""
+        return sum(1 for relic in self.equipped_relics if relic is not None)
+    
+    def get_available_slots(self) -> List[Optional[str]]:
+        """Get slot array with proper length for tier"""
+        max_slots = self.get_max_relic_slots()
+        
+        # Ensure we have the right number of slots
+        while len(self.equipped_relics) < max_slots:
+            self.equipped_relics.append(None)
+        
+        # Trim if we somehow have too many
+        if len(self.equipped_relics) > max_slots:
+            self.equipped_relics = self.equipped_relics[:max_slots]
+        
+        return self.equipped_relics
+    
+    def equip_relic(self, slot_index: int, relic_name: Optional[str]) -> bool:
+        """Equip relic in specific slot (0-indexed)"""
+        max_slots = self.get_max_relic_slots()
+        
+        if not (0 <= slot_index < max_slots):
+            return False
+        
+        # Ensure proper slot array length
+        self.get_available_slots()
+        
+        # Equip the relic
+        self.equipped_relics[slot_index] = relic_name
+        flag_modified(self, "equipped_relics")
+        return True
+    
+    def unequip_relic(self, slot_index: int) -> bool:
+        """Remove relic from specific slot"""
+        return self.equip_relic(slot_index, None)
+    
+    def get_relic_bonuses(self) -> Dict[str, Any]:
+        """Calculate total stat bonuses from ALL equipped relics"""
+        from src.utils.relic_system import RelicSystem
+        
+        total_bonuses = {
+            "atk_boost": 0, "def_boost": 0, "hp_boost": 0,
+            "def_to_atk": 0, "atk_to_def": 0, "hp_to_atk": 0,
+            "hp_to_def": 0, "atk_to_hp": 0, "def_to_hp": 0
+        }
+        
+        for relic_name in self.equipped_relics:
+            if not relic_name:
+                continue
+                
+            relic_bonuses = RelicSystem.get_relic_bonuses(relic_name)
+            for bonus_type, value in relic_bonuses.items():
+                if bonus_type in total_bonuses:
+                    total_bonuses[bonus_type] += value
+        
+        return total_bonuses
+    
+    def get_total_stats_with_relics(self) -> Dict[str, Any]:
+        """Get final stats including MW-style relic conversions"""
+        base_stats = {
+            "atk": self.base_atk,
+            "def": self.base_def,
+            "hp": self.base_hp
+        }
+        
+        relic_bonuses = self.get_relic_bonuses()
+        
+        # STEP 1: Apply conversions (based on original base stats)
+        converted_atk = base_stats["atk"]
+        converted_def = base_stats["def"]
+        converted_hp = base_stats["hp"]
+        
+        # DEF → ATK conversion
+        converted_atk += int(base_stats["def"] * (relic_bonuses.get("def_to_atk", 0) / 100.0))
+        
+        # ATK → DEF conversion  
+        converted_def += int(base_stats["atk"] * (relic_bonuses.get("atk_to_def", 0) / 100.0))
+        
+        # HP → ATK conversion
+        converted_atk += int(base_stats["hp"] * (relic_bonuses.get("hp_to_atk", 0) / 100.0))
+        
+        # HP → DEF conversion
+        converted_def += int(base_stats["hp"] * (relic_bonuses.get("hp_to_def", 0) / 100.0))
+        
+        # ATK → HP conversion
+        converted_hp += int(base_stats["atk"] * (relic_bonuses.get("atk_to_hp", 0) / 100.0))
+        
+        # DEF → HP conversion
+        converted_hp += int(base_stats["def"] * (relic_bonuses.get("def_to_hp", 0) / 100.0))
+        
+        # STEP 2: Apply percentage bonuses to converted stats
+        final_atk = int(converted_atk * (1.0 + relic_bonuses.get("atk_boost", 0) / 100.0))
+        final_def = int(converted_def * (1.0 + relic_bonuses.get("def_boost", 0) / 100.0))
+        final_hp = int(converted_hp * (1.0 + relic_bonuses.get("hp_boost", 0) / 100.0))
+        
+        return {
+            "atk": final_atk,
+            "def": final_def,
+            "hp": final_hp,
+            "base_atk": base_stats["atk"],
+            "base_def": base_stats["def"],
+            "base_hp": base_stats["hp"],
+            "relic_bonuses": relic_bonuses,
+            "conversions": {
+                "converted_atk": converted_atk,
+                "converted_def": converted_def,
+                "converted_hp": converted_hp
+            }
+        }
+
     
     # --- CLASS METHODS FOR QUERIES ---
     

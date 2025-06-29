@@ -129,12 +129,12 @@
     },
     
     "layout": {
-      "left_margin": 70,
-      "right_margin": 70,
+      "left_margin": 75,
+      "right_margin": 75,
       "main_stat_spacing": 32,
-      "secondary_stat_spacing": 18,
-      "section_spacing": 15,
-      "header_spacing": 22,
+      "secondary_stat_spacing": 24,
+      "section_spacing": 18,
+      "header_spacing": 24,
       "skill_line_spacing": 18
     },
     
@@ -147,8 +147,8 @@
     
     "content_box": {
       "enabled": true,
-      "left_margin": 20,
-      "right_margin": 20,
+      "left_margin": 50,
+      "right_margin": 50,
       "top_margin": 0,
       "bottom_margin": 25,
       "background": {

@@ -377,11 +377,14 @@ class EspritCog(commands.Cog):
                     "base_def": power['def'],
                     "base_hp": power['hp'],
                     "awakening_level": esprit.awakening_level,
-                    "quantity": esprit.quantity
+                    "quantity": esprit.quantity,
+                    "equipped_relics": base.equipped_relics,
+                    "max_relic_slots": base.get_max_relic_slots()
                 }
                 
                 # Generate the card using the WORKING generator
                 logger.info(f"Generating card for {base.name} requested by {inter.author.id}")
+                logger.info(f"Card data for {base.name}: equipped_relics={base.equipped_relics}, max_slots={base.get_max_relic_slots()}")
                 card_image = await self.image_generator.render_esprit_card(card_data)
                 card_file = await self.image_generator.to_discord_file(
                     card_image,
@@ -499,7 +502,10 @@ class EspritCog(commands.Cog):
                     "base_atk": power['atk'],
                     "base_def": power['def'],
                     "base_hp": power['hp'],
-                    "awakening_level": esprit.awakening_level
+                    "awakening_level": esprit.awakening_level,
+                    "quantity": esprit.quantity,
+                    "equipped_relics": base.equipped_relics,
+                    "max_relic_slots": base.get_max_relic_slots()
                 }
                 
                 card_image = await self.image_generator.render_esprit_card(card_data)

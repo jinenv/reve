@@ -723,24 +723,23 @@ class ImageGenerator:
         name: str, 
         awakening: int
     ) -> int:
-        """Render centered name and awakening stars with shadows"""
+        """Render left-aligned name with right-aligned stars"""
+
         display_name = name.title()
         max_awakening = self.config.get("awakening", {}).get("max_level", 5)
         
+        layout_config = self.config.get("layout", {})
+        left_margin = layout_config.get("left_margin", 70)
+        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 70)
+
         filled_stars = "⭐" * awakening
         empty_stars = "☆" * (max_awakening - awakening)
         stars_text = filled_stars + empty_stars
         
-        # Calculate dimensions
-        name_bbox = draw.textbbox((0, 0), display_name, font=self.font_large)
-        name_width = name_bbox[2] - name_bbox[0]
-        
+        # Calculate star positioning (RIGHT-ALIGNED)
         stars_bbox = draw.textbbox((0, 0), stars_text, font=self.font_large)
         stars_width = stars_bbox[2] - stars_bbox[0]
-        
-        gap = self.config.get("text", {}).get("name_star_gap", 20)
-        total_width = name_width + gap + stars_width
-        start_x = (self.config.CARD_WIDTH - total_width) // 2
+        stars_x = right_margin - stars_width
         
         # Enhanced text rendering with shadow
         shadow_config = self.config.get("text", {}).get("shadow", {})
@@ -752,19 +751,17 @@ class ImageGenerator:
         star_filled_color = self.config.get_star_filled_color()
         star_empty_color = self.config.get_star_empty_color()
         
-        # Draw name with shadow
+        # Draw name with shadow at left margin
         if shadow_enabled:
             draw.text(
-                (start_x + shadow_offset, y + shadow_offset), 
+                (left_margin + shadow_offset, y + shadow_offset), 
                 display_name, 
                 fill=shadow_color, 
                 font=self.font_large
             )
-        draw.text((start_x, y), display_name, fill=text_color, font=self.font_large)
+        draw.text((left_margin, y), display_name, fill=text_color, font=self.font_large)
         
-        # Draw stars
-        stars_x = start_x + name_width + gap
-        
+        # Draw stars right-aligned
         if awakening > 0:
             if shadow_enabled:
                 draw.text(
@@ -788,18 +785,9 @@ class ImageGenerator:
                 )
             draw.text((empty_x, y), empty_stars, fill=star_empty_color, font=self.font_large)
         
-        # GET TEXT CONFIG WITH PROPER ERROR HANDLING
+        # Return next Y position
         text_config = self.config.get("text", {})
-        logger.debug(f"[RENDER] Text config retrieved: {text_config}")
-        
-        if isinstance(text_config, dict):
-            line_spacing = text_config.get("line_spacing", 35)
-            logger.debug(f"[RENDER] Line spacing from config: {line_spacing}")
-        else:
-            logger.error(f"[RENDER] Text config is not a dict! Type: {type(text_config)}, using default")
-            line_spacing = 35
-        
-        logger.info(f"[RENDER] FINAL line spacing value: {line_spacing}")
+        line_spacing = text_config.get("line_spacing", 35) if isinstance(text_config, dict) else 35
         
         return y + line_spacing
     
@@ -845,7 +833,7 @@ class ImageGenerator:
             value_width = value_bbox[2] - value_bbox[0]
             draw.text((right_margin - value_width, y), value, fill=text_color, font=self.font_normal)
             
-            y += layout_config.get("secondary_stat_spacing", 18)
+            y += layout_config.get("secondary_stat_spacing", 24)
         
         return y + layout_config.get("section_spacing", 15)
     
@@ -853,21 +841,23 @@ class ImageGenerator:
         self, 
         draw: ImageDraw.ImageDraw, 
         y: int, 
-        leader_skill: str
+        leader_skill: str,
+        stats: Dict[str, Any] = {}  # Add stats parameter
     ) -> int:
-        """Render leader skill with intelligent text wrapping"""
+        """Render leader skill AND relic slots together"""
         layout_config = self.config.get("layout", {})
-        left_margin = layout_config.get("left_margin", 60)
-        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 60)
+        left_margin = layout_config.get("left_margin", 70)
+        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 70)
         max_width = right_margin - left_margin
         
         text_color = self.config.get_text_color()
         
+        # Leader Skill section first
         draw.text((left_margin, y), "Leader Skill", fill=text_color, font=self.font_normal)
         y += layout_config.get("header_spacing", 22)
         
         if leader_skill and leader_skill.lower() != "none":
-            # Advanced text wrapping
+            # Text wrapping for leader skill
             words = leader_skill.split()
             lines = []
             current_line = []
@@ -884,13 +874,11 @@ class ImageGenerator:
                         lines.append(" ".join(current_line))
                         current_line = [word]
                     else:
-                        # Single word is too long, add it anyway
                         lines.append(word)
             
             if current_line:
                 lines.append(" ".join(current_line))
             
-            # Render lines with proper spacing
             skill_color = tuple(self.config.get("text", {}).get("skill_color", [200, 200, 200]))
             line_spacing = layout_config.get("skill_line_spacing", 18)
             
@@ -901,6 +889,65 @@ class ImageGenerator:
             none_color = tuple(self.config.get("text", {}).get("none_color", [120, 120, 120]))
             draw.text((left_margin, y), "None", fill=none_color, font=self.font_normal)
             y += 18
+        
+        # Add spacing between leader skill and relics
+        y += 15
+        
+        # MW-STYLE RELIC SLOTS (moved here from stats section)
+        if stats and "equipped_relics" in stats and "max_relic_slots" in stats:
+            equipped_relics = stats["equipped_relics"]
+            max_slots = stats["max_relic_slots"]
+            
+            # Section header
+            draw.text((left_margin, y), "Relics", fill=text_color, font=self.font_normal)
+            y += layout_config.get("header_spacing", 22)
+            
+            # Show each slot individually
+            for slot_num in range(max_slots):
+                slot_label = f"Slot {slot_num + 1}:"
+                
+                # Get relic in this slot
+                if slot_num < len(equipped_relics) and equipped_relics[slot_num] is not None:
+                    relic_name = equipped_relics[slot_num]
+                    from src.utils.relic_system import RelicSystem
+                    
+                    # Get relic data for display
+                    relic_data = RelicSystem.get_relic_data(relic_name)
+                    if relic_data:
+                        display_name = relic_data.get("display_name", relic_name)
+                        
+                        # Build effect summary
+                        effects = []
+                        if relic_data.get("atk_boost", 0) > 0:
+                            effects.append(f"ATK +{relic_data['atk_boost']}%")
+                        if relic_data.get("def_boost", 0) > 0:
+                            effects.append(f"DEF +{relic_data['def_boost']}%")
+                        if relic_data.get("hp_boost", 0) > 0:
+                            effects.append(f"HP +{relic_data['hp_boost']}%")
+                        if relic_data.get("def_to_atk", 0) > 0:
+                            effects.append(f"DEF→ATK {relic_data['def_to_atk']}%")
+                        if relic_data.get("atk_to_def", 0) > 0:
+                            effects.append(f"ATK→DEF {relic_data['atk_to_def']}%")
+                        if relic_data.get("hp_to_atk", 0) > 0:
+                            effects.append(f"HP→ATK {relic_data['hp_to_atk']}%")
+                        
+                        effect_text = f" ({', '.join(effects)})" if effects else ""
+                        slot_value = f"{display_name}{effect_text}"
+                    else:
+                        slot_value = relic_name
+                else:
+                    slot_value = "-"
+                
+                # Draw slot label and value
+                draw.text((left_margin, y), slot_label, fill=text_color, font=self.font_normal)
+                
+                slot_bbox = draw.textbbox((0, 0), slot_label, font=self.font_normal)
+                slot_label_width = slot_bbox[2] - slot_bbox[0]
+                value_x = left_margin + slot_label_width + 10
+                
+                draw.text((value_x, y), slot_value, fill=text_color, font=self.font_normal)
+                
+                y += 18
         
         return y
     
@@ -1064,7 +1111,9 @@ class ImageGenerator:
             'atk': card_data.get("base_atk", 0),
             'hp': card_data.get("base_hp", 0),
             'owned': card_data.get("quantity", 1),
-            'upkeep': card_data.get("upkeep", 0)
+            'upkeep': card_data.get("upkeep", 0),
+            'equipped_relics': card_data.get("equipped_relics", []),
+            'max_relic_slots': card_data.get("max_relic_slots", 0)
         }
         
         # Load sprite with enhanced discovery
@@ -1118,12 +1167,12 @@ class ImageGenerator:
         y = self._render_name_and_stars(draw, y, name, awakening)
         
         # Stats section
-        self._draw_enhanced_divider(draw, y)
+        self._draw_enhanced_divider(draw, y - 10)
         y += 15
         y = self._render_stats_section(draw, y, stats)
         
         # Leader skill section
-        self._draw_enhanced_divider(draw, y)
+        self._draw_enhanced_divider(draw, y - 15)
         y += 16
         final_y = self._render_leader_skill(draw, y, leader_skill)
         

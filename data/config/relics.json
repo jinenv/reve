@@ -1,0 +1,64 @@
+{
+  "relics": [
+    {
+      "name": "iron_sword",
+      "display_name": "Iron Sword",
+      "rarity": 1,
+      "atk_boost": 8,
+      "description": "A basic iron blade.",
+      "emoji": "⚔️"
+    },
+    {
+      "name": "berserker_blade", 
+      "display_name": "Berserker Blade",
+      "rarity": 3,
+      "atk_boost": 25,
+      "def_to_atk": 15,
+      "description": "Converts defensive prowess into raw attack power.",
+      "emoji": "🗡️"
+    },
+    {
+      "name": "guardian_plate",
+      "display_name": "Guardian Plate",
+      "rarity": 4, 
+      "def_boost": 30,
+      "hp_boost": 20,
+      "atk_to_def": 20,
+      "description": "Redirects offensive energy into defensive barriers.",
+      "emoji": "🛡️"
+    },
+    {
+      "name": "vampiric_ring",
+      "display_name": "Vampiric Ring",
+      "rarity": 5,
+      "atk_boost": 15,
+      "hp_to_atk": 25,
+      "description": "Converts life force into devastating attack power.",
+      "emoji": "💍"
+    },
+    {
+      "name": "fortress_crown",
+      "display_name": "Fortress Crown", 
+      "rarity": 5,
+      "def_boost": 20,
+      "hp_boost": 30,
+      "def_to_hp": 35,
+      "hp_to_def": 15,
+      "description": "Creates a feedback loop between defense and vitality.",
+      "emoji": "👑"
+    },
+    {
+      "name": "chaos_orb",
+      "display_name": "Chaos Orb",
+      "rarity": 5,
+      "atk_boost": 40,
+      "def_boost": 40,
+      "hp_boost": 40,
+      "def_to_atk": 25,
+      "atk_to_def": 25,
+      "hp_to_atk": 25,
+      "description": "Pure chaotic energy that amplifies everything.",
+      "emoji": "🔮"
+    }
+  ]
+}
