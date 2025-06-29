@@ -39,7 +39,6 @@ class Admin(commands.Cog):
        user: disnake.User = commands.Param(description="User to reset (defaults to self)", default=None)
    ):
        """Reset a player's data"""
-       await inter.response.defer(ephemeral=True)
        
        target_user = user or inter.author
        
@@ -118,7 +117,6 @@ class Admin(commands.Cog):
    @ratelimit(uses=1, per_seconds=30, command_name="admin_sync_emojis")
    async def sync_emojis(self, inter: disnake.ApplicationCommandInteraction):
        """Sync emojis from configured servers"""
-       await inter.response.defer()
        
        try:
            from src.utils.emoji_manager import get_emoji_manager
@@ -152,6 +150,34 @@ class Admin(commands.Cog):
            logger.error(f"Admin command error in {inter.application_command.name}: {e}", exc_info=True)
            await inter.edit_original_response(content="❌ Error syncing emojis. Check logs for details.")
 
+   @admin.sub_command(name="sync_commands", description="Force sync slash commands with Discord")
+   @ratelimit(uses=1, per_seconds=30, command_name="admin_sync_commands")
+   async def sync_commands(self, inter: disnake.ApplicationCommandInteraction):
+       """Force Discord to recognize new slash commands"""
+       await inter.response.defer()
+       
+       try:
+           # Sync commands globally
+           synced = await self.bot.sync_application_commands()
+           
+           embed = disnake.Embed(
+               title="✅ Commands Synced",
+               description=f"Synced {len(synced)} slash commands with Discord.",
+               color=EmbedColors.SUCCESS
+           )
+           
+           embed.set_footer(text="Commands may take a few minutes to appear")
+           await inter.edit_original_response(embed=embed)
+           
+       except Exception as e:
+           logger.error(f"Command sync failed: {e}")
+           embed = disnake.Embed(
+               title="❌ Sync Failed",
+               description=f"Error syncing commands: {str(e)}",
+               color=EmbedColors.ERROR
+           )
+           await inter.edit_original_response(embed=embed)
+        
    @admin.sub_command_group(name="give", description="Give items/esprits to players")
    async def admin_give(self, inter: disnake.ApplicationCommandInteraction):
        """Give group - never called directly"""
@@ -168,7 +194,6 @@ class Admin(commands.Cog):
        awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level (0-5 stars)")
    ):
        """Give an esprit to a player by name"""
-       await inter.response.defer(ephemeral=True)
        
        try:
            async with DatabaseService.get_transaction() as session:
@@ -281,8 +306,7 @@ class Admin(commands.Cog):
        awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level")
    ):
        """Give one of every esprit because testing"""
-       await inter.response.defer(ephemeral=True)
-       
+
        try:
            async with DatabaseService.get_transaction() as session:
                # Get player
@@ -412,8 +436,7 @@ class Admin(commands.Cog):
        confirm_deletion: bool = commands.Param(default=False, description="Type True to confirm PERMANENT deletion")
    ):
        """Remove an EspritBase (Esprit type) entirely from the game"""
-       await inter.response.defer(ephemeral=True)
-       
+
        if not confirm_deletion:
            embed = disnake.Embed(
                title="⚠️ DANGER: Complete Esprit Removal",
@@ -538,7 +561,6 @@ class Admin(commands.Cog):
        confirm: bool = commands.Param(default=False, description="Confirm deletion")
    ):
        """Remove a specific Esprit stack from a player"""
-       await inter.response.defer(ephemeral=True)
        
        if not confirm:
            embed = disnake.Embed(
@@ -664,6 +686,117 @@ class Admin(commands.Cog):
            logger.error(f"Autocomplete error: {e}")
            return []
 
-
+   @admin.sub_command(name="reload_config", description="NUCLEAR CONFIG RELOAD - Reloads EVERYTHING")
+   @ratelimit(uses=1, per_seconds=5, command_name="admin_reload_config")
+   async def universal_config_reload(
+       self, 
+       inter: disnake.ApplicationCommandInteraction,
+       specific_config: str = commands.Param(default="ALL", description="Specific config to reload or 'ALL'")
+   ):
+       """UNIVERSAL CONFIG RELOADER because apparently we're doing live config editing at 2 AM"""
+       
+       # Check if interaction was already responded to by rate limiter
+       if not inter.response.is_done():
+           await inter.response.defer()
+       
+       try:
+           reloaded_configs = []
+           
+           if specific_config.upper() == "ALL":
+               # NUCLEAR OPTION: Reload EVERYTHING
+               old_count = len(ConfigManager._configs) if hasattr(ConfigManager, '_configs') else 0
+               
+               # Use the actual reload method because apparently it exists and I was being dramatic
+               ConfigManager.reload()
+               
+               new_count = len(ConfigManager._configs)
+               reloaded_configs = list(ConfigManager._configs.keys())
+               
+               # Force ImageGenerator to reinitialize 
+               from src.utils.image_generator import _generator
+               _generator.__init__()
+               
+               embed = disnake.Embed(
+                   title="🔥 NUCLEAR CONFIG RELOAD COMPLETE",
+                   description=f"Obliterated and reloaded ALL configs from disk.\n\n**Before:** {old_count} configs\n**After:** {new_count} configs",
+                   color=EmbedColors.SUCCESS
+               )
+               
+               if reloaded_configs:
+                   embed.add_field(
+                       name="💥 Configs Reloaded",
+                       value=", ".join(reloaded_configs),
+                       inline=False
+                   )
+               
+               embed.add_field(
+                   name="🎯 ImageGenerator",
+                   value="Forced reinitialization with new config",
+                   inline=False
+               )
+                
+           else:
+               # Reload specific config
+               if specific_config in ConfigManager._configs:
+                   # Remove from cache
+                   del ConfigManager._configs[specific_config]
+                   
+                   # Try to reload it
+                   import json
+                   from pathlib import Path
+                   
+                   config_path = Path("data/config") / f"{specific_config}.json"
+                   if config_path.exists():
+                       with open(config_path, 'r', encoding='utf-8') as f:
+                           ConfigManager._configs[specific_config] = json.load(f)
+                       
+                       reloaded_configs = [specific_config]
+                       
+                       # If it's image_generation, reload ImageGenerator
+                       if specific_config == "image_generation":
+                           from src.utils.image_generator import _generator
+                           _generator.__init__()
+                       
+                       embed = disnake.Embed(
+                           title="✅ Specific Config Reloaded",
+                           description=f"Successfully reloaded `{specific_config}` from disk.",
+                           color=EmbedColors.SUCCESS
+                       )
+                       
+                       if specific_config == "image_generation":
+                           embed.add_field(
+                               name="🎯 ImageGenerator",
+                               value="Forced reinitialization with new config",
+                               inline=False
+                           )
+                   else:
+                       embed = disnake.Embed(
+                           title="❌ Config File Not Found",
+                           description=f"Config file `{specific_config}.json` doesn't exist on disk.",
+                           color=EmbedColors.ERROR
+                       )
+               else:
+                   embed = disnake.Embed(
+                       title="❌ Config Not Loaded",
+                       description=f"Config `{specific_config}` wasn't loaded in memory.",
+                       color=EmbedColors.ERROR
+                   )
+        
+           # Add timestamp
+           import datetime
+           embed.set_footer(text=f"Reloaded at {datetime.datetime.now().strftime('%H:%M:%S')}")
+           
+           # Use edit_original_response whether we deferred or rate limiter handled it
+           await inter.edit_original_response(embed=embed)
+           
+       except Exception as e:
+           logger.error(f"Universal config reload failed: {e}", exc_info=True)
+           embed = disnake.Embed(
+               title="💥 RELOAD CATASTROPHICALLY FAILED",
+               description=f"Error: {str(e)}\n\nYour configs might be in an undefined state. Restart the bot.",
+               color=EmbedColors.ERROR
+           )
+           await inter.edit_original_response(embed=embed)
+       
 def setup(bot):
    bot.add_cog(Admin(bot))

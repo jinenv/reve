@@ -1,1176 +1,1204 @@
 # src/utils/image_generator.py
-"""
-Comprehensive image utility module for Jiji bot.
-Handles all visual generation with MW-style cards, proper scaling, and fallbacks.
-"""
+from __future__ import annotations
+
+import asyncio
 import io
 import os
-from typing import Tuple, Optional, Dict, Any, List, Union
+from typing import Tuple, Optional, Dict, Any, List
 from pathlib import Path
-from dataclasses import dataclass
-from enum import Enum
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
+import random
 
 import disnake
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps, ImageEnhance
-from PIL.ImageDraw import ImageDraw as ImageDrawClass
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from src.utils.logger import get_logger
-from src.utils.game_constants import Elements, Tiers, EmbedColors
+from src.utils.game_constants import Tiers, Elements
 from src.utils.config_manager import ConfigManager
+
+# Optional dependencies for advanced features
+try:
+    import numpy as np
+    from sklearn.cluster import KMeans
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
+    np = None  # type: ignore
+    KMeans = None  # type: ignore
 
 logger = get_logger(__name__)
 
-# Global thread pool for image operations
-_thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="ImgGen")
-
-# --- Constants ---
-# Card dimensions (MW-style)
-CARD_WIDTH = 512
-CARD_HEIGHT = 768
-CARD_PADDING = 20
-
-# Sprite display areas
-SPRITE_AREA_WIDTH = CARD_WIDTH - (CARD_PADDING * 2)
-SPRITE_AREA_HEIGHT = 400  # Top portion for sprite
-
-# Portrait sizes
-PORTRAIT_SIZE = (128, 128)  # Your standard portrait size
-ICON_SIZE = (64, 64)        # Smaller icons for UI elements
-EMOJI_SIZE = (32, 32)       # Discord emoji size
-
-# Font sizes
-FONT_GIANT = 48    # Main title
-FONT_LARGE = 36    # Stats headers
-FONT_MEDIUM = 28   # General text
-FONT_SMALL = 20    # Details
-FONT_TINY = 16     # Footer
-
-# Asset paths
-ASSETS_BASE = Path("assets")
-SPRITES_PATH = ASSETS_BASE / "sprites"
-PORTRAITS_PATH = ASSETS_BASE / "portraits"
-BACKGROUNDS_PATH = ASSETS_BASE / "backgrounds"
-FRAMES_PATH = ASSETS_BASE / "frames"
-FONTS_PATH = ASSETS_BASE / "fonts"
-ICONS_PATH = ASSETS_BASE / "icons"
-
-# Color constants
-COLOR_BLACK = (0, 0, 0)
-COLOR_WHITE = (255, 255, 255)
-COLOR_GOLD = (255, 215, 0)
-COLOR_SILVER = (192, 192, 192)
-COLOR_DISCORD_BG = (44, 45, 49)  # #2c2d31
-
-# Text shadows
-TEXT_SHADOW_OFFSET = 3
-TEXT_OUTLINE_WIDTH = 2
-
-@dataclass
-class AssetPaths:
-    """Structured asset path management"""
-    sprite: Optional[Path] = None
-    portrait: Optional[Path] = None
-    frame: Optional[Path] = None
-    background: Optional[Path] = None
+# --- COMPLETELY FIXED Configuration Class ---
+class ImageConfig:
+    """Centralized image generation configuration that ACTUALLY WORKS"""
     
-    def validate(self) -> Dict[str, bool]:
-        """Check which assets exist"""
-        return {
-            "sprite": self.sprite.exists() if self.sprite else False,
-            "portrait": self.portrait.exists() if self.portrait else False,
-            "frame": self.frame.exists() if self.frame else False,
-            "background": self.background.exists() if self.background else False
+    @classmethod
+    def get(cls, key: str, default: Any = None) -> Any:
+        """Get config value with PROPER nested access and debugging"""
+        try:
+            # Get the raw config file
+            config_file = ConfigManager.get("image_generation")
+            logger.debug(f"[CONFIG] Raw ConfigManager returned: {type(config_file)} = {config_file}")
+            
+            if config_file is None:
+                logger.error(f"[CONFIG] image_generation config is None! Using default for '{key}': {default}")
+                return default
+            
+            # Handle both nested and flat config structures
+            if isinstance(config_file, dict):
+                # Check if it's nested under "image_generation" key
+                if "image_generation" in config_file:
+                    actual_config = config_file["image_generation"]
+                    logger.debug(f"[CONFIG] Using nested structure, extracted: {type(actual_config)}")
+                else:
+                    # Maybe it's already the right level
+                    actual_config = config_file
+                    logger.debug(f"[CONFIG] Using flat structure: {type(actual_config)}")
+                
+                if not isinstance(actual_config, dict):
+                    logger.error(f"[CONFIG] Config is not a dict! Type: {type(actual_config)}, using default for '{key}': {default}")
+                    return default
+                
+                # Get the requested value
+                if key in actual_config:
+                    value = actual_config[key]
+                    logger.debug(f"[CONFIG] SUCCESS: '{key}' = {value} (type: {type(value)})")
+                    return value
+                else:
+                    logger.warning(f"[CONFIG] Key '{key}' not found in config. Available keys: {list(actual_config.keys())}")
+                    logger.warning(f"[CONFIG] Using default for '{key}': {default}")
+                    return default
+            else:
+                logger.error(f"[CONFIG] Config file is not a dict! Type: {type(config_file)}, using default for '{key}': {default}")
+                return default
+                
+        except Exception as e:
+            logger.error(f"[CONFIG] Exception getting '{key}': {e}")
+            return default
+    
+    # Card dimensions
+    CARD_WIDTH = 400
+    CARD_HEIGHT = 600
+    SPRITE_HEIGHT_PERCENT = 0.45
+    
+    # Layout positions  
+    @classmethod
+    def get_sprite_area_height(cls) -> int:
+        return int(cls.CARD_HEIGHT * cls.SPRITE_HEIGHT_PERCENT)
+    
+    @classmethod
+    def get_content_start_y(cls) -> int:
+        return cls.get_sprite_area_height() + 10
+    
+    # Colors with FIXED type handling
+    @classmethod
+    def get_background_color(cls) -> Tuple[int, int, int]:
+        color_list = cls.get("background_color", [10, 15, 30])
+        logger.debug(f"[CONFIG] Background color: {color_list}")
+        if isinstance(color_list, list) and len(color_list) >= 3:
+            result = (int(color_list[0]), int(color_list[1]), int(color_list[2]))
+            logger.debug(f"[CONFIG] Converted background color: {result}")
+            return result
+        logger.warning(f"[CONFIG] Invalid background color format: {color_list}, using fallback")
+        return (10, 15, 30)
+    
+    @classmethod
+    def get_text_color(cls) -> Tuple[int, int, int]:
+        color_list = cls.get("text_color", [255, 255, 255])
+        logger.debug(f"[CONFIG] Text color: {color_list}")
+        if isinstance(color_list, list) and len(color_list) >= 3:
+            result = (int(color_list[0]), int(color_list[1]), int(color_list[2]))
+            logger.debug(f"[CONFIG] Converted text color: {result}")
+            return result
+        logger.warning(f"[CONFIG] Invalid text color format: {color_list}, using fallback")
+        return (255, 255, 255)
+    
+    @classmethod
+    def get_line_color(cls) -> Tuple[int, int, int]:
+        color_list = cls.get("line_color", [100, 100, 100])
+        if isinstance(color_list, list) and len(color_list) >= 3:
+            return (int(color_list[0]), int(color_list[1]), int(color_list[2]))
+        return (100, 100, 100)
+    
+    @classmethod
+    def get_star_empty_color(cls) -> Tuple[int, int, int]:
+        color_list = cls.get("star_empty_color", [80, 80, 80])
+        if isinstance(color_list, list) and len(color_list) >= 3:
+            return (int(color_list[0]), int(color_list[1]), int(color_list[2]))
+        return (80, 80, 80)
+    
+    @classmethod
+    def get_star_filled_color(cls) -> Tuple[int, int, int]:
+        color_list = cls.get("star_filled_color", [255, 215, 0])
+        if isinstance(color_list, list) and len(color_list) >= 3:
+            return (int(color_list[0]), int(color_list[1]), int(color_list[2]))
+        return (255, 215, 0)
+    
+    # Visual effects by tier with BETTER error handling
+    @classmethod
+    def get_tier_effects(cls, tier: int) -> Dict[str, Any]:
+        """Get visual effects configuration based on tier with WORKING mapping"""
+        tier_config = cls.get("tier_effects", {})
+        logger.debug(f"[CONFIG] Tier effects config: {tier_config}")
+        
+        if not isinstance(tier_config, dict):
+            logger.warning(f"[CONFIG] tier_effects is not a dict: {type(tier_config)}, using defaults")
+            tier_config = {}
+            
+        thresholds = tier_config.get("thresholds", {
+            "common": [1, 4],
+            "rare": [5, 9], 
+            "epic": [10, 14],
+            "legendary": [15, 18]
+        })
+        effects = tier_config.get("effects", {})
+        
+        logger.debug(f"[CONFIG] Tier {tier} - checking thresholds: {thresholds}")
+        
+        # Find which rarity category this tier belongs to
+        for rarity_name, tier_range in thresholds.items():
+            if isinstance(tier_range, list) and len(tier_range) >= 2:
+                min_tier, max_tier = tier_range[0], tier_range[1]
+                if min_tier <= tier <= max_tier:
+                    effect = effects.get(rarity_name, {
+                        "glow_intensity": 1.5,
+                        "particle_count": 50,
+                        "glow_radius": 15,
+                        "background_overlay": None
+                    })
+                    logger.info(f"[CONFIG] Tier {tier} mapped to {rarity_name}: {effect}")
+                    return effect
+        
+        # Fallback for high tiers
+        if tier > 18:
+            effect = effects.get("legendary", {
+                "glow_intensity": 3.5,
+                "particle_count": 250,
+                "glow_radius": 35,
+                "background_overlay": "rainbow"
+            })
+            logger.info(f"[CONFIG] Tier {tier} using legendary fallback: {effect}")
+            return effect
+        
+        # Ultimate fallback
+        default_effect = {
+            "glow_intensity": 1.0,
+            "particle_count": 30,
+            "glow_radius": 10,
+            "background_overlay": None
         }
+        logger.warning(f"[CONFIG] Tier {tier} using default fallback: {default_effect}")
+        return default_effect
+
+# Paths
+ASSETS_BASE = Path("assets")
+SPRITES_PATH = ASSETS_BASE / "esprits"
 
 
-class ImageQuality(Enum):
-    """Image quality presets"""
-    DRAFT = "draft"      # Fast, lower quality
-    STANDARD = "standard"  # Default quality
-    HIGH = "high"        # High quality for special cards
-    
-
-class FontManager:
-    """Manages font loading with fallbacks"""
+class ImageGenerator:
+    """Professional-grade card generator with configurable visuals"""
     
     def __init__(self):
-        self._fonts: Dict[str, ImageFont.FreeTypeFont] = {}
+        self.config = ImageConfig()
         self._load_fonts()
+        logger.info("ImageGenerator initialized with configurable settings")
     
     def _load_fonts(self):
-        """Load fonts with multiple fallback options"""
-        font_priority = [
-            "PressStart2P.ttf",      # Pixel font
-            "Silkscreen-Regular.ttf", # Clean pixel font
-            "PixelOperator.ttf",     # Alternative pixel
-            "Arial.ttf",             # System fallback
-        ]
+        """Load fonts with comprehensive fallbacks"""
+        font_config = self.config.get("fonts", {})
+        font_paths = font_config.get("search_paths", [
+            "arial.ttf", "Arial.ttf", "DejaVuSans.ttf", 
+            "Helvetica.ttc", "calibri.ttf", "Calibri.ttf",
+            "segoeui.ttf", "tahoma.ttf", "verdana.ttf"
+        ])
         
-        # Try to load primary font
-        primary_font = None
-        for font_name in font_priority:
-            font_path = FONTS_PATH / font_name
-            if font_path.exists():
-                primary_font = str(font_path)
-                logger.info(f"Loaded primary font: {font_name}")
-                break
+        font_sizes = font_config.get("sizes", {
+            "normal": 16,
+            "large": 20, 
+            "header": 24
+        })
         
-        # Load font sizes
-        sizes = {
-            "giant": FONT_GIANT,
-            "large": FONT_LARGE,
-            "medium": FONT_MEDIUM,
-            "small": FONT_SMALL,
-            "tiny": FONT_TINY
-        }
-        
-        for size_name, size_value in sizes.items():
-            if primary_font:
-                try:
-                    self._fonts[size_name] = ImageFont.truetype(primary_font, size_value)
-                except Exception as e:
-                    logger.warning(f"Failed to load font size {size_name}: {e}")
-                    self._fonts[size_name] = ImageFont.load_default() # type: ignore
-            else:
-                self._fonts[size_name] = ImageFont.load_default() # type: ignore
-    
-    def get(self, size: str = "medium") -> ImageFont.FreeTypeFont:
-        """Get font by size name"""
-        return self._fonts.get(size, self._fonts["medium"])
-
-
-class ImageEffects:
-    """Visual effects for cards"""
-    
-    @staticmethod
-    def create_glow(
-        size: Tuple[int, int], 
-        color: Tuple[int, int, int], 
-        intensity: float = 1.0,
-        radius: int = 50
-    ) -> Image.Image:
-        """Create a glowing effect"""
-        glow = Image.new("RGBA", size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(glow)
-        
-        # Center point
-        cx, cy = size[0] // 2, size[1] // 2
-        max_radius = min(cx, cy)
-        
-        # Draw gradient circles
-        for r in range(max_radius, 0, -radius // 10):
-            alpha = int(255 * intensity * (1 - r / max_radius) ** 2)
-            alpha = min(255, max(0, alpha))
-            draw.ellipse(
-                (cx - r, cy - r, cx + r, cy + r),
-                fill=color + (alpha,)
-            )
-        
-        # Apply blur
-        return glow.filter(ImageFilter.GaussianBlur(radius=radius))
-    
-    @staticmethod
-    def create_border_glow(
-        image: Image.Image,
-        color: Tuple[int, int, int],
-        thickness: int = 5,
-        blur_radius: int = 10
-    ) -> Image.Image:
-        """Create glowing border effect"""
-        # Create mask from alpha
-        if image.mode != "RGBA":
-            image = image.convert("RGBA")
-        
-        alpha = image.split()[-1]
-        
-        # Expand alpha for border
-        border = ImageOps.expand(alpha, border=thickness, fill=0)
-        
-        # Create colored border
-        border_colored = Image.new("RGBA", border.size, color + (0,))
-        border_colored.putalpha(border)
-        
-        # Blur for glow
-        border_glow = border_colored.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-        
-        # Composite original over glow
-        border_glow.paste(image, (thickness, thickness), image)
-        
-        return border_glow
-    
-    @staticmethod
-    def add_shine(
-        image: Image.Image,
-        angle: float = 45,
-        width: int = 50,
-        opacity: float = 0.3
-    ) -> Image.Image:
-        """Add diagonal shine effect"""
-        if image.mode != "RGBA":
-            image = image.convert("RGBA")
-        
-        # Create shine overlay
-        shine = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(shine)
-        
-        # Calculate shine position
-        import math
-        w, h = image.size
-        angle_rad = math.radians(angle)
-        
-        # Draw gradient shine
-        for i in range(width):
-            alpha = int(255 * opacity * (1 - i / width))
-            offset = i - width // 2
-            
-            x1 = int(w / 2 + offset * math.cos(angle_rad + math.pi / 2))
-            y1 = 0
-            x2 = int(w / 2 + offset * math.cos(angle_rad + math.pi / 2))
-            y2 = h
-            
-            draw.line([(x1, y1), (x2, y2)], fill=(255, 255, 255, alpha), width=2)
-        
-        # Rotate shine
-        shine = shine.rotate(-angle, expand=1)
-        
-        # Crop to original size
-        shine = shine.crop((
-            (shine.width - w) // 2,
-            (shine.height - h) // 2,
-            (shine.width + w) // 2,
-            (shine.height + h) // 2
-        ))
-        
-        # Composite
-        return Image.alpha_composite(image, shine)
-
-
-class TextRenderer:
-    """Advanced text rendering with effects"""
-    
-    def __init__(self, font_manager: FontManager):
-        self.fonts = font_manager
-    
-    def draw_text(
-        self,
-        draw: ImageDraw.Draw,  # type: ignore
-        position: Tuple[int, int],
-        text: str,
-        font_size: str = "medium",
-        color: Tuple[int, int, int] = COLOR_WHITE,
-        anchor: str = "lt",
-        shadow: bool = True,
-        outline: bool = True,
-        shadow_color: Tuple[int, int, int] = COLOR_BLACK,
-        outline_color: Tuple[int, int, int] = COLOR_BLACK
-    ):
-        """Draw text with optional shadow and outline"""
-        font = self.fonts.get(font_size)
-        x, y = position
-        
-        # Draw shadow
-        if shadow:
-            draw.text(
-                (x + TEXT_SHADOW_OFFSET, y + TEXT_SHADOW_OFFSET),
-                text, font=font, fill=shadow_color + (128,), anchor=anchor
-            )
-        
-        # Draw outline
-        if outline:
-            for ox in range(-TEXT_OUTLINE_WIDTH, TEXT_OUTLINE_WIDTH + 1):
-                for oy in range(-TEXT_OUTLINE_WIDTH, TEXT_OUTLINE_WIDTH + 1):
-                    if ox != 0 or oy != 0:
-                        draw.text(
-                            (x + ox, y + oy),
-                            text, font=font, fill=outline_color, anchor=anchor
-                        )
-        
-        # Draw main text
-        draw.text(position, text, font=font, fill=color, anchor=anchor)
-    
-    def get_text_size(self, text: str, font_size: str = "medium") -> Tuple[int, int]:
-        """Get text bounding box size"""
-        font = self.fonts.get(font_size)
-        bbox = font.getbbox(text)
-        return (int(bbox[2] - bbox[0]), int(bbox[3] - bbox[1]))
-    
-    def draw_stat_block(
-        self,
-        draw: ImageDraw.Draw, # type: ignore
-        position: Tuple[int, int],
-        label: str,
-        value: Union[int, str],
-        color: Tuple[int, int, int] = COLOR_WHITE,
-        label_size: str = "small",
-        value_size: str = "large"
-    ):
-        """Draw a stat label and value"""
-        x, y = position
-        
-        # Draw label
-        self.draw_text(draw, (x, y), label, label_size, color=(200, 200, 200))
-        
-        # Draw value below
-        label_height = self.get_text_size(label, label_size)[1]
-        self.draw_text(
-            draw, (x, y + label_height + 5),
-            str(value), value_size, color
-        )
-
-
-class FallbackGenerator:
-    """Generate placeholder assets when files are missing"""
-    
-    @staticmethod
-    def create_sprite_placeholder(
-        size: Tuple[int, int],
-        element: str,
-        name: str
-    ) -> Image.Image:
-        """Create a placeholder sprite"""
-        img = Image.new("RGBA", size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        
-        # Get element color
-        elem = Elements.from_string(element)
-        if elem:
-            color = (elem.color >> 16, (elem.color >> 8) & 0xFF, elem.color & 0xFF)
-        else:
-            color = (128, 128, 128)
-        
-        # Draw element-themed shape
-        cx, cy = size[0] // 2, size[1] // 2
-        
-        shapes = {
-            "inferno": lambda: FallbackGenerator._draw_flame(draw, size, color),
-            "verdant": lambda: FallbackGenerator._draw_tree(draw, size, color),
-            "abyssal": lambda: FallbackGenerator._draw_wave(draw, size, color),
-            "tempest": lambda: FallbackGenerator._draw_storm(draw, size, color),
-            "umbral": lambda: FallbackGenerator._draw_shadow(draw, size, color),
-            "radiant": lambda: FallbackGenerator._draw_star(draw, size, color)
-        }
-        
-        shape_func = shapes.get(element.lower(), 
-                               lambda: FallbackGenerator._draw_default(draw, size, color))
-        shape_func()
-        
-        # Add name initial
-        font = ImageFont.load_default()
-        initial = name[0].upper() if name else "?"
-        draw.text((cx, cy), initial, font=font, anchor="mm", fill=COLOR_WHITE)
-        
-        return img
-    
-    @staticmethod
-    def _draw_flame(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]):  # type: ignore
-        """Draw flame shape"""
-        w, h = size
-        cx, cy = w // 2, h // 2
-        
-        # Flame points
-        points = [
-            (cx, cy - h * 0.4),
-            (cx - w * 0.3, cy - h * 0.1),
-            (cx - w * 0.25, cy + h * 0.2),
-            (cx, cy + h * 0.3),
-            (cx + w * 0.25, cy + h * 0.2),
-            (cx + w * 0.3, cy - h * 0.1)
-        ]
-        
-        draw.polygon(points, fill=color + (200,))
-        
-        # Inner flame
-        inner_points = [
-            (cx, cy - h * 0.3),
-            (cx - w * 0.15, cy),
-            (cx, cy + h * 0.2),
-            (cx + w * 0.15, cy)
-        ]
-        lighter_color = tuple(min(255, c + 50) for c in color)
-        draw.polygon(inner_points, fill=lighter_color + (255,))
-    
-    @staticmethod
-    def _draw_tree(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]): # type: ignore
-        """Draw tree shape"""
-        w, h = size
-        cx, cy = w // 2, h // 2
-        
-        # Tree trunk
-        trunk_width = w * 0.2
-        trunk_height = h * 0.3
-        draw.rectangle(
-            (cx - trunk_width // 2, cy + h * 0.1,
-             cx + trunk_width // 2, cy + h * 0.4),
-            fill=(101, 67, 33)
-        )
-        
-        # Tree layers
-        for i in range(3):
-            layer_y = cy - h * 0.1 - i * h * 0.15
-            layer_width = w * (0.6 - i * 0.15)
-            
-            points = [
-                (cx - layer_width // 2, layer_y),
-                (cx, layer_y - h * 0.15),
-                (cx + layer_width // 2, layer_y)
-            ]
-            
-            draw.polygon(points, fill=color + (200 - i * 30,))
-    
-    @staticmethod
-    def _draw_wave(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]): # type: ignore
-        """Draw wave shape"""
-        w, h = size
-        
-        # Multiple wave layers
-        for i in range(3):
-            wave_y = h // 2 + i * h * 0.1
-            wave_height = h * 0.2
-            
-            points = []
-            for x in range(0, w + 1, 5):
-                import math
-                y = wave_y + math.sin(x * 0.1 + i) * wave_height
-                points.append((x, y))
-            
-            points.extend([(w, h), (0, h)])
-            
-            alpha = 200 - i * 50
-            draw.polygon(points, fill=color + (alpha,))
-    
-    @staticmethod
-    def _draw_storm(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]): # type: ignore
-        """Draw storm/lightning shape"""
-        w, h = size
-        cx = w // 2
-        
-        # Lightning bolt
-        points = [
-            (cx - w * 0.1, h * 0.2),
-            (cx - w * 0.2, h * 0.5),
-            (cx, h * 0.45),
-            (cx - w * 0.1, h * 0.7),
-            (cx + w * 0.1, h * 0.4),
-            (cx, h * 0.45),
-            (cx + w * 0.2, h * 0.3)
-        ]
-        
-        draw.polygon(points, fill=color + (255,))
-        
-        # Cloud above
-        for i in range(3):
-            cloud_x = cx - w * 0.2 + i * w * 0.2
-            cloud_y = h * 0.15
-            cloud_r = w * 0.15
-            
-            draw.ellipse(
-                (cloud_x - cloud_r, cloud_y - cloud_r,
-                 cloud_x + cloud_r, cloud_y + cloud_r),
-                fill=(100, 100, 100, 150)
-            )
-    
-    @staticmethod
-    def _draw_shadow(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]): # type: ignore
-        """Draw shadow orb"""
-        w, h = size
-        cx, cy = w // 2, h // 2
-        
-        # Multiple shadow layers
-        for i in range(5):
-            radius = min(w, h) * 0.4 * (1 - i * 0.15)
-            alpha = 200 - i * 30
-            
-            draw.ellipse(
-                (cx - radius, cy - radius,
-                 cx + radius, cy + radius),
-                fill=(0, 0, 0, alpha)
-            )
-    
-    @staticmethod
-    def _draw_star(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]): # type: ignore
-        """Draw star shape"""
-        w, h = size
-        cx, cy = w // 2, h // 2
-        
-        # Star points
-        import math
-        points = []
-        for i in range(10):
-            angle = math.pi * i / 5 - math.pi / 2
-            if i % 2 == 0:
-                radius = min(w, h) * 0.4
-            else:
-                radius = min(w, h) * 0.2
-            
-            x = cx + radius * math.cos(angle)
-            y = cy + radius * math.sin(angle)
-            points.append((x, y))
-        
-        draw.polygon(points, fill=color + (200,))
-        
-        # Inner glow
-        inner_points = []
-        for i in range(10):
-            angle = math.pi * i / 5 - math.pi / 2
-            if i % 2 == 0:
-                radius = min(w, h) * 0.2
-            else:
-                radius = min(w, h) * 0.1
-            
-            x = cx + radius * math.cos(angle)
-            y = cy + radius * math.sin(angle)
-            inner_points.append((x, y))
-        
-        draw.polygon(inner_points, fill=(255, 255, 255, 255))
-    
-    @staticmethod
-    def _draw_default(draw: ImageDraw.Draw, size: Tuple[int, int], color: Tuple[int, int, int]): # type: ignore
-        """Default circle shape"""
-        w, h = size
-        cx, cy = w // 2, h // 2
-        radius = min(w, h) * 0.35
-        
-        draw.ellipse(
-            (cx - radius, cy - radius,
-             cx + radius, cy + radius),
-            fill=color + (200,)
-        )
-
-
-class EspritCardGenerator:
-    """Main card generation class"""
-    
-    def __init__(self):
-        self.fonts = FontManager()
-        self.text_renderer = TextRenderer(self.fonts)
-        self.effects = ImageEffects()
-        
-        # Ensure directories exist
-        for path in [SPRITES_PATH, PORTRAITS_PATH, BACKGROUNDS_PATH, FRAMES_PATH, FONTS_PATH, ICONS_PATH]:
-            path.mkdir(parents=True, exist_ok=True)
-    
-    def _get_asset_paths(self, esprit_data: Dict[str, Any]) -> AssetPaths:
-        """Determine asset file paths"""
-        name = esprit_data.get("name", "unknown").lower().replace(" ", "_")
-        tier = esprit_data.get("tier", esprit_data.get("base_tier", 1))
-        element = esprit_data.get("element", "radiant").lower()
-        
-        # Get tier name for organization
-        tier_data = Tiers.get(tier)
-        tier_folder = tier_data.name.lower() if tier_data else f"tier_{tier}"
-        
-        paths = AssetPaths()
-        
-        # Sprite path (try multiple locations)
-        sprite_candidates = [
-            SPRITES_PATH / tier_folder / f"{name}.png",
-            SPRITES_PATH / f"tier_{tier}" / f"{name}.png",
-            SPRITES_PATH / element / f"{name}.png",
-            SPRITES_PATH / f"{name}.png"
-        ]
-        
-        for candidate in sprite_candidates:
-            if candidate.exists():
-                paths.sprite = candidate
-                break
-        
-        # Portrait path
-        paths.portrait = PORTRAITS_PATH / f"{name}_portrait.png"
-        if not paths.portrait.exists():
-            paths.portrait = PORTRAITS_PATH / f"{name}.png"
-        
-        # Frame based on tier
-        frame_names = {
-            range(1, 4): "common",
-            range(4, 7): "rare",
-            range(7, 10): "epic",
-            range(10, 13): "legendary",
-            range(13, 16): "mythic",
-            range(16, 19): "divine"
-        }
-        
-        frame_name = "common"
-        for tier_range, fname in frame_names.items():
-            if tier in tier_range:
-                frame_name = fname
-                break
-        
-        paths.frame = FRAMES_PATH / f"{frame_name}_frame.png"
-        
-        # Background based on element
-        paths.background = BACKGROUNDS_PATH / f"{element}_bg.png"
-        if not paths.background.exists():
-            paths.background = BACKGROUNDS_PATH / "default_bg.png"
-        
-        return paths
-    
-    def _load_and_scale_sprite(
-        self,
-        sprite_path: Optional[Path],
-        target_size: Tuple[int, int],
-        esprit_data: Dict[str, Any]
-    ) -> Image.Image:
-        """Load sprite with proper scaling"""
-        if sprite_path and sprite_path.exists():
+        for font_path in font_paths:
             try:
-                sprite = Image.open(sprite_path).convert("RGBA")
-                
-                # Determine scaling method based on sprite size
-                if sprite.width <= 128 or sprite.height <= 128:
-                    # Pixel art - use nearest neighbor
-                    sprite = sprite.resize(target_size, Image.Resampling.NEAREST)
-                else:
-                    # High-res art - use lanczos
-                    sprite = sprite.resize(target_size, Image.Resampling.LANCZOS)
-                
-                return sprite
-                
-            except Exception as e:
-                logger.error(f"Failed to load sprite {sprite_path}: {e}")
+                self.font_normal = ImageFont.truetype(font_path, font_sizes["normal"])
+                self.font_large = ImageFont.truetype(font_path, font_sizes["large"])
+                self.font_header = ImageFont.truetype(font_path, font_sizes["header"])
+                logger.info(f"Loaded font: {font_path}")
+                return
+            except (OSError, IOError):
+                continue
         
-        # Fallback to generated sprite
-        return FallbackGenerator.create_sprite_placeholder(
-            target_size,
-            esprit_data.get("element", "radiant"),
-            esprit_data.get("name", "Unknown")
-        )
+        # Fallback to default
+        logger.warning("Using default font - text might look basic")
+        self.font_normal = ImageFont.load_default()
+        self.font_large = self.font_normal
+        self.font_header = self.font_normal
     
-    def _create_background(self, element: str, size: Tuple[int, int]) -> Image.Image:
-        """Create card background"""
-        bg = Image.new("RGBA", size, COLOR_DISCORD_BG)
+    def _create_enhanced_starry_background(self, size: Tuple[int, int]) -> Image.Image:
+        """Create rich starfield background with configurable density"""
+        bg_config = self.config.get("background", {})
+        if not isinstance(bg_config, dict):
+            bg_config = {}
+            
+        bg_color = self.config.get_background_color()
         
-        # Get element for theming
-        elem = Elements.from_string(element)
-        if not elem:
-            return bg
-        
-        # Extract color
-        color = (elem.color >> 16, (elem.color >> 8) & 0xFF, elem.color & 0xFF)
-        
-        # Create gradient background
+        bg = Image.new("RGBA", size, bg_color)
         draw = ImageDraw.Draw(bg)
         
-        # Vertical gradient
-        for y in range(size[1]):
-            # Fade from element color to discord bg
-            ratio = y / size[1]
-            r = int(color[0] * (1 - ratio) + COLOR_DISCORD_BG[0] * ratio)
-            g = int(color[1] * (1 - ratio) + COLOR_DISCORD_BG[1] * ratio)
-            b = int(color[2] * (1 - ratio) + COLOR_DISCORD_BG[2] * ratio)
+        # Configurable star parameters
+        star_count = bg_config.get("star_count", 150)
+        star_sizes = bg_config.get("star_sizes", [1, 2, 3])
+        star_weights = bg_config.get("star_weights", [70, 25, 5])
+        
+        # Ensure we have valid lists
+        if not isinstance(star_sizes, list):
+            star_sizes = [1, 2, 3]
+        if not isinstance(star_weights, list):
+            star_weights = [70, 25, 5]
+        
+        # Create stars
+        for _ in range(int(star_count)):
+            x = random.randint(0, size[0])
+            y = random.randint(0, size[1])
+            brightness = random.randint(40, 220)
+            star_size = random.choices(star_sizes, weights=star_weights)[0]
             
-            draw.line([(0, y), (size[0], y)], fill=(r, g, b))
+            color = (brightness, brightness, brightness)
+            
+            if star_size == 1:
+                draw.point((x, y), fill=color)
+            elif star_size == 2:
+                draw.ellipse([x-1, y-1, x+1, y+1], fill=color)
+            else:
+                # Bright stars get a subtle twinkle
+                draw.ellipse([x-1, y-1, x+1, y+1], fill=color)
+                draw.point((x, y), fill=(255, 255, 255))
         
-        # Add vignette
-        vignette = Image.new("RGBA", size, (0, 0, 0, 0))
-        vignette_draw = ImageDraw.Draw(vignette)
-        
-        for i in range(min(size) // 2):
-            alpha = int(100 * (i / (min(size) // 2)) ** 2)
-            vignette_draw.rectangle(
-                [i, i, size[0] - i, size[1] - i],
-                outline=(0, 0, 0, alpha)
-            )
-        
-        bg = Image.alpha_composite(bg, vignette)
+        # Enhanced gradient overlay
+        gradient_config = bg_config.get("gradient", {})
+        if not isinstance(gradient_config, dict):
+            gradient_config = {}
+            
+        if gradient_config.get("enabled", True):
+            gradient = Image.new("RGBA", size, (0, 0, 0, 0))
+            gradient_draw = ImageDraw.Draw(gradient)
+            
+            gradient_strength = gradient_config.get("strength", 60)
+            gradient_color_list = gradient_config.get("color", [5, 10, 25])
+            
+            # Ensure valid color tuple
+            if isinstance(gradient_color_list, list) and len(gradient_color_list) >= 3:
+                gradient_color = (int(gradient_color_list[0]), int(gradient_color_list[1]), int(gradient_color_list[2]))
+            else:
+                gradient_color = (5, 10, 25)
+            
+            for y in range(0, size[1], 2):
+                alpha = int(int(gradient_strength) * (y / size[1]))
+                gradient_draw.line(
+                    [(0, y), (size[0], y)], 
+                    fill=gradient_color + (alpha,)
+                )
+            
+            bg = Image.alpha_composite(bg, gradient)
         
         return bg
     
-    def _draw_frame_decorations(
-        self,
-        image: Image.Image,
-        tier: int,
-        element: str
-    ) -> Image.Image:
-        """Add frame and decorations"""
-        draw = ImageDraw.Draw(image)
-        
-        # Get tier data
-        tier_data = Tiers.get(tier)
-        if not tier_data:
-            return image
-        
-        # Get element data
-        elem = Elements.from_string(element)
-        
-        # Frame color based on tier
-        frame_color = (
-            tier_data.color >> 16,
-            (tier_data.color >> 8) & 0xFF,
-            tier_data.color & 0xFF
-        )
-        
-        # Draw outer frame
-        frame_width = 8 if tier >= 10 else 5
-        draw.rounded_rectangle(
-            [frame_width, frame_width, 
-             CARD_WIDTH - frame_width, CARD_HEIGHT - frame_width],
-            radius=15,
-            outline=frame_color,
-            width=frame_width
-        )
-        
-        # Draw corner decorations for high tiers
-        if tier >= 13:
-            # Fancy corners
-            corner_size = 30
-            for x, y in [(0, 0), (CARD_WIDTH - corner_size, 0),
-                        (0, CARD_HEIGHT - corner_size), 
-                        (CARD_WIDTH - corner_size, CARD_HEIGHT - corner_size)]:
-                
-                # Draw corner accent
-                points = []
-                if x == 0 and y == 0:  # Top left
-                    points = [(x, y + corner_size), (x, y), (x + corner_size, y)]
-                elif x > 0 and y == 0:  # Top right
-                    points = [(x, y), (x + corner_size, y), (x + corner_size, y + corner_size)]
-                elif x == 0 and y > 0:  # Bottom left
-                    points = [(x, y), (x, y + corner_size), (x + corner_size, y + corner_size)]
-                else:  # Bottom right
-                    points = [(x, y + corner_size), (x + corner_size, y + corner_size), (x + corner_size, y)]
-                
-                draw.polygon(points, fill=frame_color + (100,))
-        
-        # Add tier badge
-        badge_size = 60
-        badge_x = CARD_WIDTH - badge_size - 20
-        badge_y = 20
-        
-        # Badge background
-        draw.ellipse(
-            [badge_x, badge_y, badge_x + badge_size, badge_y + badge_size],
-            fill=frame_color,
-            outline=COLOR_WHITE,
-            width=2
-        )
-        
-        # Badge text
-        self.text_renderer.draw_text(
-            draw,
-            (badge_x + badge_size // 2, badge_y + badge_size // 2),
-            tier_data.roman,
-            "small",
-            COLOR_WHITE,
-            anchor="mm"
-        )
-        
-        # Element icon
-        if elem:
-            self.text_renderer.draw_text(
-                draw,
-                (30, 30),
-                elem.emoji,
-                "large",
-                anchor="lt"
-            )
-        
-        return image
-    
-    def _draw_stats_panel(
-        self,
-        image: Image.Image,
-        esprit_data: Dict[str, Any],
-        y_position: int
-    ) -> Image.Image:
-        """Draw stats panel at bottom of card"""
-        draw = ImageDraw.Draw(image)
-        
-        # Panel background
-        panel_height = 180
-        panel_y = y_position
-        
-        # Create gradient panel
-        panel = Image.new("RGBA", (CARD_WIDTH, panel_height), (0, 0, 0, 0))
-        panel_draw = ImageDraw.Draw(panel)
-        
-        for y in range(panel_height):
-            alpha = int(200 * (1 - y / panel_height) + 55)
-            panel_draw.line(
-                [(0, y), (CARD_WIDTH, y)],
-                fill=(0, 0, 0, alpha)
-            )
-        
-        # Paste panel
-        image.paste(panel, (0, panel_y), panel)
-        
-        # Draw name
-        name = esprit_data.get("name", "Unknown")
-        name_y = panel_y + 20
-        
-        self.text_renderer.draw_text(
-            draw,
-            (CARD_WIDTH // 2, name_y),
-            name.upper(),
-            "large",
-            COLOR_WHITE,
-            anchor="mt"
-        )
-        
-        # Draw element/tier info
-        element = esprit_data.get("element", "")
-        tier = esprit_data.get("tier", esprit_data.get("base_tier", 1))
-        tier_data = Tiers.get(tier)
-        tier_name = tier_data.name if tier_data else f"Tier {tier}"
-        
-        info_text = f"{element} • {tier_name}"
-        self.text_renderer.draw_text(
-            draw,
-            (CARD_WIDTH // 2, name_y + 40),
-            info_text,
-            "small",
-            (200, 200, 200),
-            anchor="mt"
-        )
-        
-        # Draw stats
-        stats_y = name_y + 70
-        stat_spacing = (CARD_WIDTH - 100) // 3
-        
-        # ATK
-        self.text_renderer.draw_stat_block(
-            draw,
-            (50, stats_y),
-            "ATK",
-            f"{esprit_data.get('base_atk', 0):,}",
-            COLOR_GOLD
-        )
-        
-        # DEF
-        self.text_renderer.draw_stat_block(
-            draw,
-            (50 + stat_spacing, stats_y),
-            "DEF",
-            f"{esprit_data.get('base_def', 0):,}",
-            COLOR_SILVER
-        )
-        
-        # HP
-        self.text_renderer.draw_stat_block(
-            draw,
-            (50 + stat_spacing * 2, stats_y),
-            "HP",
-            f"{esprit_data.get('base_hp', 0):,}",
-            (100, 255, 100)
-        )
-        
-        # Power score
-        total_power = (
-            esprit_data.get('base_atk', 0) +
-            esprit_data.get('base_def', 0) +
-            esprit_data.get('base_hp', 0) // 10
-        )
-        
-        self.text_renderer.draw_text(
-            draw,
-            (CARD_WIDTH - 50, stats_y + 20),
-            f"Power: {total_power:,}",
-            "tiny",
-            (150, 150, 150),
-            anchor="rt"
-        )
-        
-        return image
-    
-    def _add_awakening_stars(
-        self,
-        image: Image.Image,
-        awakening_level: int,
-        position: Tuple[int, int]
-    ) -> Image.Image:
-        """Add awakening stars to card"""
-        if awakening_level <= 0:
-            return image
-        
-        draw = ImageDraw.Draw(image)
-        star_size = 25
-        star_spacing = 30
-        
-        x, y = position
-        
-        for i in range(awakening_level):
-            star_x = x + i * star_spacing
+    def _draw_enhanced_divider(self, draw: ImageDraw.ImageDraw, y: int, width: Optional[int] = None) -> None:
+        """Draw elegant divider with configurable styling that respects content box boundaries"""
+        if width is None:
+            width = self.config.CARD_WIDTH
             
-            # Draw star
-            self.text_renderer.draw_text(
-                draw,
-                (star_x, y),
-                "⭐",
-                "small",
-                anchor="lt"
+        divider_config = self.config.get("dividers", {})
+        if not isinstance(divider_config, dict):
+            divider_config = {}
+        
+        # Check if content box is enabled and use its margins
+        content_box_config = self.config.get("content_box", {})
+        if content_box_config.get("enabled", True):
+            # Use content box margins with slight inset
+            left_padding = content_box_config.get("left_margin", 30) + 5
+            right_padding = content_box_config.get("right_margin", 30) + 5
+            logger.debug(f"[DIVIDER] Using content box margins: left={left_padding}, right={right_padding}")
+        else:
+            # Fall back to divider config padding
+            padding = divider_config.get("padding", 20)
+            left_padding = right_padding = padding
+            logger.debug(f"[DIVIDER] Using divider padding: {padding}")
+        
+        line_color = self.config.get_line_color()
+        
+        # Main divider line that respects boundaries
+        draw.line([(int(left_padding), y), (width - int(right_padding), y)], fill=line_color, width=1)
+        
+        # Optional highlight line
+        if divider_config.get("highlight_enabled", True):
+            highlight_color_list = divider_config.get("highlight_color", [150, 150, 150, 80])
+            if isinstance(highlight_color_list, list) and len(highlight_color_list) >= 4:
+                highlight_color = (int(highlight_color_list[0]), int(highlight_color_list[1]), 
+                                int(highlight_color_list[2]), int(highlight_color_list[3]))
+            else:
+                highlight_color = (150, 150, 150, 80)
+            
+            # Highlight line with additional inset from the main line
+            highlight_inset = divider_config.get("highlight_inset", 40)
+            highlight_left = int(left_padding) + highlight_inset
+            highlight_right = width - int(right_padding) - highlight_inset
+            
+            # Only draw if we have enough space
+            if highlight_left < highlight_right:
+                draw.line(
+                    [(highlight_left, y-1), (highlight_right, y-1)], 
+                    fill=highlight_color, 
+                    width=1
+                )
+            else:
+                logger.debug("[DIVIDER] Skipping highlight line - not enough space")
+    
+    def _get_sprite_path(self, esprit_name: str, tier: Optional[int] = None) -> Optional[Path]:
+        """Intelligent sprite discovery with extensive search patterns"""
+        if not esprit_name:
+            return None
+        
+        # Enhanced name variations
+        name_variants = [
+            esprit_name.lower().replace(" ", "_"),
+            esprit_name.lower().replace(" ", "-"),
+            esprit_name.lower().replace(" ", ""),
+            esprit_name.lower(),
+            esprit_name.replace(" ", "_"),
+            esprit_name.replace(" ", "-"),
+            esprit_name.replace(" ", ""),
+            # Handle special characters
+            esprit_name.lower().replace("'", "").replace(".", ""),
+            esprit_name.lower().replace("-", "_").replace("'", "")
+        ]
+        
+        # Tier-based folder structure
+        tier_folders = [
+            "absolute", "astral", "celestial", "common", "divine",
+            "empyrean", "epic", "ethereal", "genesis", "legendary",
+            "mythic", "primal", "rare", "singularity", "sovereign",
+            "transcendent", "uncommon", "void"
+        ]
+        
+        # Priority search: tier folder first
+        search_folders = []
+        if tier:
+            tier_info = Tiers.get(tier)
+            if tier_info and tier_info.name.lower() in tier_folders:
+                search_folders.append(tier_info.name.lower())
+        
+        # Add remaining folders
+        search_folders.extend([f for f in tier_folders if f not in search_folders])
+        
+        # Search with multiple file extensions
+        extensions = [".png", ".jpg", ".jpeg", ".webp", ".gif"]
+        
+        for folder in search_folders:
+            folder_path = SPRITES_PATH / folder
+            if not folder_path.exists():
+                continue
+                
+            for variant in name_variants:
+                for ext in extensions:
+                    sprite_path = folder_path / f"{variant}{ext}"
+                    if sprite_path.exists():
+                        logger.debug(f"Found sprite: {sprite_path}")
+                        return sprite_path
+        
+        logger.warning(f"No sprite found for: {esprit_name}")
+        return None
+    
+    def _load_and_scale_sprite(self, sprite_path: Path) -> Optional[Image.Image]:
+        """Advanced sprite scaling with quality preservation"""
+        try:
+            sprite = Image.open(sprite_path).convert("RGBA")
+            
+            sprite_config = self.config.get("sprites", {})
+            target_size = sprite_config.get("target_size", 320)
+            scaling_method = sprite_config.get("scaling_method", "lanczos")
+            
+            # Get scaling method
+            scaling_methods = {
+                "lanczos": Image.Resampling.LANCZOS,
+                "bicubic": Image.Resampling.BICUBIC,
+                "bilinear": Image.Resampling.BILINEAR,
+                "nearest": Image.Resampling.NEAREST
+            }
+            
+            resampling = scaling_methods.get(scaling_method, Image.Resampling.LANCZOS)
+            
+            original_width, original_height = sprite.size
+            
+            # Calculate scale maintaining aspect ratio
+            scale_factor = min(
+                target_size / original_width, 
+                target_size / original_height
             )
-        
-        return image
+            
+            new_width = int(original_width * scale_factor)
+            new_height = int(original_height * scale_factor)
+            
+            # High quality resize
+            sprite = sprite.resize((new_width, new_height), resampling)
+            
+            # Create canvas with configurable background
+            canvas_bg = sprite_config.get("canvas_background", "transparent")
+            if canvas_bg == "transparent":
+                canvas = Image.new("RGBA", (target_size, target_size), (0, 0, 0, 0))
+            else:
+                canvas = Image.new("RGBA", (target_size, target_size), tuple(canvas_bg))
+            
+            # Center sprite
+            paste_x = (target_size - new_width) // 2
+            paste_y = (target_size - new_height) // 2
+            
+            canvas.paste(sprite, (paste_x, paste_y), sprite)
+            
+            logger.debug(f"Scaled sprite from {original_width}x{original_height} to {target_size}x{target_size}")
+            return canvas
+            
+        except Exception as e:
+            logger.error(f"Failed to load sprite {sprite_path}: {e}")
+            return None
     
-    def _add_quantity_badge(
-        self,
-        image: Image.Image,
-        quantity: int,
-        position: Tuple[int, int]
-    ) -> Image.Image:
-        """Add quantity badge if stacked"""
-        if quantity <= 1:
-            return image
+    def _create_professional_placeholder(self, name: str) -> Image.Image:
+        """Create high-quality placeholder with configurable styling"""
+        placeholder_config = self.config.get("placeholders", {})
+        if not isinstance(placeholder_config, dict):
+            placeholder_config = {}
+            
+        size = placeholder_config.get("size", 320)
+        if not isinstance(size, int):
+            size = 320
         
-        draw = ImageDraw.Draw(image)
+        placeholder = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(placeholder)
         
-        # Badge background
-        badge_text = f"x{quantity}" if quantity < 1000 else "x999+"
-        text_size = self.text_renderer.get_text_size(badge_text, "small")
+        center = size // 2
         
-        badge_width = text_size[0] + 20
-        badge_height = text_size[1] + 10
+        # Enhanced gradient background
+        bg_colors = placeholder_config.get("background_colors", [
+            [60, 60, 80], [40, 40, 60], [20, 20, 40]
+        ])
         
-        x, y = position
+        if isinstance(bg_colors, list):
+            for i, color_vals in enumerate(bg_colors):
+                if isinstance(color_vals, list) and len(color_vals) >= 3:
+                    radius = center - 20 - (i * 15)
+                    if radius > 10:
+                        alpha = 120 - (i * 30)
+                        color = (int(color_vals[0]), int(color_vals[1]), int(color_vals[2]), alpha)
+                        draw.ellipse(
+                            [center - radius, center - radius, center + radius, center + radius],
+                            fill=color
+                        )
         
-        draw.rounded_rectangle(
-            [x, y, x + badge_width, y + badge_height],
-            radius=10,
-            fill=(0, 0, 0, 200),
-            outline=COLOR_WHITE,
-            width=2
+        # Professional border
+        border_config = placeholder_config.get("border", {})
+        if not isinstance(border_config, dict):
+            border_config = {}
+            
+        border_color_list = border_config.get("color", [120, 120, 140, 200])
+        if isinstance(border_color_list, list) and len(border_color_list) >= 4:
+            border_color = (int(border_color_list[0]), int(border_color_list[1]), 
+                          int(border_color_list[2]), int(border_color_list[3]))
+        else:
+            border_color = (120, 120, 140, 200)
+            
+        border_width = border_config.get("width", 2)
+        border_margin = border_config.get("margin", 30)
+        
+        if not isinstance(border_width, int):
+            border_width = 2
+        if not isinstance(border_margin, int):
+            border_margin = 30
+        
+        draw.ellipse(
+            [border_margin, border_margin, size - border_margin, size - border_margin],
+            outline=border_color,
+            width=border_width
         )
         
-        # Badge text
-        self.text_renderer.draw_text(
-            draw,
-            (x + badge_width // 2, y + badge_height // 2),
-            badge_text,
-            "small",
-            COLOR_WHITE,
-            anchor="mm"
-        )
+        # Enhanced text rendering
+        if name:
+            letter = name[0].upper()
+            
+            # Text shadow for depth
+            shadow_offset = placeholder_config.get("text_shadow_offset", 2)
+            shadow_color_list = placeholder_config.get("text_shadow_color", [0, 0, 0, 100])
+            text_color = self.config.get_text_color()
+            
+            if not isinstance(shadow_offset, int):
+                shadow_offset = 2
+                
+            if isinstance(shadow_color_list, list) and len(shadow_color_list) >= 4:
+                shadow_color = (int(shadow_color_list[0]), int(shadow_color_list[1]), 
+                              int(shadow_color_list[2]), int(shadow_color_list[3]))
+            else:
+                shadow_color = (0, 0, 0, 100)
+            
+            bbox = draw.textbbox((0, 0), letter, font=self.font_header)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = (size - text_w) // 2
+            y = (size - text_h) // 2 - 5
+            
+            # Shadow
+            draw.text((x + shadow_offset, y + shadow_offset), letter, fill=shadow_color, font=self.font_header)
+            # Main text
+            draw.text((x, y), letter, fill=text_color, font=self.font_header)
         
-        return image
+        return placeholder
     
-    async def generate_card(
-        self,
-        esprit_data: Dict[str, Any],
-        quality: ImageQuality = ImageQuality.STANDARD,
-        show_quantity: bool = True,
-        show_awakening: bool = True
-    ) -> Image.Image:
-        """Generate a complete esprit card"""
-        return await asyncio.get_event_loop().run_in_executor(
-            _thread_pool,
-            self._generate_card_sync,
-            esprit_data,
-            quality,
-            show_quantity,
-            show_awakening
-        )
+    def _extract_advanced_dominant_color(self, sprite: Image.Image) -> Tuple[int, int, int]:
+        """Advanced color extraction with clustering support"""
+        color_config = self.config.get("color_extraction", {})
+        method = color_config.get("method", "frequency")
+        
+        if method == "kmeans":
+            return self._extract_kmeans_color(sprite)
+        else:
+            return self._extract_frequency_color(sprite)
     
-    def _generate_card_sync(
-        self,
-        esprit_data: Dict[str, Any],
-        quality: ImageQuality,
-        show_quantity: bool,
-        show_awakening: bool
+    def _extract_frequency_color(self, sprite: Image.Image) -> Tuple[int, int, int]:
+        """Extract dominant color using frequency analysis with dramatic enhancement"""
+        # Optimized sampling
+        sample_size = 32
+        small = sprite.resize((sample_size, sample_size), Image.Resampling.LANCZOS)
+        small = small.convert("RGBA")
+        
+        # Get pixels and filter transparent
+        pixels = list(small.getdata())
+        opaque_pixels = [
+            (r, g, b) for r, g, b, a in pixels 
+            if a > 128  # More than 50% opacity
+        ]
+        
+        if not opaque_pixels:
+            logger.warning("No opaque pixels found, using dramatic fallback color")
+            return (150, 150, 200)  # Brighter fallback
+        
+        # Enhanced color clustering
+        color_counts = {}
+        quantize_factor = 32  # Group similar colors
+        
+        for r, g, b in opaque_pixels:
+            # Quantize to reduce noise
+            key = (
+                (r // quantize_factor) * quantize_factor,
+                (g // quantize_factor) * quantize_factor,
+                (b // quantize_factor) * quantize_factor
+            )
+            color_counts[key] = color_counts.get(key, 0) + 1
+        
+        # Find most common color
+        dominant = max(color_counts.items(), key=lambda x: x[1])[0]
+        
+        # DRAMATICALLY enhance the color for visibility
+        color_config = self.config.get("color_extraction", {})
+        if not isinstance(color_config, dict):
+            color_config = {}
+            
+        enhancement = color_config.get("enhancement_factor", 2.5)
+        min_brightness = color_config.get("minimum_brightness", 80)
+        saturation_boost = color_config.get("saturation_boost", 1.8)
+        
+        r, g, b = dominant
+        
+        # Apply enhancement
+        r = min(255, int(r * enhancement))
+        g = min(255, int(g * enhancement))
+        b = min(255, int(b * enhancement))
+        
+        # Ensure minimum brightness
+        brightness = (r + g + b) / 3
+        if brightness < min_brightness:
+            boost_factor = min_brightness / brightness
+            r = min(255, int(r * boost_factor))
+            g = min(255, int(g * boost_factor))
+            b = min(255, int(b * boost_factor))
+        
+        # Boost saturation for more dramatic colors
+        # Convert to HSV-like adjustment
+        max_channel = max(r, g, b)
+        if max_channel > 0:
+            r = min(255, int(r + (max_channel - r) * (saturation_boost - 1)))
+            g = min(255, int(g + (max_channel - g) * (saturation_boost - 1)))
+            b = min(255, int(b + (max_channel - b) * (saturation_boost - 1)))
+        
+        logger.debug(f"Enhanced dominant color: {(r, g, b)} (from {dominant})")
+        return (r, g, b)
+    
+    def _extract_kmeans_color(self, sprite: Image.Image) -> Tuple[int, int, int]:
+        """Extract dominant color using K-means clustering (if sklearn available)"""
+        if not HAS_SKLEARN or np is None or KMeans is None:
+            logger.debug("sklearn not available, falling back to frequency method")
+            return self._extract_frequency_color(sprite)
+            
+        try:
+            small = sprite.resize((32, 32), Image.Resampling.LANCZOS).convert("RGBA")
+            pixels = np.array(small)
+            
+            # Filter transparent pixels
+            alpha_mask = pixels[:, :, 3] > 128
+            opaque_pixels = pixels[alpha_mask][:, :3]  # RGB only
+            
+            if len(opaque_pixels) < 3:
+                return self._extract_frequency_color(sprite)
+            
+            # K-means clustering
+            kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+            kmeans.fit(opaque_pixels)
+            
+            # Get the most prominent cluster center
+            dominant_color = kmeans.cluster_centers_[0].astype(int)
+            r, g, b = dominant_color
+            
+            # Clamp values
+            r = max(0, min(255, r))
+            g = max(0, min(255, g))
+            b = max(0, min(255, b))
+            
+            logger.debug(f"K-means extracted color: {(r, g, b)}")
+            return (r, g, b)
+            
+        except Exception as e:
+            logger.warning(f"K-means color extraction failed: {e}")
+            return self._extract_frequency_color(sprite)
+    
+    def _create_tier_appropriate_glow(
+        self, 
+        size: Tuple[int, int], 
+        color: Tuple[int, int, int], 
+        tier: int
     ) -> Image.Image:
-        """Synchronous card generation"""
-        # Create base card
-        card = self._create_background(
-            esprit_data.get("element", "radiant"),
-            (CARD_WIDTH, CARD_HEIGHT)
+        """Create glow effect appropriate for tier level"""
+        tier_effects = self.config.get_tier_effects(tier)
+        
+        intensity = tier_effects["glow_intensity"]
+        blur_radius = tier_effects["glow_radius"]
+        
+        glow = Image.new("RGBA", size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(glow)
+        
+        cx, cy = size[0] // 2, size[1] // 2
+        
+        # Multi-layer glow system
+        max_radius = min(cx, cy) * 0.7
+        
+        # Outer glow (soft)
+        for r in range(int(max_radius), int(max_radius * 0.3), -8):
+            progress = 1.0 - (r / max_radius)
+            alpha = int(180 * intensity * (progress ** 2))
+            alpha = min(alpha, 255)
+            
+            if alpha > 5:
+                draw.ellipse(
+                    (cx - r, cy - r, cx + r, cy + r),
+                    fill=color + (alpha,)
+                )
+        
+        # Inner glow (bright core)
+        inner_radius = int(max_radius * 0.4)
+        for r in range(inner_radius, inner_radius // 3, -3):
+            progress = 1.0 - (r / inner_radius)
+            alpha = int(120 * intensity * progress)
+            alpha = min(alpha, 255)
+            
+            if alpha > 5:
+                # Slightly brighter inner color
+                bright_color = tuple(min(255, c + 30) for c in color)
+                draw.ellipse(
+                    (cx - r, cy - r, cx + r, cy + r),
+                    fill=bright_color + (alpha,)
+                )
+        
+        # Apply tier-appropriate blur
+        return glow.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    
+    def _render_name_and_stars(
+        self, 
+        draw: ImageDraw.ImageDraw, 
+        y: int, 
+        name: str, 
+        awakening: int
+    ) -> int:
+        """Render centered name and awakening stars with shadows"""
+        display_name = name.title()
+        max_awakening = self.config.get("awakening", {}).get("max_level", 5)
+        
+        filled_stars = "⭐" * awakening
+        empty_stars = "☆" * (max_awakening - awakening)
+        stars_text = filled_stars + empty_stars
+        
+        # Calculate dimensions
+        name_bbox = draw.textbbox((0, 0), display_name, font=self.font_large)
+        name_width = name_bbox[2] - name_bbox[0]
+        
+        stars_bbox = draw.textbbox((0, 0), stars_text, font=self.font_large)
+        stars_width = stars_bbox[2] - stars_bbox[0]
+        
+        gap = self.config.get("text", {}).get("name_star_gap", 20)
+        total_width = name_width + gap + stars_width
+        start_x = (self.config.CARD_WIDTH - total_width) // 2
+        
+        # Enhanced text rendering with shadow
+        shadow_config = self.config.get("text", {}).get("shadow", {})
+        shadow_enabled = shadow_config.get("enabled", True)
+        shadow_offset = shadow_config.get("offset", 1)
+        shadow_color = tuple(shadow_config.get("color", [0, 0, 0, 100]))
+        
+        text_color = self.config.get_text_color()
+        star_filled_color = self.config.get_star_filled_color()
+        star_empty_color = self.config.get_star_empty_color()
+        
+        # Draw name with shadow
+        if shadow_enabled:
+            draw.text(
+                (start_x + shadow_offset, y + shadow_offset), 
+                display_name, 
+                fill=shadow_color, 
+                font=self.font_large
+            )
+        draw.text((start_x, y), display_name, fill=text_color, font=self.font_large)
+        
+        # Draw stars
+        stars_x = start_x + name_width + gap
+        
+        if awakening > 0:
+            if shadow_enabled:
+                draw.text(
+                    (stars_x + shadow_offset, y + shadow_offset), 
+                    filled_stars, 
+                    fill=shadow_color, 
+                    font=self.font_large
+                )
+            draw.text((stars_x, y), filled_stars, fill=star_filled_color, font=self.font_large)
+        
+        if awakening < max_awakening:
+            filled_width = draw.textbbox((0, 0), filled_stars, font=self.font_large)[2] if awakening > 0 else 0
+            empty_x = stars_x + filled_width
+            
+            if shadow_enabled:
+                draw.text(
+                    (empty_x + shadow_offset, y + shadow_offset), 
+                    empty_stars, 
+                    fill=shadow_color, 
+                    font=self.font_large
+                )
+            draw.text((empty_x, y), empty_stars, fill=star_empty_color, font=self.font_large)
+        
+        # GET TEXT CONFIG WITH PROPER ERROR HANDLING
+        text_config = self.config.get("text", {})
+        logger.debug(f"[RENDER] Text config retrieved: {text_config}")
+        
+        if isinstance(text_config, dict):
+            line_spacing = text_config.get("line_spacing", 35)
+            logger.debug(f"[RENDER] Line spacing from config: {line_spacing}")
+        else:
+            logger.error(f"[RENDER] Text config is not a dict! Type: {type(text_config)}, using default")
+            line_spacing = 35
+        
+        logger.info(f"[RENDER] FINAL line spacing value: {line_spacing}")
+        
+        return y + line_spacing
+    
+    def _render_stats_section(
+        self, 
+        draw: ImageDraw.ImageDraw, 
+        y: int, 
+        stats: Dict[str, Any]
+    ) -> int:
+        """Render stats with enhanced formatting"""
+        layout_config = self.config.get("layout", {})
+        left_margin = layout_config.get("left_margin", 60)
+        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 60)
+        
+        text_color = self.config.get_text_color()
+        
+        # Main stats with enhanced spacing
+        main_stats = [
+            ("ATK", f"{stats['atk']:,}", self.font_large),
+            ("HP", f"{stats['hp']:,}", self.font_large),
+        ]
+        
+        for stat_name, value, font in main_stats:
+            draw.text((left_margin, y), stat_name, fill=text_color, font=font)
+            
+            # Right-align value
+            value_bbox = draw.textbbox((0, 0), value, font=font)
+            value_width = value_bbox[2] - value_bbox[0]
+            draw.text((right_margin - value_width, y), value, fill=text_color, font=font)
+            
+            y += layout_config.get("main_stat_spacing", 32)
+        
+        # Secondary stats
+        secondary_stats = [
+            ("Owned", f"x{stats['owned']}"),
+            ("Upkeep", f"{stats['upkeep']}/hr"),
+        ]
+        
+        for stat_name, value in secondary_stats:
+            draw.text((left_margin, y), stat_name, fill=text_color, font=self.font_normal)
+            
+            value_bbox = draw.textbbox((0, 0), value, font=self.font_normal)
+            value_width = value_bbox[2] - value_bbox[0]
+            draw.text((right_margin - value_width, y), value, fill=text_color, font=self.font_normal)
+            
+            y += layout_config.get("secondary_stat_spacing", 18)
+        
+        return y + layout_config.get("section_spacing", 15)
+    
+    def _render_leader_skill(
+        self, 
+        draw: ImageDraw.ImageDraw, 
+        y: int, 
+        leader_skill: str
+    ) -> int:
+        """Render leader skill with intelligent text wrapping"""
+        layout_config = self.config.get("layout", {})
+        left_margin = layout_config.get("left_margin", 60)
+        right_margin = self.config.CARD_WIDTH - layout_config.get("right_margin", 60)
+        max_width = right_margin - left_margin
+        
+        text_color = self.config.get_text_color()
+        
+        draw.text((left_margin, y), "Leader Skill", fill=text_color, font=self.font_normal)
+        y += layout_config.get("header_spacing", 22)
+        
+        if leader_skill and leader_skill.lower() != "none":
+            # Advanced text wrapping
+            words = leader_skill.split()
+            lines = []
+            current_line = []
+            
+            for word in words:
+                test_line = current_line + [word]
+                test_text = " ".join(test_line)
+                bbox = draw.textbbox((0, 0), test_text, font=self.font_normal)
+                
+                if bbox[2] - bbox[0] <= max_width:
+                    current_line.append(word)
+                else:
+                    if current_line:
+                        lines.append(" ".join(current_line))
+                        current_line = [word]
+                    else:
+                        # Single word is too long, add it anyway
+                        lines.append(word)
+            
+            if current_line:
+                lines.append(" ".join(current_line))
+            
+            # Render lines with proper spacing
+            skill_color = tuple(self.config.get("text", {}).get("skill_color", [200, 200, 200]))
+            line_spacing = layout_config.get("skill_line_spacing", 18)
+            
+            for line in lines:
+                draw.text((left_margin, y), line, fill=skill_color, font=self.font_normal)
+                y += line_spacing
+        else:
+            none_color = tuple(self.config.get("text", {}).get("none_color", [120, 120, 120]))
+            draw.text((left_margin, y), "None", fill=none_color, font=self.font_normal)
+            y += 18
+        
+        return y
+    
+    def _calculate_content_box_area(self, content_start_y: int) -> Tuple[int, int, int, int]:
+        """Calculate the coordinates for the content box area"""
+        content_box_config = self.config.get("content_box", {})
+        
+        left_margin = content_box_config.get("left_margin", 30)
+        right_margin = content_box_config.get("right_margin", 30)
+        top_margin = content_box_config.get("top_margin", 10)
+        bottom_margin = content_box_config.get("bottom_margin", 30)
+        
+        # Calculate box coordinates
+        x1 = left_margin
+        y1 = content_start_y - top_margin
+        x2 = self.config.CARD_WIDTH - right_margin
+        y2 = self.config.CARD_HEIGHT - bottom_margin
+        
+        logger.debug(f"[CONTENT_BOX] Calculated area: ({x1}, {y1}) to ({x2}, {y2})")
+        return (x1, y1, x2, y2)
+    
+    def _draw_content_box(self, draw: ImageDraw.ImageDraw, coords: Tuple[int, int, int, int]) -> None:
+        """Draw the content box background and border"""
+        content_box_config = self.config.get("content_box", {})
+        
+        if not content_box_config.get("enabled", True):
+            logger.debug("[CONTENT_BOX] Content box disabled in config")
+            return
+        
+        x1, y1, x2, y2 = coords
+        
+        # Background fill
+        background_config = content_box_config.get("background", {})
+        if background_config.get("enabled", True):
+            bg_color_list = background_config.get("color", [0, 0, 0, 40])
+            if isinstance(bg_color_list, list) and len(bg_color_list) >= 4:
+                bg_color = (int(bg_color_list[0]), int(bg_color_list[1]), 
+                           int(bg_color_list[2]), int(bg_color_list[3]))
+                
+                # Create background overlay
+                overlay = Image.new("RGBA", (self.config.CARD_WIDTH, self.config.CARD_HEIGHT), (0, 0, 0, 0))
+                overlay_draw = ImageDraw.Draw(overlay)
+                overlay_draw.rectangle([x1, y1, x2, y2], fill=bg_color)
+                
+                # Apply to main image (this requires the card to be passed, so we'll skip for now)
+                logger.debug(f"[CONTENT_BOX] Background color: {bg_color}")
+        
+        # Border
+        border_config = content_box_config.get("border", {})
+        if border_config.get("enabled", True):
+            border_color_list = border_config.get("color", None)
+            if border_color_list and isinstance(border_color_list, list) and len(border_color_list) >= 3:
+                border_color = (int(border_color_list[0]), int(border_color_list[1]), int(border_color_list[2]))
+            else:
+                border_color = self.config.get_line_color()
+            
+            border_width = border_config.get("width", 2)
+            corner_radius = border_config.get("corner_radius", 0)
+            
+            logger.debug(f"[CONTENT_BOX] Drawing border: color={border_color}, width={border_width}")
+            
+            if corner_radius > 0:
+                # Rounded rectangle - simplified version
+                self._draw_rounded_rectangle(draw, [x1, y1, x2, y2], corner_radius, outline=border_color, width=border_width)
+            else:
+                # Simple rectangle
+                draw.rectangle([x1, y1, x2, y2], outline=border_color, width=border_width)
+            
+            # Optional inner shadow effect
+            shadow_config = border_config.get("inner_shadow", {})
+            if shadow_config.get("enabled", False):
+                shadow_color_list = shadow_config.get("color", [0, 0, 0, 60])
+                if isinstance(shadow_color_list, list) and len(shadow_color_list) >= 4:
+                    shadow_color = (int(shadow_color_list[0]), int(shadow_color_list[1]), 
+                                   int(shadow_color_list[2]), int(shadow_color_list[3]))
+                    shadow_offset = shadow_config.get("offset", 2)
+                    
+                    # Draw inner shadow lines
+                    draw.line([x1 + shadow_offset, y1 + shadow_offset, x2 - shadow_offset, y1 + shadow_offset], 
+                             fill=shadow_color, width=1)
+                    draw.line([x1 + shadow_offset, y1 + shadow_offset, x1 + shadow_offset, y2 - shadow_offset], 
+                             fill=shadow_color, width=1)
+    
+    def _draw_rounded_rectangle(self, draw: ImageDraw.ImageDraw, coords: List[int], radius: int, **kwargs) -> None:
+        """Draw a rounded rectangle (simplified version)"""
+        # For now, just draw a regular rectangle
+        # Full rounded rectangle implementation would be more complex
+        logger.debug("[CONTENT_BOX] Rounded corners requested, using square for now")
+        draw.rectangle(coords, **kwargs)
+    
+    def _add_card_closure(self, draw: ImageDraw.ImageDraw, content_end_y: int) -> None:
+        """Add bottom divider and optional card frame to properly close the card"""
+        closure_config = self.config.get("card_closure", {})
+        
+        # Bottom divider configuration
+        bottom_divider_config = closure_config.get("bottom_divider", {})
+        if bottom_divider_config.get("enabled", True):
+            bottom_margin = bottom_divider_config.get("margin_from_bottom", 25)
+            divider_y = self.config.CARD_HEIGHT - bottom_margin
+            
+            # Make sure we don't overlap with content
+            min_gap = bottom_divider_config.get("min_gap_from_content", 15)
+            if divider_y < content_end_y + min_gap:
+                divider_y = content_end_y + min_gap
+            
+            logger.debug(f"[CLOSURE] Drawing bottom divider at y={divider_y}")
+            self._draw_enhanced_divider(draw, divider_y)
+        
+        # Card frame configuration
+        frame_config = closure_config.get("card_frame", {})
+        if frame_config.get("enabled", False):
+            border_color_list = frame_config.get("border_color", None)
+            if border_color_list and isinstance(border_color_list, list) and len(border_color_list) >= 3:
+                border_color = (int(border_color_list[0]), int(border_color_list[1]), int(border_color_list[2]))
+            else:
+                border_color = self.config.get_line_color()
+            
+            border_width = frame_config.get("border_width", 2)
+            margin = frame_config.get("margin", 8)
+            corner_style = frame_config.get("corner_style", "square")  # square, rounded
+            
+            logger.debug(f"[CLOSURE] Drawing card frame with margin={margin}, width={border_width}")
+            
+            if corner_style == "rounded":
+                # For rounded corners, we'd need to draw multiple arcs
+                # For now, just do square frame but note the config option
+                logger.debug("[CLOSURE] Rounded corners requested but using square for now")
+            
+            # Draw frame around entire card
+            frame_coords = [margin, margin, self.config.CARD_WIDTH - margin, self.config.CARD_HEIGHT - margin]
+            draw.rectangle(frame_coords, outline=border_color, width=border_width)
+            
+            # Optional inner highlight for frame
+            if frame_config.get("inner_highlight", False):
+                highlight_color_list = frame_config.get("highlight_color", [255, 255, 255, 60])
+                if isinstance(highlight_color_list, list) and len(highlight_color_list) >= 4:
+                    highlight_color = (int(highlight_color_list[0]), int(highlight_color_list[1]), 
+                                     int(highlight_color_list[2]), int(highlight_color_list[3]))
+                    inner_margin = margin + border_width + 1
+                    inner_coords = [inner_margin, inner_margin, 
+                                  self.config.CARD_WIDTH - inner_margin, self.config.CARD_HEIGHT - inner_margin]
+                    draw.rectangle(inner_coords, outline=highlight_color, width=1)
+    
+    async def render_esprit_card(self, card_data: Dict[str, Any]) -> Image.Image:
+        """Main card rendering function with full configuration support"""
+        return await asyncio.to_thread(self._render_card_sync, card_data)
+    
+    def _render_card_sync(self, card_data: Dict[str, Any]) -> Image.Image:
+        """Synchronous rendering with tier-appropriate effects"""
+        # Create enhanced background
+        card = self._create_enhanced_starry_background((self.config.CARD_WIDTH, self.config.CARD_HEIGHT))
+        
+        # Extract card data
+        name = card_data.get("name", "Unknown")
+        element = card_data.get("element", "neutral")
+        tier = card_data.get("tier", 1)
+        awakening = card_data.get("awakening_level", 0)
+        leader_skill = card_data.get("leader_skill", "None")
+        
+        stats = {
+            'atk': card_data.get("base_atk", 0),
+            'hp': card_data.get("base_hp", 0),
+            'owned': card_data.get("quantity", 1),
+            'upkeep': card_data.get("upkeep", 0)
+        }
+        
+        # Load sprite with enhanced discovery
+        sprite_path = self._get_sprite_path(name, tier)
+        if sprite_path:
+            sprite = self._load_and_scale_sprite(sprite_path)
+        else:
+            sprite = self._create_professional_placeholder(name)
+        
+        if not sprite:
+            logger.error(f"Failed to create sprite for {name}")
+            sprite = self._create_professional_placeholder(name)
+        
+        # CREATE TIER-APPROPRIATE GLOW EFFECT
+        dominant_color = self._extract_advanced_dominant_color(sprite)
+        logger.info(f"Card {name}: Using glow color {dominant_color} with tier {tier} effects")
+        
+        # Create tier-appropriate glow
+        sprite_area_height = self.config.get_sprite_area_height()
+        glow = self._create_tier_appropriate_glow(
+            (self.config.CARD_WIDTH, sprite_area_height), 
+            dominant_color, 
+            tier
         )
         
-        # Get asset paths
-        paths = self._get_asset_paths(esprit_data)
+        # Position glow on card
+        glow_positioned = Image.new("RGBA", (self.config.CARD_WIDTH, self.config.CARD_HEIGHT), (0, 0, 0, 0))
+        glow_positioned.paste(glow, (0, 0))
         
-        # Load and place sprite
-        sprite_size = (300, 300)
-        sprite = self._load_and_scale_sprite(paths.sprite, sprite_size, esprit_data)
+        # Apply glow to card
+        card = Image.alpha_composite(card, glow_positioned)
         
-        # Add glow to sprite
-        elem = Elements.from_string(esprit_data.get("element", "radiant"))
-        if elem:
-            color = (elem.color >> 16, (elem.color >> 8) & 0xFF, elem.color & 0xFF)
-            sprite = self.effects.create_border_glow(sprite, color, thickness=10, blur_radius=20)
-        
-        # Center sprite in upper area
-        sprite_x = (CARD_WIDTH - sprite.width) // 2
-        sprite_y = 100
-        
+        # Position and paste sprite
+        sprite_x = (self.config.CARD_WIDTH - sprite.width) // 2
+        sprite_y = (sprite_area_height - sprite.height) // 2
         card.paste(sprite, (sprite_x, sprite_y), sprite)
         
-        # Add frame decorations
-        card = self._draw_frame_decorations(
-            card,
-            esprit_data.get("tier", esprit_data.get("base_tier", 1)),
-            esprit_data.get("element", "radiant")
-        )
+        # Render text content with enhanced styling
+        draw = ImageDraw.Draw(card)
+        content_start_y = self.config.get_content_start_y() - 20
         
-        # Add stats panel
-        card = self._draw_stats_panel(card, esprit_data, CARD_HEIGHT - 200)
+        # CONTENT BOX: Draw background and border for text area
+        content_box_coords = self._calculate_content_box_area(content_start_y)
+        self._draw_content_box(draw, content_box_coords)
         
-        # Add awakening stars
-        if show_awakening and "awakening_level" in esprit_data:
-            card = self._add_awakening_stars(
-                card,
-                esprit_data["awakening_level"],
-                (50, CARD_HEIGHT - 240)
-            )
+        y = content_start_y
         
-        # Add quantity badge
-        if show_quantity and "quantity" in esprit_data:
-            card = self._add_quantity_badge(
-                card,
-                esprit_data["quantity"],
-                (CARD_WIDTH - 100, 100)
-            )
+        # Name and stars section
+        self._draw_enhanced_divider(draw, y)
+        y += 15 
+        y = self._render_name_and_stars(draw, y, name, awakening)
         
-        # Apply final effects based on quality
-        if quality == ImageQuality.HIGH:
-            card = self.effects.add_shine(card, angle=30, width=80, opacity=0.2)
+        # Stats section
+        self._draw_enhanced_divider(draw, y)
+        y += 15
+        y = self._render_stats_section(draw, y, stats)
+        
+        # Leader skill section
+        self._draw_enhanced_divider(draw, y)
+        y += 16
+        final_y = self._render_leader_skill(draw, y, leader_skill)
+        
+        # CARD CLOSURE: Bottom divider and frame from config
+        self._add_card_closure(draw, final_y)
         
         return card
     
-    async def generate_portrait(
-        self,
-        esprit_data: Dict[str, Any],
-        size: Tuple[int, int] = PORTRAIT_SIZE
-    ) -> Image.Image:
-        """Generate a portrait image"""
-        return await asyncio.get_event_loop().run_in_executor(
-            _thread_pool,
-            self._generate_portrait_sync,
-            esprit_data,
-            size
-        )
-    
-    def _generate_portrait_sync(
-        self,
-        esprit_data: Dict[str, Any],
-        size: Tuple[int, int]
-    ) -> Image.Image:
-        """Synchronous portrait generation"""
-        paths = self._get_asset_paths(esprit_data)
+    async def to_discord_file(self, img: Image.Image, filename: str = "card.png") -> Optional[disnake.File]:
+        """Convert to Discord file with intelligent compression"""
+        compression_config = self.config.get("compression", {})
+        max_size_mb = compression_config.get("max_size_mb", 8.0)
+        quality_levels = compression_config.get("quality_levels", [95, 85, 75, 65])
         
-        if paths.portrait and paths.portrait.exists():
-            try:
-                portrait = Image.open(paths.portrait).convert("RGBA")
+        try:
+            # Progressive compression attempt
+            for quality in quality_levels:
+                buffer = io.BytesIO()
                 
-                # Scale appropriately
-                if portrait.width <= 64:
-                    portrait = portrait.resize(size, Image.Resampling.NEAREST)
-                else:
-                    portrait = portrait.resize(size, Image.Resampling.LANCZOS)
+                # Save with current quality settings
+                save_kwargs = {
+                    "format": "PNG",
+                    "optimize": True,
+                    "compress_level": compression_config.get("compress_level", 6)
+                }
                 
-                return portrait
+                img.save(buffer, **save_kwargs)
+                buffer.seek(0)
                 
-            except Exception as e:
-                logger.error(f"Failed to load portrait: {e}")
-        
-        # Fallback - crop from sprite or generate
-        if paths.sprite and paths.sprite.exists():
-            try:
-                sprite = Image.open(paths.sprite).convert("RGBA")
+                # Check file size
+                size_mb = len(buffer.getvalue()) / (1024 * 1024)
+                logger.debug(f"Card file size at quality {quality}: {size_mb:.2f}MB")
                 
-                # Crop center portion
-                crop_size = min(sprite.width, sprite.height)
-                left = (sprite.width - crop_size) // 2
-                top = (sprite.height - crop_size) // 4  # Slightly higher for face
+                if size_mb <= max_size_mb:
+                    return disnake.File(buffer, filename=filename)
                 
-                portrait = sprite.crop((
-                    left, top,
-                    left + crop_size,
-                    top + crop_size
-                ))
-                
-                # Scale to target
-                if sprite.width <= 128:
-                    portrait = portrait.resize(size, Image.Resampling.NEAREST)
-                else:
-                    portrait = portrait.resize(size, Image.Resampling.LANCZOS)
-                
-                return portrait
-                
-            except Exception:
-                pass
-        
-        # Final fallback
-        return FallbackGenerator.create_sprite_placeholder(
-            size,
-            esprit_data.get("element", "radiant"),
-            esprit_data.get("name", "Unknown")
-        )
-    
-    async def to_discord_file(
-        self,
-        image: Image.Image,
-        filename: str = "card.png",
-        optimize: bool = True
-    ) -> disnake.File:
-        """Convert image to Discord file"""
-        return await asyncio.get_event_loop().run_in_executor(
-            _thread_pool,
-            self._to_discord_file_sync,
-            image,
-            filename,
-            optimize
-        )
-    
-    def _to_discord_file_sync(
-        self,
-        image: Image.Image,
-        filename: str,
-        optimize: bool
-    ) -> disnake.File:
-        """Synchronous Discord file creation"""
-        buffer = io.BytesIO()
-        
-        # Save with appropriate settings
-        save_kwargs = {
-            "format": "PNG",
-            "optimize": optimize
-        }
-        
-        # Add compression for large images
-        if image.width * image.height > 500000:  # > 500k pixels
-            save_kwargs["compress_level"] = 6
-        
-        image.save(buffer, **save_kwargs)
-        buffer.seek(0)
-        
-        return disnake.File(buffer, filename=filename)
+                # If still too big at lowest quality, try resizing
+                if quality == quality_levels[-1]:
+                    resize_factor = compression_config.get("resize_factor", 0.8)
+                    new_width = int(img.width * resize_factor)
+                    new_height = int(img.height * resize_factor)
+                    
+                    logger.warning(f"Resizing image from {img.width}x{img.height} to {new_width}x{new_height}")
+                    resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    
+                    buffer = io.BytesIO()
+                    resized_img.save(buffer, **save_kwargs)
+                    buffer.seek(0)
+                    
+                    final_size_mb = len(buffer.getvalue()) / (1024 * 1024)
+                    logger.info(f"Final resized file size: {final_size_mb:.2f}MB")
+                    
+                    if final_size_mb <= max_size_mb:
+                        return disnake.File(buffer, filename=filename)
+            
+            logger.error("Could not compress image below Discord limit")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to create Discord file: {e}")
+            return None
 
 
 # Singleton instance
-_generator: Optional[EspritCardGenerator] = None
+_generator = ImageGenerator()
 
-
-def get_card_generator() -> EspritCardGenerator:
-    """Get or create the card generator instance"""
-    global _generator
-    if _generator is None:
-        _generator = EspritCardGenerator()
-    return _generator
-
-
-# Convenience functions
+# Public API
 async def generate_esprit_card(
-    esprit_data: Dict[str, Any],
-    quality: ImageQuality = ImageQuality.STANDARD
-) -> disnake.File:
-    """Generate an esprit card and return as Discord file"""
-    generator = get_card_generator()
-    card = await generator.generate_card(esprit_data, quality)
-    return await generator.to_discord_file(card, f"{esprit_data.get('name', 'esprit')}_card.png")
-
-
-async def generate_esprit_portrait(
-    esprit_data: Dict[str, Any],
-    size: Tuple[int, int] = PORTRAIT_SIZE
-) -> Image.Image:
-    """Generate an esprit portrait"""
-    generator = get_card_generator()
-    return await generator.generate_portrait(esprit_data, size)
-
-
-# Cleanup function
-def cleanup():
-    """Cleanup resources"""
-    global _thread_pool
-    if _thread_pool:
-        _thread_pool.shutdown(wait=False)
+    card_data: Dict[str, Any],
+    filename: str = "card.png"
+) -> Optional[disnake.File]:
+    """Generate a card and return as Discord file"""
+    try:
+        card = await _generator.render_esprit_card(card_data)
+        return await _generator.to_discord_file(card, filename)
+    except Exception as e:
+        logger.error(f"Card generation failed: {e}")
+        return None

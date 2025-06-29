@@ -12,6 +12,8 @@ from typing import Dict, Tuple, Callable, Any
 from collections import defaultdict, deque
 import disnake
 
+from src.utils.game_constants import EmbedColors
+
 load_dotenv()
 logger = get_logger(__name__)
 
@@ -238,6 +240,10 @@ def ratelimit(uses: int, per_seconds: int, command_name: str):
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(self, inter: disnake.ApplicationCommandInteraction, *args, **kwargs):
+            # ONLY defer if not already deferred
+            if hasattr(inter, 'response') and not inter.response.is_done():
+                await inter.response.defer()
+            
             user_id = inter.author.id
             
             # Check rate limit
@@ -246,18 +252,13 @@ def ratelimit(uses: int, per_seconds: int, command_name: str):
             )
             
             if is_limited:
-                # Send rate limit message
                 embed = disnake.Embed(
-                    title="Rate Limited",
-                    description=f"You can use this command again in {retry_after:.1f} seconds.",
-                    color=0xff9900
+                    title="Slow Down!",
+                    description=f"You can use this command {uses} times per {per_seconds} seconds.",
+                    color=EmbedColors.ERROR
                 )
-                
-                if inter.response.is_done():
-                    await inter.edit_original_response(embed=embed)
-                else:
-                    await inter.response.send_message(embed=embed, ephemeral=True)
-                return
+                # Use edit_original_response since we know it's deferred
+                return await inter.edit_original_response(embed=embed)
             
             # Execute the command
             try:
