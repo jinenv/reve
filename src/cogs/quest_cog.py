@@ -156,6 +156,8 @@ class AreaSelector(disnake.ui.Select):
             await inter.response.send_message("This isn't your area selection!", ephemeral=True)
             return
             
+        await inter.response.defer()  # Defer the component interaction
+        
         selected_area_id = self.values[0]
         area_data = self.areas[selected_area_id]
         
@@ -250,12 +252,13 @@ class BossCombatView(disnake.ui.View):
             "background": "forest_nebula.png"  # TODO: make this dynamic based on area
         }
         
+        logger.info(f"🎨 Boss card generation attempt: {boss_card_data}")
+        logger.info(f"🔍 Looking for sprite: /assets/esprits/common/{boss_card_data['name'].lower()}.png")
+
         # Generate updated boss card for each attack
         try:
             boss_file = await generate_boss_card(boss_card_data, f"boss_combat_{display_data['name']}.png")
-        except Exception as e:
-            logger.warning(f"Boss card generation failed: {e}")
-            boss_file = None
+            logger.info(f"📸 Boss card result: {boss_file}")
         
         # Damage reaction based on amount
         if result.damage_dealt >= 50:
@@ -532,7 +535,14 @@ class Quest(commands.Cog):
                 
                 view = AreaSelectionView(player, accessible_areas)
                 await inter.edit_original_response(embed=embed, view=view)
-                
+        except Exception as e:
+            logger.error(f"Quest areas error for user {inter.author.id}: {e}")
+            embed = disnake.Embed(
+                title="Quest System Error",
+                description="Something went wrong!",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
         except Exception as e:
             logger.error(f"Quest areas error for user {inter.author.id}: {e}")
             embed = disnake.Embed(
@@ -602,7 +612,7 @@ class Quest(commands.Cog):
                 description=f"You need level {level_req} for **{area_data['name']}**!",
                 color=EmbedColors.WARNING
             )
-            await inter.edit_original_response(embed=embed)
+            await inter.edit_original_message(embed=embed)
             return
         
         # Get ONLY the next available quest(s) - not the entire list
@@ -624,7 +634,7 @@ class Quest(commands.Cog):
                 description=f"You've completed **{area_data['name']}**!",
                 color=EmbedColors.SUCCESS
             )
-            await inter.edit_original_response(embed=embed)
+            await inter.edit_original_message(embed=embed)
             return
         
         # Update current area
@@ -671,7 +681,7 @@ class Quest(commands.Cog):
         )
         
         view = QuestSelectionView(player, area_data, next_available)
-        await inter.edit_original_response(embed=embed, view=view)
+        await inter.edit_original_message(embed=embed, view=view)
     
     async def _execute_selected_quest(self, inter, player: Player, quest_data: Dict[str, Any], area_data: Dict[str, Any]):
         """Execute the selected quest"""

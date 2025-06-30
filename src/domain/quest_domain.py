@@ -1,4 +1,4 @@
-# src/domain/quest_domain.py
+# src/domain/quest_domain.py - Complete rebuild because apparently files delete themselves
 from typing import Optional, Dict, Any, Tuple, List
 from dataclasses import dataclass
 from datetime import datetime
@@ -88,14 +88,14 @@ class BossEncounter:
         
         chosen_esprit = random.choice(possible_esprits)
         
-        # Get esprit data (simplified for now)
+        # Get esprit data from database
         esprit_data = await cls._get_esprit_data(chosen_esprit)
         if not esprit_data:
             return None
         
         # Calculate boss HP
         hp_multiplier = boss_config.get("hp_multiplier", 3.0)
-        base_hp = esprit_data.get("base_hp", 100)
+        base_hp = esprit_data.get("base_hp", 150)
         boss_max_hp = int(base_hp * hp_multiplier)
         
         # Build boss data
@@ -113,8 +113,7 @@ class BossEncounter:
     
     @staticmethod
     async def _get_esprit_data(esprit_name: str) -> Optional[Dict[str, Any]]:
-        """Get ACTUAL esprit data from database instead of hardcoded garbage"""
-        from sqlalchemy import select
+        """Get ACTUAL esprit data from database"""
         from src.utils.database_service import DatabaseService
         
         try:
@@ -127,16 +126,16 @@ class BossEncounter:
                     return {
                         "name": esprit_base.name,
                         "element": esprit_base.element,
-                        "base_hp": getattr(esprit_base, 'base_hp', 150),  # Default if missing
+                        "base_hp": getattr(esprit_base, 'base_hp', 150),
                         "base_atk": esprit_base.base_atk,
                         "base_def": esprit_base.base_def
                     }
                 else:
-                    # Fallback with BETTER defaults than "100 hp lol"
+                    # Fallback with reasonable defaults
                     return {
                         "name": esprit_name,
                         "element": "Verdant",
-                        "base_hp": 300,  # Actual boss HP
+                        "base_hp": 300,
                         "base_atk": 75,
                         "base_def": 35
                     }
@@ -150,26 +149,56 @@ class BossEncounter:
                 "base_atk": 75,
                 "base_def": 35
             }
-
-    async def _get_player_attack(self, session: AsyncSession, player: Player) -> int:
-        """Get player's attack power using THEIR existing system like a normal person"""
-        # Just use the attack calculation they already built, duh
-        return await player.get_total_attack(session)
+    
+    async def process_attack(self, session: AsyncSession, player: Player) -> Optional[CombatResult]:
+        """Process a single attack against the boss"""
+        # Regenerate stamina
+        player.regenerate_stamina()
+        
+        # Check stamina
+        stamina_cost = 1
+        if player.stamina < stamina_cost:
+            return None
+        
+        # Consume stamina
+        if not await player.consume_stamina(session, stamina_cost, f"boss_attack_{self.quest_data['id']}"):
+            return None
+        
+        # Calculate damage using player's actual attack power
+        player_attack = await player.get_total_attack(session)
+        damage = self._calculate_damage(player_attack)
+        
+        # Apply damage
+        self.current_hp = max(0, self.current_hp - damage)
+        self.attack_count += 1
+        self.total_damage_dealt += damage
+        
+        return CombatResult(
+            damage_dealt=damage,
+            boss_current_hp=self.current_hp,
+            boss_max_hp=self.max_hp,
+            player_stamina=player.stamina,
+            player_max_stamina=player.max_stamina,
+            is_boss_defeated=self.is_defeated(),
+            attack_count=self.attack_count,
+            total_damage=self.total_damage_dealt
+        )
     
     def _calculate_damage(self, player_attack: int) -> int:
-        """Calculate damage with ACTUAL variance, not wet noodle simulator"""
-        # Base damage after defense
-        base_damage = max(5, player_attack - self.base_def)  # Minimum 5 damage
+        """Calculate damage dealt - pure HP sponge, no defense logic"""
+        # Raw attack power with variance (proper MW style)
+        multiplier = 1.0 + random.uniform(-0.15, 0.15)
+        base_damage = int(player_attack * multiplier)
         
-        # Add 30% variance (not 20% because we're not cowards)
-        multiplier = 1.0 + random.uniform(-0.3, 0.3)
-        final_damage = int(base_damage * multiplier)
-        
-        # Critical hit chance (10%)
+        # Critical hit chance (10% for 50% bonus)
         if random.random() < 0.1:
-            final_damage = int(final_damage * 1.8)  # 80% bonus
+            base_damage = int(base_damage * 1.5)
             
-        return max(8, final_damage)  # Never less than 8 damage
+        return max(1, base_damage)  # Always deal at least 1 damage
+    
+    def is_defeated(self) -> bool:
+        """Check if boss is defeated"""
+        return self.current_hp <= 0
     
     async def process_victory(self, session: AsyncSession, player: Player) -> VictoryReward:
         """Process boss victory and rewards"""
@@ -184,7 +213,7 @@ class BossEncounter:
         final_jijies = int(base_jijies * jijies_bonus)
         final_xp = int(base_xp * xp_bonus)
         
-        # Apply rewards
+        # Apply rewards to player
         old_jijies = player.jijies
         old_level = player.level
         
@@ -194,10 +223,8 @@ class BossEncounter:
         # Check level up
         leveled_up = await player._check_level_up(session)
         
-        # Boss capture chance (low)
-        captured_esprit = None
-        if random.random() < 0.1:  # 10% boss capture chance
-            captured_esprit = await self._attempt_boss_capture(session, player)
+        # Boss capture chance (guaranteed for now)
+        captured_esprit = await self._attempt_boss_capture(session, player)
         
         # Log rewards
         if player.id is not None:
@@ -222,19 +249,16 @@ class BossEncounter:
         )
     
     async def _attempt_boss_capture(self, session: AsyncSession, player: Player) -> Optional[Esprit]:
-        """Attempt to capture the boss"""
-        # Find the boss esprit base (simplified)
-        stmt = select(EspritBase).where(EspritBase.name == self.name)
+        """Attempt to capture the boss (guaranteed for now)"""
+        # Find the boss esprit base
+        stmt = select(EspritBase).where(EspritBase.name.ilike(self.name))
         result = await session.execute(stmt)
         boss_base = result.scalar_one_or_none()
         
-        if not boss_base:
+        if not boss_base or boss_base.id is None or not player.id:
             return None
         
-        # Create captured esprit - handle None IDs
-        if not boss_base.id or not player.id:
-            return None
-            
+        # Create captured esprit
         new_esprit = Esprit(
             esprit_base_id=boss_base.id,
             owner_id=player.id,
@@ -294,21 +318,19 @@ class CaptureSystem:
         player: Player, 
         area_data: Dict[str, Any]
     ) -> Optional[PendingCapture]:
-        """Attempt to generate a potential capture with full MW-accurate bonuses"""
-        from src.utils.game_constants import GameConstants
-        
+        """Attempt to generate a potential capture"""
         capturable_tiers = area_data.get("capturable_tiers", [])
         if not capturable_tiers:
             return None
         
-        # Base capture chance from GameConstants
-        base_chance = getattr(GameConstants, 'BASE_CAPTURE_CHANCE', 0.15)
+        # Base capture chance
+        base_chance = 0.15
         
-        # Apply leader bonuses (the full MW calculation)
+        # Apply bonuses
         final_chance = await CaptureSystem._calculate_capture_chance(session, player, base_chance, area_data)
         
         if random.random() < final_chance:
-            # Find potential esprit with element bias
+            # Find potential esprit
             chosen_base = await CaptureSystem._select_esprit(session, area_data, capturable_tiers)
             
             if chosen_base:
@@ -334,16 +356,11 @@ class CaptureSystem:
         """Calculate final capture chance with all bonuses"""
         final_chance = base_chance
         
-        # Leader bonus (simplified for now)
-        # TODO: Implement proper leader system
-        leader_bonus = 0.05  # 5% bonus for having a leader
-        final_chance += leader_bonus
-        
         # Area-specific bonuses
         area_bonus = area_data.get("capture_bonus", 0.0)
         final_chance += area_bonus
         
-        # Player level bonus (small)
+        # Player level bonus
         level_bonus = player.level * 0.001  # 0.1% per level
         final_chance += level_bonus
         
