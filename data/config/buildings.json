@@ -1,0 +1,10 @@
+{
+  "buildings": {
+    "placeholder": {
+      "name": "Placeholder Building",
+      "description": "Temporary placeholder until building system is implemented",
+      "cost": 0,
+      "income": 0
+    }
+  }
+}

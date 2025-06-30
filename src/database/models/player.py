@@ -15,8 +15,6 @@ from typing import TYPE_CHECKING, List, Optional, Dict, Any, Tuple
 
 if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
-if TYPE_CHECKING:
-    from src.domain.quest_domain import BossEncounter, PendingCapture, CaptureSystem
 
 class Player(SQLModel, table=True):
     __tablename__: str = "player"  # type: ignore
@@ -1072,50 +1070,52 @@ class Player(SQLModel, table=True):
             "completion_percent": 0.0
         }
     
-    async def start_boss_encounter(self, session: AsyncSession, quest_data: Dict[str, Any], area_data: Dict[str, Any]) -> Optional[BossEncounter]:
-        """Start a boss encounter"""
+    async def start_boss_encounter(self, session: AsyncSession, quest_data: Dict[str, Any], area_data: Dict[str, Any]):
+        """Start a boss encounter - RUNTIME IMPORT to avoid circular imports"""
+        from src.domain.quest_domain import BossEncounter
         return await BossEncounter.create_from_quest(quest_data, area_data)
     
-    async def attempt_quest_capture(self, session: AsyncSession, area_data: Dict[str, Any]) -> Optional[PendingCapture]:
-        """Attempt to capture an esprit during quest"""
+    async def attempt_quest_capture(self, session: AsyncSession, area_data: Dict[str, Any]):
+        """Attempt to capture an esprit - RUNTIME IMPORT to avoid circular imports"""
+        from src.domain.quest_domain import CaptureSystem
         return await CaptureSystem.attempt_capture(session, self, area_data)
     
-    async def confirm_capture(self, session: AsyncSession, pending_capture: PendingCapture) -> Esprit:
-        """Confirm a pending capture"""
-        return await CaptureSystem.confirm_capture(session, self, pending_capture)
-    
-    async def get_total_attack(self, session: AsyncSession) -> int:
-        """Get total attack power for combat calculations"""
-        # Ensure power is calculated
-        power_data = await self.recalculate_total_power(session)
-        return power_data.get("atk", 0)
-    
-    async def process_quest_rewards(self, session: AsyncSession, quest_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Process normal quest rewards"""
-        gains = {}
-        
-        # XP reward
-        if xp := quest_data.get("xp_reward"):
-            leveled_up = await self.add_experience(session, xp)
-            gains['xp'] = xp
-            gains['leveled_up'] = leveled_up
-        
-        # Jijies reward
-        if jijies_range := quest_data.get("jijies_reward"):
-            if isinstance(jijies_range, list):
-                jijies_gain = random.randint(jijies_range[0], jijies_range[1])
-            else:
-                jijies_gain = jijies_range
-            
-            await self.add_currency(session, "jijies", jijies_gain, "quest_completion")
-            gains['jijies'] = jijies_gain
-        
-        # Update counters
-        self.total_quests_completed += 1
-        self.last_quest = datetime.utcnow()
-        
-        return gains
-    
-    async def attempt_quest_capture_enhanced(self, session: AsyncSession, area_data: Dict[str, Any]) -> Optional[PendingCapture]:
-        """Enhanced quest capture with full MW bonuses"""
+    async def attempt_quest_capture_enhanced(self, session: AsyncSession, area_data: Dict[str, Any]):
+        """Enhanced capture attempt - RUNTIME IMPORT to avoid circular imports"""
+        from src.domain.quest_domain import CaptureSystem
         return await CaptureSystem.attempt_capture(session, self, area_data)
+    
+    async def confirm_capture(self, session: AsyncSession, pending_capture):
+        """Confirm an esprit capture - RUNTIME IMPORT to avoid circular imports"""
+        from src.domain.quest_domain import PendingCapture
+        from src.database.models import Esprit
+        
+        # Handle None ID case
+        if not self.id:
+            return None
+        
+        # Create the esprit record
+        new_esprit = Esprit(
+            esprit_base_id=pending_capture.esprit_base.id,
+            owner_id=self.id,
+            quantity=1,
+            tier=pending_capture.esprit_base.base_tier,
+            element=pending_capture.esprit_base.element
+        )
+        
+        session.add(new_esprit)
+        
+        # Log transaction
+        transaction_logger.log_transaction(
+            player_id=self.id,
+            transaction_type=TransactionType.ESPRIT_CAPTURED,
+            details={
+                "amount": 1,
+                "reason": f"quest_capture_{pending_capture.source}",
+                "esprit_name": pending_capture.esprit_base.name,
+                "element": pending_capture.esprit_base.element,
+                "tier": pending_capture.esprit_base.base_tier
+            }
+        )
+        
+        return new_esprit
