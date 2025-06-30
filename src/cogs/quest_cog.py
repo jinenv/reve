@@ -1,4 +1,4 @@
-# src/cogs/quest_cog.py - MODERN with dropdown UX and subcommands
+# src/cogs/quest_cog.py - ENHANCED VERSION with fixed boss images and streamlined UI
 import disnake
 from disnake.ext import commands
 from typing import Optional, Dict, Any, List
@@ -36,6 +36,23 @@ class GameConstants:
         filled = int((current / total) * length)
         empty = length - filled
         return "█" * filled + "░" * empty
+    
+    @staticmethod
+    def create_detailed_progress_bar(current: int, total: int, length: int = 20) -> str:
+        """Enhanced progress bar with better visuals"""
+        if total == 0:
+            return "🟩" * length
+        
+        filled = int((current / total) * length)
+        empty = length - filled
+        
+        # Use different emojis for better visual appeal
+        if current == total:
+            return "🟩" * length  # All complete
+        elif current == 0:
+            return "⬜" * length  # Nothing done
+        else:
+            return "🟩" * filled + "⬜" * empty  # Mixed progress
 
 class Elements:
     @staticmethod
@@ -50,70 +67,112 @@ class Elements:
         emoji = element_map.get(element_str.lower(), "⭐")
         return ElementResult(emoji)
 
-# --- QUEST SELECTION DROPDOWN ---
+# --- ENHANCED QUEST UI WITH PROGRESS TRACKING ---
 
-class QuestSelector(disnake.ui.Select):
-    """Modern dropdown for quest selection"""
+class QuestProgressView(disnake.ui.View):
+    """Modern quest interface with progress tracking"""
     
-    def __init__(self, player: Player, area_data: Dict[str, Any], available_quests: List[Dict[str, Any]]):
+    def __init__(self, player: Player, area_data: Dict[str, Any], next_quest: Dict[str, Any], area_progress: Dict[str, int]):
+        super().__init__(timeout=300)
         self.player = player
         self.area_data = area_data
-        self.available_quests = available_quests
+        self.next_quest = next_quest
+        self.area_progress = area_progress
+    
+    @disnake.ui.button(label="🚀 Start Quest", style=disnake.ButtonStyle.primary)
+    async def start_quest_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        """Start the featured quest"""
+        if inter.user.id != self.player.discord_id:
+            await inter.response.send_message("This isn't your quest!", ephemeral=True)
+            return
         
-        # Build dropdown options
+        await inter.response.defer()
+        
+        # Disable button
+        button.disabled = True
+        button.label = "⚔️ Starting..."
+        await inter.edit_original_response(view=self)
+        
+        # Execute quest
+        quest_cog = inter.client.get_cog("Quest")
+        if quest_cog:
+            await quest_cog._execute_selected_quest(inter, self.player, self.next_quest, self.area_data)
+    
+    @disnake.ui.button(label="📋 View All Quests", style=disnake.ButtonStyle.secondary)
+    async def view_all_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
+        """Show all available quests if player wants options"""
+        if inter.user.id != self.player.discord_id:
+            await inter.response.send_message("This isn't your quest interface!", ephemeral=True)
+            return
+        
+        await inter.response.defer()
+        
+        # Get all available quests
+        all_quests = self.area_data.get("quests", [])
+        completed = self.player.get_completed_quests(self.area_data.get("id", "unknown"))
+        
+        available_quests = [q for q in all_quests if q["id"] not in completed][:5]  # Max 5
+        
+        if len(available_quests) <= 1:
+            await inter.followup.send("Only the current quest is available!", ephemeral=True)
+            return
+        
+        # Show dropdown with remaining quests
+        view = LegacyQuestDropdown(self.player, self.area_data, available_quests)
+        
+        embed = disnake.Embed(
+            title=f"🗂️ All Available Quests",
+            description="Choose any available quest to start:",
+            color=EmbedColors.PRIMARY
+        )
+        
+        await inter.followup.send(embed=embed, view=view, ephemeral=True)
+
+class LegacyQuestDropdown(disnake.ui.View):
+    """Fallback dropdown for multiple quest selection"""
+    
+    def __init__(self, player: Player, area_data: Dict[str, Any], available_quests: List[Dict[str, Any]]):
+        super().__init__(timeout=180)
+        
+        # Build dropdown
         options = []
-        for quest in available_quests[:25]:  # Discord limit
+        for quest in available_quests[:10]:  # Limit to 10
             energy_cost = quest.get("energy_cost", 5)
             quest_type = "👑 BOSS" if quest.get("is_boss") else "⚔️ Quest"
             description = f"{quest_type} • {energy_cost}⚡ energy"
             
             options.append(disnake.SelectOption(
-                label=quest["name"][:100],  # Discord limit
+                label=quest["name"][:100],
                 value=quest["id"],
                 description=description[:100],
                 emoji="👑" if quest.get("is_boss") else "⚔️"
             ))
         
-        super().__init__(
-            placeholder="Choose your adventure...",
+        select = disnake.ui.Select(
+            placeholder="Choose your quest...",
             options=options,
             min_values=1,
             max_values=1
         )
-    
-    async def callback(self, inter: disnake.MessageInteraction):
-        """Handle quest selection"""
-        if inter.user.id != self.player.discord_id:
-            await inter.response.send_message("This isn't your quest selection!", ephemeral=True)
-            return
+        
+        async def select_callback(interaction):
+            if interaction.user.id != player.discord_id:
+                await interaction.response.send_message("Not your selection!", ephemeral=True)
+                return
             
-        await inter.response.defer()
+            selected_quest_id = select.values[0]
+            selected_quest = next((q for q in available_quests if q["id"] == selected_quest_id), None)
+            
+            if selected_quest:
+                quest_cog = interaction.client.get_cog("Quest")
+                if quest_cog:
+                    await interaction.response.defer()
+                    await quest_cog._execute_selected_quest(interaction, player, selected_quest, area_data)
         
-        # Find selected quest
-        selected_quest_id = self.values[0]
-        selected_quest = next((q for q in self.available_quests if q["id"] == selected_quest_id), None)
-        
-        if not selected_quest:
-            await inter.followup.send("Quest not found!", ephemeral=True)
-            return
-        
-        # Disable dropdown
-        self.disabled = True
-        await inter.edit_original_response(view=self.view)
-        
-        # Execute the quest
-        quest_cog = inter.client.get_cog("Quest")
-        if quest_cog:
-            await quest_cog._execute_selected_quest(inter, self.player, selected_quest, self.area_data)
+        select.callback = select_callback
+        self.add_item(select)
 
-class QuestSelectionView(disnake.ui.View):
-    """View for quest selection"""
-    
-    def __init__(self, player: Player, area_data: Dict[str, Any], available_quests: List[Dict[str, Any]]):
-        super().__init__(timeout=300)
-        self.add_item(QuestSelector(player, area_data, available_quests))
-
-# --- AREA SELECTION DROPDOWN ---
+# --- AREA SELECTION (UNCHANGED) ---
 
 class AreaSelector(disnake.ui.Select):
     """Dropdown for area selection"""
@@ -156,15 +215,28 @@ class AreaSelector(disnake.ui.Select):
             await inter.response.send_message("This isn't your area selection!", ephemeral=True)
             return
             
-        await inter.response.defer()  # Defer the component interaction
+        await inter.response.defer()
         
         selected_area_id = self.values[0]
-        area_data = self.areas[selected_area_id]
+        selected_area = self.areas.get(selected_area_id)
         
-        # Show quests in this area
+        if not selected_area:
+            await inter.followup.send("Area not found!", ephemeral=True)
+            return
+        
+        # Update player's current area
+        async with DatabaseService.get_transaction() as session:
+            stmt = select(Player).where(Player.discord_id == inter.user.id).with_for_update() # type: ignore
+            player = (await session.execute(stmt)).scalar_one_or_none()
+            
+            if player:
+                player.current_area_id = selected_area_id
+                await session.commit()
+        
+        # Show area quests
         quest_cog = inter.client.get_cog("Quest")
         if quest_cog:
-            await quest_cog._show_area_quests(inter, self.player, selected_area_id, area_data)
+            await quest_cog._show_area_quests(inter, self.player, selected_area_id, selected_area)
 
 class AreaSelectionView(disnake.ui.View):
     """View for area selection"""
@@ -173,36 +245,32 @@ class AreaSelectionView(disnake.ui.View):
         super().__init__(timeout=300)
         self.add_item(AreaSelector(player, areas))
 
-# --- COMBAT VIEW (unchanged but cleaned up) ---
+# --- ENHANCED BOSS COMBAT WITH FIXED IMAGE GENERATION ---
 
 class BossCombatView(disnake.ui.View):
-    """UI for boss combat - delegates to domain model"""
+    """Interactive boss combat with FIXED image generation"""
     
-    def __init__(self, player_id: int, boss_encounter: BossEncounter, zone: str, area_data: Dict[str, Any]):
+    def __init__(self, user_id: int, boss_encounter: BossEncounter, area_id: str, area_data: Dict[str, Any]):
         super().__init__(timeout=600)
-        self.player_id = player_id
+        self.user_id = user_id
         self.boss_encounter = boss_encounter
-        self.zone = zone
+        self.area_id = area_id
         self.area_data = area_data
     
-    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
-        if inter.author.id != self.player_id:
-            await inter.response.send_message("This is not your fight!", ephemeral=True)
-            return False
-        return True
-    
-    @disnake.ui.button(label="⚔️ Attack", style=disnake.ButtonStyle.success)
+    @disnake.ui.button(label="⚔️ Attack", style=disnake.ButtonStyle.primary)
     async def attack_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         """Attack the boss"""
-        await inter.response.defer()
-        
+        if inter.user.id != self.user_id:
+            await inter.response.send_message("This isn't your boss fight!", ephemeral=True)
+            return
+            
         async with DatabaseService.get_transaction() as session:
-            # Get player
-            stmt = select(Player).where(Player.discord_id == self.player_id).with_for_update() # type: ignore
+            # Get fresh player data
+            stmt = select(Player).where(Player.discord_id == inter.user.id).with_for_update() # type: ignore
             player = (await session.execute(stmt)).scalar_one_or_none()
             
             if not player:
-                await inter.followup.send("Could not find your player data!", ephemeral=True)
+                await inter.response.send_message("Player not found!", ephemeral=True)
                 return
             
             # Process attack via domain model
@@ -214,7 +282,7 @@ class BossCombatView(disnake.ui.View):
                     description=f"You need 1 stamina to attack!\nYou have: {player.stamina}/{player.max_stamina}",
                     color=EmbedColors.ERROR
                 )
-                await inter.edit_original_message(embed=embed, view=self)
+                await inter.response.edit_message(embed=embed, view=self)
                 return
             
             # Check if boss is defeated
@@ -223,7 +291,8 @@ class BossCombatView(disnake.ui.View):
                 return
             
             # Update combat display
-            await self._update_combat_display(inter, combat_result)
+            await inter.response.defer()
+            await self._update_combat_display_fixed(inter, combat_result)
     
     @disnake.ui.button(label="🏃 Flee", style=disnake.ButtonStyle.danger)
     async def flee_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
@@ -239,28 +308,36 @@ class BossCombatView(disnake.ui.View):
         
         await inter.response.edit_message(embed=embed, view=self)
     
-    async def _update_combat_display(self, inter: disnake.MessageInteraction, result):
-        """Update combat UI with ACTUAL boss visuals and better damage display"""
+    async def _update_combat_display_fixed(self, inter: disnake.MessageInteraction, result):
+        """FIXED combat display with proper boss image generation"""
         display_data = self.boss_encounter.get_combat_display_data()
         
-        # Format data correctly for boss card generator (the whole problem)
-        boss_card_data = {
-            "name": display_data['name'],
-            "element": self.boss_encounter.element,  # Get from boss encounter directly
-            "current_hp": display_data['current_hp'],
-            "max_hp": display_data['max_hp'],
-            "background": "forest_nebula.png"  # TODO: make this dynamic based on area
-        }
+        # Get ACTUAL esprit data from database for proper image URL
+        boss_image_data = await self._get_boss_image_data()
         
-        logger.info(f"🎨 Boss card generation attempt: {boss_card_data}")
-        logger.info(f"🔍 Looking for sprite: /assets/esprits/common/{boss_card_data['name'].lower()}.png")
-
-        # Generate updated boss card for each attack
+        logger.info(f"🎨 Boss image data: {boss_image_data}")
+        
+        # Generate boss card with CORRECT data
+        boss_file = None
         try:
-            boss_file = await generate_boss_card(boss_card_data, f"boss_combat_{display_data['name']}.png")
-            logger.info(f"📸 Boss card result: {boss_file}")
+            if boss_image_data:
+                boss_card_data = {
+                    "name": display_data['name'],
+                    "element": self.boss_encounter.element,
+                    "current_hp": display_data['current_hp'],
+                    "max_hp": display_data['max_hp'],
+                    "background": "forest_nebula.png",
+                    "image_url": boss_image_data.get("image_url"),  # Use actual image URL
+                    "sprite_path": boss_image_data.get("sprite_path")  # Alternative path
+                }
+                
+                boss_file = await generate_boss_card(boss_card_data, f"boss_combat_{display_data['name']}.png")
+                logger.info(f"📸 Boss card generated: {boss_file is not None}")
+        except Exception as e:
+            logger.error(f"Boss card generation failed: {e}")
+            boss_file = None
         
-        # Damage reaction based on amount
+        # Create combat embed
         if result.damage_dealt >= 50:
             damage_reaction = f"💥 **CRITICAL HIT!** You dealt **{result.damage_dealt}** damage!"
         elif result.damage_dealt >= 20:
@@ -274,33 +351,33 @@ class BossCombatView(disnake.ui.View):
             color=display_data['color']
         )
         
-        # HP bar with better visual
-        hp_bar_length = 20
-        filled = int(display_data['hp_percent'] * hp_bar_length)
-        empty = hp_bar_length - filled
-        hp_bar = "█" * filled + "░" * empty
+        # Enhanced HP bar visualization
+        hp_percent = display_data['hp_percent']
+        hp_bar = GameConstants.create_detailed_progress_bar(
+            int(hp_percent * 20), 20, 20
+        )
         
-        # HP status indicator
-        if display_data['hp_percent'] > 0.7:
+        # HP status with better indicators
+        if hp_percent > 0.7:
             hp_status = "💚 Healthy"
-        elif display_data['hp_percent'] > 0.4:
+        elif hp_percent > 0.4:
             hp_status = "💛 Wounded"
-        elif display_data['hp_percent'] > 0.15:
+        elif hp_percent > 0.15:
             hp_status = "🧡 Critical"
         else:
             hp_status = "❤️ Near Death"
         
         embed.add_field(
             name=f"{hp_status}",
-            value=f"`{hp_bar}`\n**{display_data['current_hp']:,} / {display_data['max_hp']:,} HP**",
+            value=f"{hp_bar}\n**{display_data['current_hp']:,} / {display_data['max_hp']:,} HP** ({hp_percent:.1%})",
             inline=False
         )
         
-        # Combat stats with better formatting
+        # Enhanced combat stats
         avg_dmg = int(display_data['total_damage'] / display_data['attack_count']) if display_data['attack_count'] > 0 else 0
         embed.add_field(
-            name="⚔️ Battle Stats",
-            value=f"**Attacks:** {display_data['attack_count']}\n**Total Damage:** {display_data['total_damage']:,}\n**Avg per Hit:** {avg_dmg}",
+            name="⚔️ Battle Statistics",
+            value=f"**Attacks:** {display_data['attack_count']}\n**Total Damage:** {display_data['total_damage']:,}\n**Average Hit:** {avg_dmg}",
             inline=True
         )
         
@@ -310,13 +387,36 @@ class BossCombatView(disnake.ui.View):
             inline=True
         )
         
-        # Add boss image if generated
+        # Add boss image if generated successfully
         if boss_file:
             embed.set_image(url=f"attachment://{boss_file.filename}")
-            await inter.edit_original_message(embed=embed, view=self, files=[boss_file])
+            await inter.edit_original_response(embed=embed, view=self, files=[boss_file])
         else:
-            # Fallback to text-only if image generation fails
-            await inter.edit_original_message(embed=embed, view=self)
+            # Enhanced fallback with visual elements
+            embed.set_thumbnail(url="https://via.placeholder.com/150x150/ff4444/ffffff?text=BOSS")
+            await inter.edit_original_response(embed=embed, view=self)
+    
+    async def _get_boss_image_data(self) -> Optional[Dict[str, Any]]:
+        """Get actual esprit data for proper image URLs"""
+        try:
+            async with DatabaseService.get_transaction() as session:
+                from src.database.models import EspritBase
+                
+                # Find the boss esprit in database
+                stmt = select(EspritBase).where(EspritBase.name.ilike(self.boss_encounter.name))
+                esprit_base = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if esprit_base:
+                    return {
+                        "image_url": esprit_base.image_url,
+                        "sprite_path": esprit_base.image_url,
+                        "name": esprit_base.name,
+                        "element": esprit_base.element
+                    }
+        except Exception as e:
+            logger.error(f"Failed to get boss image data: {e}")
+        
+        return None
     
     async def _handle_victory(self, inter: disnake.MessageInteraction, player: Player, session):
         """Handle boss victory"""
@@ -334,121 +434,122 @@ class BossCombatView(disnake.ui.View):
             color=EmbedColors.SUCCESS
         )
         
-        # Victory stats
-        stats = f"**⚔️ Attacks:** {self.boss_encounter.attack_count}\n"
-        stats += f"**💥 Total Damage:** {self.boss_encounter.total_damage_dealt:,}\n"
-        stats += f"**🎯 Avg Damage:** {int(self.boss_encounter.total_damage_dealt / self.boss_encounter.attack_count) if self.boss_encounter.attack_count > 0 else 0}"
-        embed.add_field(name="Battle Statistics", value=stats, inline=True)
-        
-        # Rewards
-        rewards_text = f"💰 **{victory_reward.jijies:,}** Jijies\n"
-        rewards_text += f"✨ **{victory_reward.xp}** Experience"
+        # Victory rewards
+        rewards_text = f"💰 **+{victory_reward.jijies:,}** Jijies\n"
+        rewards_text += f"✨ **+{victory_reward.xp}** Experience"
         
         if victory_reward.items:
-            rewards_text += "\n\n**📦 Items:**\n"
+            rewards_text += f"\n\n**Items Found:**\n"
             for item, qty in victory_reward.items.items():
-                rewards_text += f"• {qty}x {item.replace('_', ' ').title()}\n"
+                rewards_text += f"• **{qty}x** {item.replace('_', ' ').title()}\n"
+        
+        if victory_reward.captured_esprit:
+            rewards_text += f"\n🌟 **Captured:** {victory_reward.captured_esprit.name}!"
         
         if victory_reward.leveled_up:
             rewards_text += f"\n\n🎉 **LEVEL UP!** You're now level {player.level}!"
-            embed.color = EmbedColors.LEVEL_UP
         
-        embed.add_field(name="Victory Spoils", value=rewards_text, inline=False)
+        embed.add_field(name="Victory Rewards", value=rewards_text, inline=False)
         
-        # Boss capture
-        if victory_reward.captured_esprit:
-            from src.database.models import EspritBase
-            base_stmt = select(EspritBase).where(EspritBase.id == victory_reward.captured_esprit.esprit_base_id) # type: ignore
-            base = (await session.execute(base_stmt)).scalar_one()
-            element_emoji = Elements.from_string(base.element).emoji
-            
-            embed.add_field(
-                name="👑 BOSS CAPTURED!",
-                value=f"{element_emoji} **{base.name}** (Tier {base.base_tier}) joins your collection!",
-                inline=False
-            )
-        
-        await inter.edit_original_message(embed=embed, view=self)
+        await inter.edit_original_response(embed=embed, view=self)
 
-# --- CAPTURE DECISION VIEW (unchanged) ---
+# --- CAPTURE DECISION VIEW (UNCHANGED) ---
 
 class CaptureDecisionView(disnake.ui.View):
-    """UI for capture decisions - delegates to domain model"""
+    """UI for capture decisions"""
     
-    def __init__(self, player_id: int, pending_capture: PendingCapture):
+    def __init__(self, user_id: int, pending_capture: PendingCapture):
         super().__init__(timeout=60)
-        self.player_id = player_id
+        self.user_id = user_id
         self.pending_capture = pending_capture
-        self.decision_made = False
     
-    async def interaction_check(self, inter: disnake.MessageInteraction) -> bool:
-        if inter.author.id != self.player_id:
-            await inter.response.send_message("This isn't your capture decision!", ephemeral=True)
-            return False
-        return True
-    
-    @disnake.ui.button(label="✨ Capture", style=disnake.ButtonStyle.success)
+    @disnake.ui.button(label="🌟 Capture", style=disnake.ButtonStyle.success)
     async def capture_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
-        """Confirm capture"""
-        if self.decision_made:
+        """Confirm capture of the pending esprit"""
+        if inter.user.id != self.user_id:
+            await inter.response.send_message("This isn't your capture!", ephemeral=True)
             return
-        
-        self.decision_made = True
-        await inter.response.defer()
         
         for child in self.children:
             child.disabled = True
         
         async with DatabaseService.get_transaction() as session:
-            stmt = select(Player).where(Player.discord_id == self.player_id).with_for_update() # type: ignore
+            stmt = select(Player).where(Player.discord_id == inter.user.id).with_for_update() # type: ignore
             player = (await session.execute(stmt)).scalar_one_or_none()
             
             if not player:
-                await inter.followup.send("Could not find your player data!", ephemeral=True)
+                await inter.response.edit_message(content="Player not found!", view=self)
                 return
             
-            # Confirm capture via domain model
+            # Confirm capture using the correct method
             captured_esprit = await player.confirm_capture(session, self.pending_capture)
             
-            # Success embed
-            embed = disnake.Embed(
-                title="✨ Esprit Captured!",
-                description=f"**{self.pending_capture.esprit_base.name}** has joined your collection!",
-                color=EmbedColors.CAPTURE
-            )
-            
-            element_emoji = Elements.from_string(self.pending_capture.esprit_base.element).emoji
-            embed.add_field(
-                name="New Collection Member",
-                value=f"{element_emoji} **{self.pending_capture.esprit_base.name}**\n🏆 Tier {self.pending_capture.esprit_base.base_tier}\n⚔️ {self.pending_capture.esprit_base.base_atk} ATK | 🛡️ {self.pending_capture.esprit_base.base_def} DEF",
-                inline=False
-            )
-            
-            await inter.edit_original_message(embed=embed, view=self)
+            if captured_esprit:
+                # Success embed
+                embed = disnake.Embed(
+                    title="🎉 Capture Successful!",
+                    description=f"**{captured_esprit.name}** joined your collection!",
+                    color=EmbedColors.SUCCESS
+                )
+                
+                # Show esprit stats
+                element_emoji = Elements.from_string(captured_esprit.element).emoji
+                embed.add_field(
+                    name="New Collection Member",
+                    value=f"{element_emoji} **{captured_esprit.name}**\n🏆 Tier {captured_esprit.tier}\n⚔️ ATK: {captured_esprit.base_atk} | 🛡️ DEF: {captured_esprit.base_def}",
+                    inline=False
+                )
+                
+                # Try to generate esprit card
+                try:
+                    card_data = {
+                        "base": captured_esprit.esprit_base,
+                        "name": captured_esprit.name,
+                        "element": captured_esprit.element,
+                        "tier": captured_esprit.tier,
+                        "source": "capture"
+                    }
+                    esprit_file = await generate_esprit_card(card_data, f"captured_{captured_esprit.name}.png")
+                    
+                    if esprit_file:
+                        embed.set_image(url=f"attachment://{esprit_file.filename}")
+                        await inter.response.edit_message(embed=embed, view=self, files=[esprit_file])
+                    else:
+                        await inter.response.edit_message(embed=embed, view=self)
+                except Exception as e:
+                    logger.error(f"Esprit card generation failed: {e}")
+                    await inter.response.edit_message(embed=embed, view=self)
+            else:
+                # This shouldn't happen with confirm_capture, but handle gracefully
+                embed = disnake.Embed(
+                    title="💨 Capture Failed",
+                    description=f"Something went wrong capturing **{self.pending_capture.esprit_base.name}**!",
+                    color=EmbedColors.WARNING
+                )
+                await inter.response.edit_message(embed=embed, view=self)
     
-    @disnake.ui.button(label="🗑️ Release", style=disnake.ButtonStyle.secondary)
+    @disnake.ui.button(label="💨 Let Go", style=disnake.ButtonStyle.secondary)
     async def release_button(self, button: disnake.ui.Button, inter: disnake.MessageInteraction):
         """Release the esprit"""
-        if self.decision_made:
+        if inter.user.id != self.user_id:
+            await inter.response.send_message("This isn't your capture!", ephemeral=True)
             return
-        
-        self.decision_made = True
         
         for child in self.children:
             child.disabled = True
         
         embed = disnake.Embed(
-            title="💨 Esprit Released",
-            description=f"You let **{self.pending_capture.esprit_base.name}** return to the wild.",
+            title="💨 Released",
+            description=f"You let the wild **{self.pending_capture.esprit_base.name}** go free.",
             color=EmbedColors.WARNING
         )
         
         await inter.response.edit_message(embed=embed, view=self)
 
-# --- MAIN QUEST COG ---
+# --- MAIN QUEST COG WITH ENHANCED UI ---
 
 class Quest(commands.Cog):
-    """Modern quest system with dropdown UX and subcommands"""
+    """Enhanced quest system with streamlined UI and fixed boss images"""
     
     def __init__(self, bot):
         self.bot = bot
@@ -462,7 +563,6 @@ class Quest(commands.Cog):
     @ratelimit(uses=5, per_seconds=60, command_name="quest_areas")
     async def quest_areas(self, inter: disnake.ApplicationCommandInteraction):
         """Show available areas with modern dropdown"""
-        # Note: ratelimit decorator handles defer() for us
         
         try:
             async with DatabaseService.get_transaction() as session:
@@ -510,7 +610,7 @@ class Quest(commands.Cog):
                     await inter.edit_original_response(embed=embed)
                     return
                 
-                # Create area selection embed
+                # Create enhanced area selection embed
                 embed = disnake.Embed(
                     title="🗺️ Quest Areas",
                     description="Select an area to explore and choose your adventure!",
@@ -524,25 +624,22 @@ class Quest(commands.Cog):
                     inline=True
                 )
                 
-                # Current area info
+                # Current area info with progress
                 if player.current_area_id and player.current_area_id in accessible_areas:
                     current_area = accessible_areas[player.current_area_id]
+                    completed = len(player.get_completed_quests(player.current_area_id))
+                    total = len(current_area.get("quests", []))
+                    progress_bar = GameConstants.create_detailed_progress_bar(completed, total, 10)
+                    
                     embed.add_field(
                         name="Current Area",
-                        value=f"📍 **{current_area.get('name', player.current_area_id)}**",
+                        value=f"📍 **{current_area.get('name', player.current_area_id)}**\n{progress_bar} {completed}/{total}",
                         inline=True
                     )
                 
                 view = AreaSelectionView(player, accessible_areas)
                 await inter.edit_original_response(embed=embed, view=view)
-        except Exception as e:
-            logger.error(f"Quest areas error for user {inter.author.id}: {e}")
-            embed = disnake.Embed(
-                title="Quest System Error",
-                description="Something went wrong!",
-                color=EmbedColors.ERROR
-            )
-            await inter.edit_original_response(embed=embed)
+                
         except Exception as e:
             logger.error(f"Quest areas error for user {inter.author.id}: {e}")
             embed = disnake.Embed(
@@ -556,7 +653,6 @@ class Quest(commands.Cog):
     @ratelimit(uses=3, per_seconds=60, command_name="quest_start")
     async def quest_start(self, inter: disnake.ApplicationCommandInteraction):
         """Quick start quest in current area"""
-        # Note: ratelimit decorator handles defer() for us
         
         try:
             async with DatabaseService.get_transaction() as session:
@@ -603,7 +699,7 @@ class Quest(commands.Cog):
             await inter.edit_original_response(embed=embed)
     
     async def _show_area_quests(self, inter, player: Player, area_id: str, area_data: Dict[str, Any]):
-        """Show available quests in area with dropdown"""
+        """Enhanced quest display with progress tracking"""
         # Check access
         if not player.can_access_area(area_id):
             level_req = area_data.get("level_requirement", 1)
@@ -612,66 +708,83 @@ class Quest(commands.Cog):
                 description=f"You need level {level_req} for **{area_data['name']}**!",
                 color=EmbedColors.WARNING
             )
-            await inter.edit_original_message(embed=embed)
+            await inter.edit_original_response(embed=embed)
             return
         
-        # Get ONLY the next available quest(s) - not the entire list
+        # Get quest progress
         all_quests = area_data.get("quests", [])
         completed = player.get_completed_quests(area_id)
+        next_quest = None
         
-        # Find the next 1-3 available quests in order
-        next_available = []
+        # Find the next available quest
         for quest in all_quests:
             if quest["id"] not in completed:
-                next_available.append(quest)
-                # Only show max 3 at a time to keep it clean
-                if len(next_available) >= 3:
-                    break
+                next_quest = quest
+                break
         
-        if not next_available:
+        if not next_quest:
             embed = disnake.Embed(
-                title="Area Complete!",
-                description=f"You've completed **{area_data['name']}**!",
+                title="🏆 Area Complete!",
+                description=f"You've completed **{area_data['name']}**!\n\nAll quests finished! Time to find a new area to explore.",
                 color=EmbedColors.SUCCESS
             )
-            await inter.edit_original_message(embed=embed)
+            
+            # Show completion stats
+            embed.add_field(
+                name="Final Statistics",
+                value=f"✅ **{len(completed)} Quests** completed\n🏆 **Area Mastered**",
+                inline=True
+            )
+            
+            await inter.edit_original_response(embed=embed)
             return
         
-        # Update current area
-        player.current_area_id = area_id
+        # Calculate progress
+        completed_count = len(completed)
+        total_count = len(all_quests)
+        area_progress = {
+            "completed": completed_count,
+            "total": total_count,
+            "percentage": (completed_count / total_count) * 100 if total_count > 0 else 0
+        }
         
-        # Create quest selection embed
+        # Create enhanced quest display
         embed = disnake.Embed(
             title=f"⚔️ {area_data.get('name', area_id)}",
-            description=area_data.get("description", "Your next adventure awaits!"),
+            description=f"**Next Quest:** {next_quest['name']}",
             color=EmbedColors.PRIMARY
         )
         
-        # Area progress
-        completed_count = len(completed)
-        total_count = len(all_quests)
-        progress_bar = GameConstants.create_progress_bar(completed_count, total_count)
+        # Quest details with enhanced visuals
+        energy_cost = next_quest.get("energy_cost", 5)
+        quest_type = "👑 **BOSS BATTLE**" if next_quest.get("is_boss") else "⚔️ **Quest**"
+        
+        quest_details = f"{quest_type}\n"
+        quest_details += f"⚡ **{energy_cost}** Energy Required\n"
+        
+        if next_quest.get("jijies_reward"):
+            jijies_range = next_quest["jijies_reward"]
+            quest_details += f"💰 **{jijies_range[0]:,} - {jijies_range[1]:,}** Jijies\n"
+        
+        if next_quest.get("xp_reward"):
+            quest_details += f"✨ **{next_quest['xp_reward']}** Experience\n"
+        
         embed.add_field(
-            name="Area Progress",
-            value=f"`{progress_bar}`\n**{completed_count}/{total_count}** quests complete",
-            inline=False
+            name="Quest Details",
+            value=quest_details,
+            inline=True
         )
         
-        # Show next quest(s) preview
-        if len(next_available) == 1:
-            quest = next_available[0]
-            quest_type = "👑 Boss Battle" if quest.get("is_boss") else "⚔️ Quest"
-            embed.add_field(
-                name="Next Adventure",
-                value=f"{quest_type}: **{quest['name']}**\nCost: **{quest.get('energy_cost', 5)}⚡** Energy",
-                inline=True
-            )
-        else:
-            embed.add_field(
-                name="Available Quests",
-                value=f"**{len(next_available)}** quests ready to tackle!",
-                inline=True
-            )
+        # Enhanced area progress
+        progress_bar = GameConstants.create_detailed_progress_bar(
+            completed_count, total_count, 15
+        )
+        
+        embed.add_field(
+            name="Area Progress",
+            value=f"{progress_bar}\n**{completed_count}/{total_count}** quests ({area_progress['percentage']:.1f}%)",
+            inline=True
+        )
         
         # Player resources
         embed.add_field(
@@ -680,25 +793,26 @@ class Quest(commands.Cog):
             inline=True
         )
         
-        view = QuestSelectionView(player, area_data, next_available)
-        await inter.edit_original_message(embed=embed, view=view)
+        # Enhanced quest view
+        view = QuestProgressView(player, area_data, next_quest, area_progress)
+        await inter.edit_original_response(embed=embed, view=view)
     
     async def _execute_selected_quest(self, inter, player: Player, quest_data: Dict[str, Any], area_data: Dict[str, Any]):
-        """Execute the selected quest"""
+        """Execute the selected quest with enhanced feedback"""
         async with DatabaseService.get_transaction() as session:
-            # Refresh player from DB
-            stmt = select(Player).where(Player.discord_id == player.discord_id).with_for_update() # type: ignore
+            # Get fresh player data
+            stmt = select(Player).where(Player.discord_id == inter.user.id).with_for_update()
             refreshed_player = (await session.execute(stmt)).scalar_one_or_none()
             
             if not refreshed_player:
-                await inter.followup.send("Could not find your player data!", ephemeral=True)
+                await inter.followup.send("Player not found!", ephemeral=True)
                 return
             
             # Check energy
             energy_cost = quest_data.get("energy_cost", 5)
             if refreshed_player.energy < energy_cost:
                 embed = disnake.Embed(
-                    title="Not Enough Energy",
+                    title="⚡ Not Enough Energy",
                     description=f"Need **{energy_cost}** ⚡ for this quest!\nYou have: **{refreshed_player.energy}/{refreshed_player.max_energy}**",
                     color=EmbedColors.ERROR
                 )
@@ -723,48 +837,48 @@ class Quest(commands.Cog):
                 await self._handle_normal_quest(inter, refreshed_player, quest_data, area_data, session)
     
     async def _handle_normal_quest(self, inter, player: Player, quest_data: Dict[str, Any], area_data: Dict[str, Any], session):
-        """Handle normal quest - update the embed and keep dropdown active"""
+        """Handle normal quest with enhanced progress tracking"""
         # Process rewards
         gains = await player.apply_quest_rewards(session, quest_data)
         
         # Record completion
         player.record_quest_completion(area_data["id"], quest_data["id"])
         
-        # Get updated quest list for the dropdown
+        # Get updated progress
         all_quests = area_data.get("quests", [])
         completed = player.get_completed_quests(area_data["id"])
         
-        # Find next available quests
-        next_available = []
+        # Find next quest
+        next_quest = None
         for quest in all_quests:
             if quest["id"] not in completed:
-                next_available.append(quest)
-                if len(next_available) >= 3:
-                    break
+                next_quest = quest
+                break
         
-        # Create updated embed with completion feedback
+        # Create enhanced completion embed
         embed = disnake.Embed(
-            title=f"⚔️ {area_data.get('name', area_data['id'])}",
+            title=f"✅ Quest Complete!",
             color=EmbedColors.LEVEL_UP if gains.get('leveled_up') else EmbedColors.SUCCESS
         )
         
         # Quest completion feedback
-        rewards_text = f"✅ **{quest_data['name']}** completed!\n\n"
+        rewards_text = f"**{quest_data['name']}** completed successfully!\n\n"
         rewards_text += f"💰 **+{gains.get('jijies', 0):,}** Jijies\n"
         rewards_text += f"✨ **+{gains.get('xp', 0)}** Experience"
         
         if gains.get('leveled_up'):
             rewards_text += f"\n\n🎉 **LEVEL UP!** You're now level {player.level}!"
         
-        embed.add_field(name="Quest Complete!", value=rewards_text, inline=False)
+        embed.add_field(name="Rewards Earned", value=rewards_text, inline=False)
         
-        # Updated area progress
+        # Enhanced area progress
         completed_count = len(completed)
         total_count = len(all_quests)
-        progress_bar = GameConstants.create_progress_bar(completed_count, total_count)
+        progress_bar = GameConstants.create_detailed_progress_bar(completed_count, total_count, 15)
+        
         embed.add_field(
             name="Area Progress", 
-            value=f"`{progress_bar}`\n**{completed_count}/{total_count}** quests complete",
+            value=f"{progress_bar}\n**{completed_count}/{total_count}** quests ({(completed_count/total_count)*100:.1f}%)",
             inline=True
         )
         
@@ -775,24 +889,23 @@ class Quest(commands.Cog):
             inline=True
         )
         
-        # Check if area is complete
-        if not next_available:
-            embed.description = "🏆 **Area Complete!** All quests finished!"
+        # Show what's next or completion
+        if not next_quest:
+            embed.description = "🏆 **Area Complete!** All quests finished!\n\nTime to explore new areas!"
             embed.color = EmbedColors.SUCCESS
-            # Disable the dropdown since there's nothing left
             view = disnake.ui.View()
             await inter.edit_original_message(embed=embed, view=view)
         else:
-            # Show what's next
-            if len(next_available) == 1:
-                quest = next_available[0]
-                quest_type = "👑 Boss Battle" if quest.get("is_boss") else "⚔️ Quest"
-                embed.description = f"**Next:** {quest_type} - {quest['name']}"
-            else:
-                embed.description = f"**{len(next_available)}** more quests available!"
+            quest_type = "👑 Boss Battle" if next_quest.get("is_boss") else "⚔️ Quest"
+            embed.description = f"**Next Available:** {quest_type} - {next_quest['name']}"
             
-            # Keep the dropdown active with updated quests
-            view = QuestSelectionView(player, area_data, next_available)
+            # Continue with next quest interface
+            area_progress = {
+                "completed": completed_count,
+                "total": total_count,
+                "percentage": (completed_count / total_count) * 100
+            }
+            view = QuestProgressView(player, area_data, next_quest, area_progress)
             await inter.edit_original_message(embed=embed, view=view)
         
         # Handle capture attempt
@@ -801,14 +914,14 @@ class Quest(commands.Cog):
             await self._show_capture_decision(inter, pending_capture)
     
     async def _handle_boss_quest(self, inter, player: Player, quest_data: Dict[str, Any], area_data: Dict[str, Any], session):
-        """Handle boss quest"""
+        """Handle boss quest with enhanced encounter interface"""
         # Create boss encounter
         boss_encounter = await player.start_boss_encounter(session, quest_data, area_data)
         
         if not boss_encounter:
             embed = disnake.Embed(
-                title="Summoning Failed",
-                description="The boss failed to appear!",
+                title="⚠️ Summoning Failed",
+                description="The boss failed to appear! Try again later.",
                 color=EmbedColors.ERROR
             )
             await inter.followup.send(embed=embed, ephemeral=True)
@@ -817,47 +930,59 @@ class Quest(commands.Cog):
         # Record completion immediately (energy already consumed)
         player.record_quest_completion(area_data["id"], quest_data["id"])
         
-        # Create combat view
+        # Create enhanced boss encounter view
         view = BossCombatView(inter.user.id, boss_encounter, area_data["id"], area_data)
         
-        # Create encounter embed
+        # Create dramatic encounter embed
         embed = disnake.Embed(
             title=f"👑 Boss Battle: {boss_encounter.name}",
-            description=f"A {boss_encounter.element} guardian blocks your path!\n\nPrepare for battle!",
+            description=f"**A mighty {boss_encounter.element} guardian emerges!**\n\n*The air crackles with power as you prepare for battle...*",
             color=EmbedColors.BOSS
         )
         
-        # Boss stats preview
+        # Enhanced boss stats preview
         embed.add_field(
-            name="Boss Stats",
-            value=f"💚 **{boss_encounter.max_hp:,}** HP\n🛡️ **{boss_encounter.base_def}** Defense",
+            name="🛡️ Boss Statistics",
+            value=f"💚 **{boss_encounter.max_hp:,}** HP\n🛡️ **{boss_encounter.base_def}** Defense\n⚡ **{boss_encounter.element}** Element",
             inline=True
         )
         
         embed.add_field(
-            name="Your Stamina",
-            value=f"💪 **{player.stamina}/{player.max_stamina}**",
+            name="⚔️ Your Status",
+            value=f"💪 **{player.stamina}/{player.max_stamina}** Stamina\n🏆 **Level {player.level}** Warrior",
             inline=True
         )
+        
+        # Add dramatic footer
+        embed.set_footer(text="💡 Tip: Each attack costs 1 stamina. Choose your moments wisely!")
         
         await inter.followup.send(embed=embed, view=view)
     
     async def _show_capture_decision(self, inter, pending_capture: PendingCapture):
-        """Show capture decision UI"""
+        """Show enhanced capture decision UI"""
         # Create decision embed
         embed = disnake.Embed(
             title="🌟 Wild Esprit Encountered!",
-            description=f"A wild **{pending_capture.esprit_base.name}** appeared!",
+            description=f"A wild **{pending_capture.esprit_base.name}** appeared!\n\n*Do you want to attempt to capture it?*",
             color=EmbedColors.CAPTURE
         )
         
         element_emoji = Elements.from_string(pending_capture.esprit_base.element).emoji
-        stats_text = f"{element_emoji} **{pending_capture.esprit_base.element}**\n"
+        stats_text = f"{element_emoji} **{pending_capture.esprit_base.element}** Element\n"
         stats_text += f"🏆 **Tier {pending_capture.esprit_base.base_tier}**\n"
-        stats_text += f"⚔️ **{pending_capture.esprit_base.base_atk}** ATK\n"
-        stats_text += f"🛡️ **{pending_capture.esprit_base.base_def}** DEF"
+        stats_text += f"⚔️ **{pending_capture.esprit_base.base_atk}** Attack\n"
+        stats_text += f"🛡️ **{pending_capture.esprit_base.base_def}** Defense"
         
-        embed.add_field(name="Stats", value=stats_text, inline=True)
+        embed.add_field(name="Esprit Statistics", value=stats_text, inline=True)
+        
+        # Add capture chance info
+        preview_data = pending_capture.preview_data
+        capture_chance = preview_data.get("capture_chance", 0.15)
+        embed.add_field(
+            name="Capture Info",
+            value=f"🎯 **{capture_chance:.1%}** Success Rate\n⭐ **{pending_capture.source}** Source",
+            inline=True
+        )
         
         view = CaptureDecisionView(inter.user.id, pending_capture)
         await inter.followup.send(embed=embed, view=view)
