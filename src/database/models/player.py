@@ -11,9 +11,12 @@ from src.utils.game_constants import Elements, Tiers, GameConstants, get_fusion_
 from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import RedisService
 from src.utils.transaction_logger import transaction_logger, TransactionType
+from typing import TYPE_CHECKING, List, Optional, Dict, Any, Tuple
 
 if TYPE_CHECKING:
     from src.database.models import Esprit, EspritBase
+if TYPE_CHECKING:
+    from src.domain.quest_domain import BossEncounter, PendingCapture, CaptureSystem
 
 class Player(SQLModel, table=True):
     __tablename__: str = "player"  # type: ignore
@@ -1068,3 +1071,51 @@ class Player(SQLModel, table=True):
             "total_available": 0,     # To be implemented
             "completion_percent": 0.0
         }
+    
+    async def start_boss_encounter(self, session: AsyncSession, quest_data: Dict[str, Any], area_data: Dict[str, Any]) -> Optional[BossEncounter]:
+        """Start a boss encounter"""
+        return await BossEncounter.create_from_quest(quest_data, area_data)
+    
+    async def attempt_quest_capture(self, session: AsyncSession, area_data: Dict[str, Any]) -> Optional[PendingCapture]:
+        """Attempt to capture an esprit during quest"""
+        return await CaptureSystem.attempt_capture(session, self, area_data)
+    
+    async def confirm_capture(self, session: AsyncSession, pending_capture: PendingCapture) -> Esprit:
+        """Confirm a pending capture"""
+        return await CaptureSystem.confirm_capture(session, self, pending_capture)
+    
+    async def get_total_attack(self, session: AsyncSession) -> int:
+        """Get total attack power for combat calculations"""
+        # Ensure power is calculated
+        power_data = await self.recalculate_total_power(session)
+        return power_data.get("atk", 0)
+    
+    async def process_quest_rewards(self, session: AsyncSession, quest_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process normal quest rewards"""
+        gains = {}
+        
+        # XP reward
+        if xp := quest_data.get("xp_reward"):
+            leveled_up = await self.add_experience(session, xp)
+            gains['xp'] = xp
+            gains['leveled_up'] = leveled_up
+        
+        # Jijies reward
+        if jijies_range := quest_data.get("jijies_reward"):
+            if isinstance(jijies_range, list):
+                jijies_gain = random.randint(jijies_range[0], jijies_range[1])
+            else:
+                jijies_gain = jijies_range
+            
+            await self.add_currency(session, "jijies", jijies_gain, "quest_completion")
+            gains['jijies'] = jijies_gain
+        
+        # Update counters
+        self.total_quests_completed += 1
+        self.last_quest = datetime.utcnow()
+        
+        return gains
+    
+    async def attempt_quest_capture_enhanced(self, session: AsyncSession, area_data: Dict[str, Any]) -> Optional[PendingCapture]:
+        """Enhanced quest capture with full MW bonuses"""
+        return await CaptureSystem.attempt_capture(session, self, area_data)

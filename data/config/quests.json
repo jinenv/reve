@@ -19,7 +19,7 @@
       { "id": "1-7", "name": "Calm the Ancient Tree", "energy_cost": 8, "jijies_reward": [210, 630], "xp_reward": 9 },
       { "id": "1-8", "name": "Guardian of the Glade", "energy_cost": 8, "jijies_reward": [250, 750], "xp_reward": 15, "is_boss": true, "boss_data": {
         "possible_esprits": ["Muddroot", "Boulderback", "Verdiant"],
-        "hp_multiplier": 4.0,
+        "hp_multiplier": 15.0,
         "background": "space_forest.png",
         "bonus_jijies_multiplier": 2.0,
         "bonus_xp_multiplier": 3.0
@@ -33,7 +33,7 @@
       { "id": "1-15", "name": "The Twisted Oak", "energy_cost": 12, "jijies_reward": [460, 1380], "xp_reward": 16 },
       { "id": "1-16", "name": "Herald of the Tainted Grove", "energy_cost": 12, "jijies_reward": [500, 1500], "xp_reward": 20, "is_boss": true, "boss_data": {
         "possible_esprits": ["Shadowcub", "Cyghost", "Gloomb"],
-        "hp_multiplier": 5.0,
+        "hp_multiplier": 20.0,
         "background": "space_dark.png",
         "bonus_jijies_multiplier": 2.5,
         "bonus_xp_multiplier": 3.5
@@ -47,7 +47,7 @@
       { "id": "1-23", "name": "The Ancient Pact", "energy_cost": 16, "jijies_reward": [730, 2190], "xp_reward": 23 },
       { "id": "1-24", "name": "Primordial Forest Lord", "energy_cost": 16, "jijies_reward": [800, 2400], "xp_reward": 30, "is_boss": true, "boss_data": {
         "possible_esprits": ["Thornpup", "Mossback", "Prismheart"],
-        "hp_multiplier": 6.0,
+        "hp_multiplier": 25.0,
         "background": "space_cosmic.png",
         "bonus_jijies_multiplier": 3.0,
         "bonus_xp_multiplier": 4.0
