@@ -1,4 +1,4 @@
-# bot.py - THE ONLY BOT FILE YOU NEED
+# bot.py - THE ONLY BOT FILE YOU NEED - UNICODE FIXED
 import disnake
 from disnake.ext import commands
 import os
@@ -13,15 +13,28 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Load environment variables
 load_dotenv()
 
-# Configure logging
+# FIXED: Configure logging with proper Unicode support
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('logs/bot.log', mode='a')
+        # Unicode-safe console handler
+        logging.StreamHandler(sys.stdout),
+        # UTF-8 file handler
+        logging.FileHandler('logs/bot.log', mode='a', encoding='utf-8')
     ]
 )
+
+# Set console encoding to UTF-8 for Windows
+if sys.platform == "win32":
+    try:
+        # Try to set console to UTF-8
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except AttributeError:
+        # Fallback for older Python versions
+        pass
+
 logger = logging.getLogger("jiji")
 
 # Import our stuff AFTER path is set

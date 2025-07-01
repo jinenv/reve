@@ -485,10 +485,16 @@ class CaptureDecisionView(disnake.ui.View):
             captured_esprit = await player.confirm_capture(session, self.pending_capture)
             
             if captured_esprit:
+                # Ensure esprit_base relationship is loaded
+                if not captured_esprit.esprit_base:
+                    await session.refresh(captured_esprit, ["esprit_base"])
+                
+                esprit_name = captured_esprit.esprit_base.name
+                
                 # Success embed
                 embed = disnake.Embed(
                     title="🎉 Capture Successful!",
-                    description=f"**{captured_esprit.name}** joined your collection!",
+                    description=f"**{esprit_name}** joined your collection!",
                     color=EmbedColors.SUCCESS
                 )
                 
@@ -496,7 +502,7 @@ class CaptureDecisionView(disnake.ui.View):
                 element_emoji = Elements.from_string(captured_esprit.element).emoji
                 embed.add_field(
                     name="New Collection Member",
-                    value=f"{element_emoji} **{captured_esprit.name}**\n🏆 Tier {captured_esprit.tier}\n⚔️ ATK: {captured_esprit.base_atk} | 🛡️ DEF: {captured_esprit.base_def}",
+                    value=f"{element_emoji} **{esprit_name}**\n🏆 Tier {captured_esprit.tier}\n⚔️ ATK: {captured_esprit.esprit_base.base_atk} | 🛡️ DEF: {captured_esprit.esprit_base.base_def}",
                     inline=False
                 )
                 
@@ -504,12 +510,12 @@ class CaptureDecisionView(disnake.ui.View):
                 try:
                     card_data = {
                         "base": captured_esprit.esprit_base,
-                        "name": captured_esprit.name,
+                        "name": esprit_name,
                         "element": captured_esprit.element,
                         "tier": captured_esprit.tier,
                         "source": "capture"
                     }
-                    esprit_file = await generate_esprit_card(card_data, f"captured_{captured_esprit.name}.png")
+                    esprit_file = await generate_esprit_card(card_data, f"captured_{esprit_name}.png")
                     
                     if esprit_file:
                         embed.set_image(url=f"attachment://{esprit_file.filename}")

@@ -193,7 +193,11 @@ class BossEncounter:
             return None
         
         # Calculate damage using player's actual attack power
-        player_attack = await player.get_total_attack(session)
+        if player.total_attack_power > 0:
+            player_attack = player.total_attack_power  # use cached value
+        else:
+            power_data = await player.get_total_power(session)  # calculate fresh
+            player_attack = power_data["atk"]
         damage = self._calculate_damage_complete(player_attack)
         
         # Apply damage to boss
