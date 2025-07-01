@@ -310,8 +310,12 @@ class Player(SQLModel, table=True):
             
             # Level up bonuses
             self.max_energy += GameConstants.MAX_ENERGY_PER_LEVEL
-            self.energy = self.max_energy  # Refill energy on level up
-            self.stamina = self.max_stamina  # Refill stamina too!
+            quest_config = ConfigManager.get("quest_system") or {}
+            if quest_config.get("energy_refill_on_levelup", False):
+                self.energy = self.max_energy
+                
+            if quest_config.get("stamina_refill_on_levelup", False):
+                self.stamina = self.max_stamina
             self.skill_points += 1
         
         # Log the experience gain
@@ -1117,5 +1121,8 @@ class Player(SQLModel, table=True):
                 "tier": pending_capture.esprit_base.base_tier
             }
         )
+        
+        # CRITICAL: Invalidate power cache so the new esprit is included in calculations
+        await self.invalidate_power_cache()
         
         return new_esprit

@@ -11,6 +11,7 @@ from src.database.models import Player
 from src.domain.quest_domain import BossEncounter, PendingCapture, CaptureSystem
 from src.utils.boss_image_generator import generate_boss_card
 from src.utils.image_generator import generate_esprit_card
+from src.utils.game_constants import Elements as GameElements, Tiers, GameConstants as GameConsts
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class EmbedColors:
     LEVEL_UP = 0xffd700
     BOSS = 0xff4444
 
-class GameConstants:
+class LocalGameConstants:
     ENERGY_REGEN_MINUTES = 10
     BASE_CAPTURE_CHANCE = 0.15
     
@@ -263,14 +264,16 @@ class BossCombatView(disnake.ui.View):
         if inter.user.id != self.user_id:
             await inter.response.send_message("This isn't your boss fight!", ephemeral=True)
             return
-            
+        
+        # Defer the response immediately to prevent timeout
+        await inter.response.defer()
+        
         async with DatabaseService.get_transaction() as session:
-            # Get fresh player data
             stmt = select(Player).where(Player.discord_id == inter.user.id).with_for_update() # type: ignore
             player = (await session.execute(stmt)).scalar_one_or_none()
             
             if not player:
-                await inter.response.send_message("Player not found!", ephemeral=True)
+                await inter.followup.send("Player not found!", ephemeral=True)
                 return
             
             # Process attack via domain model
@@ -282,7 +285,7 @@ class BossCombatView(disnake.ui.View):
                     description=f"You need 1 stamina to attack!\nYou have: {player.stamina}/{player.max_stamina}",
                     color=EmbedColors.ERROR
                 )
-                await inter.response.edit_message(embed=embed, view=self)
+                await inter.edit_original_response(embed=embed, view=self)
                 return
             
             # Check if boss is defeated
@@ -291,7 +294,6 @@ class BossCombatView(disnake.ui.View):
                 return
             
             # Update combat display
-            await inter.response.defer()
             await self._update_combat_display_fixed(inter, combat_result)
     
     @disnake.ui.button(label="🏃 Flee", style=disnake.ButtonStyle.danger)
@@ -353,7 +355,7 @@ class BossCombatView(disnake.ui.View):
         
         # Enhanced HP bar visualization
         hp_percent = display_data['hp_percent']
-        hp_bar = GameConstants.create_detailed_progress_bar(
+        hp_bar = LocalGameConstants.create_detailed_progress_bar(
             int(hp_percent * 20), 20, 20
         )
         
@@ -444,14 +446,27 @@ class BossCombatView(disnake.ui.View):
                 rewards_text += f"• **{qty}x** {item.replace('_', ' ').title()}\n"
         
         if victory_reward.captured_esprit:
-            rewards_text += f"\n🌟 **Captured:** {victory_reward.captured_esprit.name}!"
+            # Get the esprit base data for display
+            from src.database.models import EspritBase
+            base_stmt = select(EspritBase).where(EspritBase.id == victory_reward.captured_esprit.esprit_base_id)    # type: ignore
+            esprit_base = (await session.execute(base_stmt)).scalar_one_or_none()
+            
+            if esprit_base:
+                rewards_text += f"\n🌟 **Captured:** {esprit_base.name}!"
+            else:
+                rewards_text += f"\n🌟 **Captured:** Unknown Esprit!"
         
         if victory_reward.leveled_up:
             rewards_text += f"\n\n🎉 **LEVEL UP!** You're now level {player.level}!"
         
         embed.add_field(name="Victory Rewards", value=rewards_text, inline=False)
         
-        await inter.edit_original_response(embed=embed, view=self)
+        # Use followup instead of edit_original_response to avoid timeout issues
+        try:
+            await inter.edit_original_response(embed=embed, view=self)
+        except (disnake.errors.NotFound, disnake.errors.InteractionNotResponded):
+            # If the original interaction timed out, use followup
+            await inter.followup.send(embed=embed, ephemeral=False)
 
 # --- CAPTURE DECISION VIEW (UNCHANGED) ---
 
@@ -485,37 +500,53 @@ class CaptureDecisionView(disnake.ui.View):
             captured_esprit = await player.confirm_capture(session, self.pending_capture)
             
             if captured_esprit:
-                # Ensure esprit_base relationship is loaded
-                if not captured_esprit.esprit_base:
-                    await session.refresh(captured_esprit, ["esprit_base"])
+                # Get the esprit base data using the relationship
+                from src.database.models import EspritBase
+                base_stmt = select(EspritBase).where(EspritBase.id == captured_esprit.esprit_base_id) # type: ignore
+                esprit_base = (await session.execute(base_stmt)).scalar_one_or_none()
                 
-                esprit_name = captured_esprit.esprit_base.name
+                if not esprit_base:
+                    await inter.response.edit_message(content="Error: Esprit base not found!", view=self)
+                    return
                 
                 # Success embed
                 embed = disnake.Embed(
                     title="🎉 Capture Successful!",
-                    description=f"**{esprit_name}** joined your collection!",
+                    description=f"**{esprit_base.name}** joined your collection!",
                     color=EmbedColors.SUCCESS
                 )
                 
                 # Show esprit stats
-                element_emoji = Elements.from_string(captured_esprit.element).emoji
+                element_emoji = Elements.from_string(esprit_base.element).emoji
                 embed.add_field(
-                    name="New Collection Member",
-                    value=f"{element_emoji} **{esprit_name}**\n🏆 Tier {captured_esprit.tier}\n⚔️ ATK: {captured_esprit.esprit_base.base_atk} | 🛡️ DEF: {captured_esprit.esprit_base.base_def}",
+                    name="New Esprit Captured",
+                    value=f"{element_emoji} **{esprit_base.name}**\n🏆 Tier {esprit_base.base_tier}\n⚔️ ATK: {esprit_base.base_atk} | 🛡️ DEF: {esprit_base.base_def}",
                     inline=False
                 )
                 
                 # Try to generate esprit card
                 try:
+                    # Calculate actual power for the captured esprit
+                    power = captured_esprit.get_individual_power(esprit_base)
+                    
+                    tier_info = Tiers.get(esprit_base.base_tier)
                     card_data = {
-                        "base": captured_esprit.esprit_base,
-                        "name": esprit_name,
-                        "element": captured_esprit.element,
-                        "tier": captured_esprit.tier,
+                        "name": esprit_base.name,
+                        "element": esprit_base.element,
+                        "tier": esprit_base.base_tier,
+                        "base_tier": esprit_base.base_tier,
+                        "rarity": tier_info.name if tier_info else "common",
+                        "base_atk": power['atk'],
+                        "base_def": power['def'], 
+                        "base_hp": power['hp'],
+                        "awakening_level": captured_esprit.awakening_level,
+                        "quantity": captured_esprit.quantity,
+                        "equipped_relics": esprit_base.equipped_relics,
+                        "max_relic_slots": esprit_base.get_max_relic_slots(),
                         "source": "capture"
                     }
-                    esprit_file = await generate_esprit_card(card_data, f"captured_{esprit_name}.png")
+                    
+                    esprit_file = await generate_esprit_card(card_data, f"captured_{esprit_base.name}.png")
                     
                     if esprit_file:
                         embed.set_image(url=f"attachment://{esprit_file.filename}")
@@ -530,7 +561,7 @@ class CaptureDecisionView(disnake.ui.View):
                 embed = disnake.Embed(
                     title="💨 Capture Failed",
                     description=f"Something went wrong capturing **{self.pending_capture.esprit_base.name}**!",
-                    color=EmbedColors.WARNING
+                    color=EmbedColors.ERROR
                 )
                 await inter.response.edit_message(embed=embed, view=self)
     
@@ -635,7 +666,7 @@ class Quest(commands.Cog):
                     current_area = accessible_areas[player.current_area_id]
                     completed = len(player.get_completed_quests(player.current_area_id))
                     total = len(current_area.get("quests", []))
-                    progress_bar = GameConstants.create_detailed_progress_bar(completed, total, 10)
+                    progress_bar = LocalGameConstants.create_detailed_progress_bar(completed, total, 10)
                     
                     embed.add_field(
                         name="Current Area",
@@ -781,8 +812,8 @@ class Quest(commands.Cog):
             inline=True
         )
         
-        # Enhanced area progress
-        progress_bar = GameConstants.create_detailed_progress_bar(
+        # Enhanced area progress - FIXED line
+        progress_bar = LocalGameConstants.create_detailed_progress_bar(
             completed_count, total_count, 15
         )
         
@@ -880,7 +911,7 @@ class Quest(commands.Cog):
         # Enhanced area progress
         completed_count = len(completed)
         total_count = len(all_quests)
-        progress_bar = GameConstants.create_detailed_progress_bar(completed_count, total_count, 15)
+        progress_bar = LocalGameConstants.create_detailed_progress_bar(completed_count, total_count, 15)
         
         embed.add_field(
             name="Area Progress", 

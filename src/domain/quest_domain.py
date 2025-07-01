@@ -192,12 +192,10 @@ class BossEncounter:
         if not await player.consume_stamina(session, stamina_cost, f"boss_attack_{self.quest_data['id']}"):
             return None
         
-        # Calculate damage using player's actual attack power
-        if player.total_attack_power > 0:
-            player_attack = player.total_attack_power  # use cached value
-        else:
-            power_data = await player.get_total_power(session)  # calculate fresh
-            player_attack = power_data["atk"]
+        # Calculate damage using player's TOTAL ATTACK POWER from all Esprits
+        power_data = await player.recalculate_total_power(session)
+        player_attack = power_data["atk"]  # This includes all Esprit stats + skill bonuses
+        
         damage = self._calculate_damage_complete(player_attack)
         
         # Apply damage to boss
@@ -205,7 +203,7 @@ class BossEncounter:
         self.attack_count += 1
         self.total_damage_dealt += damage
         
-        logger.debug(f"⚔️ Boss attack #{self.attack_count}: {damage} damage, boss HP: {self.current_hp}/{self.max_hp}")
+        logger.debug(f"⚔️ Boss attack #{self.attack_count}: {damage} damage (ATK: {player_attack}), boss HP: {self.current_hp}/{self.max_hp}")
         
         return CombatResult(
             damage_dealt=damage,
@@ -219,18 +217,23 @@ class BossEncounter:
         )
     
     def _calculate_damage_complete(self, player_attack: int) -> int:
-        """COMPLETE damage calculation with Monster Warlord-style variance"""
-        # Base damage with 15% variance (Monster Warlord style)
+        """COMPLETE damage calculation with Monster Warlord-style variance and boss defense"""
+        # Base damage calculation: Attack vs Defense
+        base_damage = max(1, player_attack - self.base_def)
+        
+        # Apply 15% variance (Monster Warlord style)
         variance_multiplier = 1.0 + random.uniform(-0.15, 0.15)
-        base_damage = int(player_attack * variance_multiplier)
+        variable_damage = int(base_damage * variance_multiplier)
         
         # Critical hit chance (10% for 50% bonus damage)
         if random.random() < 0.1:
-            base_damage = int(base_damage * 1.5)
-            logger.debug(f"💥 CRITICAL HIT: {base_damage} damage!")
+            variable_damage = int(variable_damage * 1.5)
+            logger.debug(f"💥 CRITICAL HIT: {variable_damage} damage!")
         
-        # Ensure minimum damage
-        final_damage = max(1, base_damage)
+        # Ensure minimum damage (even if defense is higher than attack)
+        final_damage = max(1, variable_damage)
+        
+        logger.debug(f"⚔️ Damage calc: {player_attack} ATK vs {self.base_def} DEF = {final_damage} damage")
         
         return final_damage
     
@@ -263,10 +266,9 @@ class BossEncounter:
         
         # Apply rewards to player
         player.jijies += final_jijies
-        player.experience += final_xp
         
-        # Check for level up
-        leveled_up = await player._check_level_up(session)
+        # Add experience AND check for level up in one call
+        leveled_up = await player.add_experience(session, final_xp)
         
         # Attempt boss capture (guaranteed for now, configurable later)
         captured_esprit = await self._attempt_boss_capture(session, player)
