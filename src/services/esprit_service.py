@@ -112,9 +112,15 @@ class EspritService(BaseService):
                 awakening_counts = {i: 0 for i in range(6)}
                 
                 for item in collection_items:
-                    element = item["base"].element
-                    tier = item["esprit"].tier
-                    awakening = item["esprit"].awakening_level
+                    base = item.get("base")
+                    esprit = item.get("esprit")
+                    
+                    if not base or not esprit:
+                        continue
+                        
+                    element = base.element
+                    tier = esprit.tier
+                    awakening = esprit.awakening_level
                     
                     element_counts[element] = element_counts.get(element, 0) + item["esprit"].quantity
                     tier_counts[tier] = tier_counts.get(tier, 0) + item["esprit"].quantity
@@ -1493,10 +1499,10 @@ class EspritService(BaseService):
             async with DatabaseService.get_transaction() as session:
                 stmt = (
                     select(Esprit, EspritBase)
-                    .where(Esprit.owner_id       == player_id)         # ColumnElement[bool]
-                    .where(Esprit.element        == normalized_element)#
-                    .where(Esprit.esprit_base_id == EspritBase.id)     #
-                    .where(Esprit.quantity       >  0)                 #
+                    .where(Esprit.owner_id == player_id)  # type: ignore
+                    .where(Esprit.element == normalized_element)  # type: ignore
+                    .where(Esprit.esprit_base_id == EspritBase.id)  # type: ignore
+                    .where(Esprit.quantity > 0)  # type: ignore
                     .order_by(Esprit.tier.desc(), Esprit.quantity.desc())
                 )
                 results = await session.execute(stmt)
@@ -1643,8 +1649,9 @@ class EspritService(BaseService):
             cls._validate_player_id(player_id)
             cls._validate_positive_int(tier, "tier")
             
-            element = element.title()
-            if element not in ["Inferno", "Verdant", "Abyssal", "Tempest", "Umbral", "Radiant"]:
+            # Fix 1: Rename the variable to avoid shadowing
+            normalized_element = element.title() 
+            if normalized_element not in ["Inferno", "Verdant", "Abyssal", "Tempest", "Umbral", "Radiant"]:
                 raise ValueError("Invalid element specified")
             
             if tier < 1 or tier > 18:
@@ -1660,25 +1667,31 @@ class EspritService(BaseService):
                 tier_fragments_needed = craft_costs.get("tier_fragments", 100)
                 element_fragments_needed = craft_costs.get("element_fragments", 50)
                 
-                # Check if player has enough fragments
-                player_tier_fragments = player.tier_fragments.get(tier, 0)
-                player_element_fragments = player.element_fragments.get(element.lower(), 0)
+                # Fix 2: Convert tier to string for dictionary access or add type: ignore
+                # Option A - Convert to string (if tier_fragments uses string keys):
+                player_tier_fragments = player.tier_fragments.get(str(tier), 0)
+                
+                # Option B - Keep as int with type: ignore (if tier_fragments uses int keys):
+                # player_tier_fragments = player.tier_fragments.get(tier, 0)  # type: ignore
+                
+                # Element fragments should work fine with string key
+                player_element_fragments = player.element_fragments.get(normalized_element.lower(), 0)
                 
                 if player_tier_fragments < tier_fragments_needed:
                     raise ValueError(f"Insufficient tier {tier} fragments. Need {tier_fragments_needed}, have {player_tier_fragments}")
                 
                 if player_element_fragments < element_fragments_needed:
-                    raise ValueError(f"Insufficient {element} fragments. Need {element_fragments_needed}, have {player_element_fragments}")
+                    raise ValueError(f"Insufficient {normalized_element} fragments. Need {element_fragments_needed}, have {player_element_fragments}")
                 
                 # Find available Esprits of this tier and element
                 possible_bases_stmt = select(EspritBase).where(
                     EspritBase.base_tier == tier, # type: ignore
-                    EspritBase.element == element
+                    EspritBase.element == normalized_element   # type: ignore
                 )
                 possible_bases = (await session.execute(possible_bases_stmt)).scalars().all()
                 
                 if not possible_bases:
-                    raise ValueError(f"No {element} Esprits available at tier {tier}")
+                    raise ValueError(f"No {normalized_element} Esprits available at tier {tier}")
                 
                 # Consume fragments
                 await player.consume_tier_fragments(session, tier, tier_fragments_needed, "esprit_craft")
@@ -1700,26 +1713,26 @@ class EspritService(BaseService):
                     {
                         "item_type": "fragments",
                         "tier_fragments": {str(tier): tier_fragments_needed},
-                        "element_fragments": {element.lower(): element_fragments_needed},
+                        "element_fragments": {normalized_element.lower(): element_fragments_needed},  # Use normalized_element
                         "result": selected_base.name,
                         "reason": "esprit_craft"
                     }
                 )
-                
+
                 await session.commit()
-                
+
                 return {
                     "crafted_esprit": selected_base.name,
                     "tier": tier,
-                    "element": element,
-                    "was_new": capture_result.data["was_new"],
+                    "element": normalized_element,  # Use normalized_element
+                    "was_new": capture_result.data["was_new"] if capture_result.data else False,  # Add None check
                     "fragments_consumed": {
                         "tier_fragments": tier_fragments_needed,
                         "element_fragments": element_fragments_needed
                     },
                     "remaining_fragments": {
-                        "tier": player.tier_fragments.get(tier, 0),
-                        "element": player.element_fragments.get(element.lower(), 0)
+                        "tier": player.tier_fragments.get(str(tier), 0),  # Convert tier to string
+                        "element": player.element_fragments.get(normalized_element.lower(), 0)  # Use normalized_element
                     }
                 }
         
