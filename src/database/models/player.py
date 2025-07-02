@@ -1,24 +1,15 @@
 # src/database/models/player.py
-from typing import List, Optional, Dict, Any, TYPE_CHECKING, Tuple
-from sqlmodel import BigInteger, SQLModel, Field, Column, select, col
+from typing import List, Optional, Dict, Any
+from sqlmodel import BigInteger, SQLModel, Field, Column
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, date
-import random
 from sqlalchemy import Column, BigInteger, Index
-from src.utils.game_constants import Elements, Tiers, GameConstants, get_fusion_result, FUSION_CHART
+from src.utils.game_constants import Elements, Tiers, GameConstants
 from src.utils.config_manager import ConfigManager
-from src.utils.redis_service import RedisService
-from src.utils.transaction_logger import transaction_logger, TransactionType
-from typing import TYPE_CHECKING, List, Optional, Dict, Any, Tuple
-
-if TYPE_CHECKING:
-    from src.database.models import Esprit, EspritBase
 
 class Player(SQLModel, table=True):
     __tablename__: str = "player"  # type: ignore
-    # SQLModel will automatically use "player" as table name
     __table_args__ = (
         Index("ix_player_level", "level"),
         Index("ix_player_total_attack_power", "total_attack_power"),
@@ -50,7 +41,6 @@ class Player(SQLModel, table=True):
     total_defense_power: int = Field(sa_column=Column(BigInteger), default=0)
     total_hp: int = Field(sa_column=Column(BigInteger), default=0)
 
-    
     # --- Quest & Progression Systems ---
     current_area_id: str = Field(default="area_1")
     highest_area_unlocked: str = Field(default="area_1")
@@ -65,7 +55,6 @@ class Player(SQLModel, table=True):
     # --- Tier Fragments (MW Style) AND Element Fragments ---
     tier_fragments: Dict[str, int] = Field(default_factory=dict, sa_column=Column(JSON))
     element_fragments: Dict[str, int] = Field(default_factory=dict, sa_column=Column(JSON))
-    # Format: {"1": 0, "2": 0, ... "18": 0} and {"inferno": 0, "verdant": 0, ...}
     
     # --- Daily/Weekly Systems ---
     daily_quest_streak: int = Field(default=0)
@@ -144,255 +133,13 @@ class Player(SQLModel, table=True):
     # Shop purchases
     shop_purchase_history: Dict[str, List[datetime]] = Field(default_factory=dict, sa_column=Column(JSON))
 
-    # --- LOGIC METHODS ---
+    # --- SIMPLE CALCULATION METHODS ONLY ---
 
     def xp_for_next_level(self) -> int:
         """Calculate XP required for next level using GameConstants"""
         return GameConstants.get_xp_required(self.level)
 
-    async def get_leader_bonuses(self, session: AsyncSession) -> Dict[str, Any]:
-        """Get all bonuses from the leader Esprit with MW-style tier+awakening scaling"""
-        # Try cache first
-        if RedisService.is_available() and self.id is not None:
-            cached = await RedisService.get_cached_leader_bonuses(self.id)
-            if cached:
-                return cached
-        
-        if not self.leader_esprit_stack_id:
-            return {}
-        
-        from src.database.models import Esprit, EspritBase
-        
-        # Get leader Esprit and its base
-        leader_stmt = select(Esprit, EspritBase).where(
-            Esprit.esprit_base_id == EspritBase.id,
-            Esprit.id == self.leader_esprit_stack_id
-        )
-        
-        result = (await session.execute(leader_stmt)).first()
-        if not result:
-            return {}
-        
-        leader_stack, base = result
-        
-        # Get element and calculate MW-style bonuses
-        element = Elements.from_string(leader_stack.element)
-        if not element:
-            return {}
-        
-        # Calculate bonuses based on BASE TIER + awakening (this does ALL the math)
-        scaled_bonuses = element.calculate_leadership_bonuses(
-            tier=base.base_tier,
-            awakening_level=leader_stack.awakening_level
-        )
-        
-        bonuses = {
-            "element": leader_stack.element,
-            "base_tier": base.base_tier,
-            "awakening_level": leader_stack.awakening_level,
-            "bonuses": scaled_bonuses,  # This contains all the final calculated bonuses
-            "raw_description": element.bonuses.get("description", "")
-        }
-        
-        # Cache the result
-        if RedisService.is_available() and self.id is not None:
-            await RedisService.cache_leader_bonuses(self.id, bonuses)
-        
-        return bonuses
-
-    async def set_leader_esprit(self, session: AsyncSession, esprit_id: int) -> bool:
-        """Set leader with validation and proper cache invalidation"""
-        from src.database.models import Esprit
-        
-        # Verify ownership
-        esprit = await session.get(Esprit, esprit_id)
-        if not esprit or esprit.owner_id != self.id:
-            return False
-        
-        old_leader_id = self.leader_esprit_stack_id
-        self.leader_esprit_stack_id = esprit_id
-        
-        # Log the change
-        if self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.LEADER_CHANGED,
-                {
-                    "old_leader_id": old_leader_id,
-                    "new_leader_id": esprit_id,
-                    "esprit_base_id": esprit.esprit_base_id
-                }
-            )
-        
-        # Invalidate caches
-        if RedisService.is_available() and self.id:
-            await RedisService.invalidate_player_cache(self.id)
-        
-        return True
-
-    async def recalculate_total_power(self, session: AsyncSession) -> Dict[str, int]:
-        """Recalculate total combat power from ALL owned Esprits"""
-        # Try cache first
-        if RedisService.is_available() and self.id is not None:
-            cached = await RedisService.get_cached_player_power(self.id)
-            if cached:
-                # Update model fields with cached values
-                self.total_attack_power = cached["atk"]
-                self.total_defense_power = cached["def"]
-                self.total_hp = cached["hp"]
-                return cached
-        
-        from src.database.models import Esprit, EspritBase
-        
-        # Single query with JOIN for better performance
-        stacks_stmt = select(Esprit, EspritBase).where(
-            Esprit.esprit_base_id == EspritBase.id,
-            Esprit.owner_id == self.id
-        )
-        
-        results = (await session.execute(stacks_stmt)).all()
-        
-        total_atk = 0
-        total_def = 0
-        total_hp = 0
-        
-        for stack, base in results:
-            # Get power for this stack
-            power = stack.get_stack_total_power(base)
-            total_atk += power["atk"]
-            total_def += power["def"]
-            total_hp += power["hp"]
-
-        # Apply skill bonuses (the trap stats)
-        skill_bonuses = self.get_skill_bonuses()
-        
-        total_atk = int(total_atk * (1 + skill_bonuses["bonus_attack_percent"]))
-        total_def = int(total_def * (1 + skill_bonuses["bonus_defense_percent"]))
-
-        # Finalize Update cached values
-        self.total_attack_power = total_atk
-        self.total_defense_power = total_def
-        self.total_hp = total_hp
-        
-        power_data = {
-            "atk": total_atk,
-            "def": total_def,
-            "hp": total_hp,
-            "total": total_atk + total_def + (total_hp // 10)
-        }
-        
-        # Cache the result
-        if RedisService.is_available() and self.id is not None:
-            await RedisService.cache_player_power(self.id, power_data)
-        return power_data
-
-    async def invalidate_power_cache(self):
-        """Invalidate all power-related caches"""
-        if RedisService.is_available() and self.id:
-            await RedisService.invalidate_player_cache(self.id)
-
-    async def add_experience(self, session: AsyncSession, amount: int) -> bool:
-        """Adds experience with transaction logging. Returns True if level-up occurred."""
-        leveled_up = False
-        old_level = self.level
-        self.experience += amount
-        
-        levels_gained = 0
-        while True:
-            xp_needed = self.xp_for_next_level()
-            if self.experience < xp_needed:
-                break
-                
-            self.level += 1
-            self.experience -= xp_needed
-            leveled_up = True
-            levels_gained += 1
-            
-            # Level up bonuses
-            self.max_energy += GameConstants.MAX_ENERGY_PER_LEVEL
-            quest_config = ConfigManager.get("quest_system") or {}
-            if quest_config.get("energy_refill_on_levelup", False):
-                self.energy = self.max_energy
-                
-            if quest_config.get("stamina_refill_on_levelup", False):
-                self.stamina = self.max_stamina
-            self.skill_points += 1
-        
-        # Log the experience gain
-        if leveled_up and self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.LEVEL_UP,
-                {
-                    "old_level": old_level,
-                    "new_level": self.level,
-                    "levels_gained": levels_gained,
-                    "xp_gained": amount,
-                    "current_xp": self.experience
-                }
-            )
-        
-        return leveled_up
-
-    # --- CURRENCY METHODS WITH LOGGING ---
-    
-    async def add_currency(self, session: AsyncSession, currency_type: str, amount: int, source: str) -> bool:
-        """Add currency with proper logging and validation"""
-        if currency_type not in ["jijies", "erythl"]:
-            return False
-        
-        if amount <= 0:
-            return False
-        
-        old_balance = getattr(self, currency_type)
-        
-        if currency_type == "jijies":
-            self.jijies += amount
-            self.total_jijies_earned += amount
-        elif currency_type == "erythl":
-            self.erythl += amount
-            self.total_erythl_earned += amount
-        
-        # Log the transaction
-        if self.id is not None:
-            transaction_logger.log_currency_change(
-                self.id,
-                currency_type,
-                amount,
-                source
-            )
-        
-        return True
-    
-    async def spend_currency(self, session: AsyncSession, currency_type: str, amount: int, reason: str) -> bool:
-        """Spend currency with validation and logging"""
-        if currency_type not in ["jijies", "erythl"]:
-            return False
-        
-        if amount <= 0:
-            return False
-        
-        current_balance = getattr(self, currency_type)
-        if current_balance < amount:
-            return False
-        
-        if currency_type == "jijies":
-            self.jijies -= amount
-        elif currency_type == "erythl":
-            self.erythl -= amount
-        
-        # Log the transaction
-        if self.id is not None:
-            transaction_logger.log_currency_change(
-                self.id,
-                currency_type,
-                -amount,  # Negative for spending
-                reason
-            )
-        
-        return True
-
-    # --- FRAGMENT METHODS WITH LOGGING ---
+    # --- SIMPLE GETTERS FOR FRAGMENTS ---
     
     def get_tier_fragment_count(self, tier: int) -> int:
         """Get fragment count for specific tier"""
@@ -400,127 +147,11 @@ class Player(SQLModel, table=True):
             self.tier_fragments = {}
         return self.tier_fragments.get(str(tier), 0)
 
-    async def add_tier_fragments(self, session: AsyncSession, tier: int, amount: int, source: str):
-        """Add fragments with logging"""
-        if self.tier_fragments is None:
-            self.tier_fragments = {}
-        
-        tier_str = str(tier)
-        old_amount = self.tier_fragments.get(tier_str, 0)
-        
-        if tier_str not in self.tier_fragments:
-            self.tier_fragments[tier_str] = 0
-        self.tier_fragments[tier_str] += amount
-        flag_modified(self, "tier_fragments")
-        
-        # Log the transaction
-        if self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.FRAGMENT_GAINED,
-                {
-                    "fragment_type": "tier",
-                    "tier": tier,
-                    "amount": amount,
-                    "source": source,
-                    "old_amount": old_amount,
-                    "new_amount": self.tier_fragments[tier_str]
-                }
-            )
-
-    async def consume_tier_fragments(self, session: AsyncSession, tier: int, amount: int, reason: str) -> bool:
-        """Consume fragments with validation and logging"""
-        current = self.get_tier_fragment_count(tier)
-        if current < amount:
-            return False
-        
-        if self.tier_fragments is None:
-            self.tier_fragments = {}
-        
-        old_amount = current
-        self.tier_fragments[str(tier)] -= amount
-        flag_modified(self, "tier_fragments")
-        
-        # Log the transaction
-        if self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.FRAGMENT_CONSUMED,
-                {
-                    "fragment_type": "tier",
-                    "tier": tier,
-                    "amount": amount,
-                    "reason": reason,
-                    "old_amount": old_amount,
-                    "new_amount": self.tier_fragments[str(tier)]
-                }
-            )
-        
-        return True
-
     def get_fragment_count(self, element: str) -> int:
         """Get fragment count for specific element"""
         if self.element_fragments is None:
             self.element_fragments = {}
         return self.element_fragments.get(element.lower(), 0)
-
-    async def add_element_fragments(self, session: AsyncSession, element: str, amount: int, source: str):
-        """Add element fragments with logging"""
-        if self.element_fragments is None:
-            self.element_fragments = {}
-        
-        element_key = element.lower()
-        old_amount = self.element_fragments.get(element_key, 0)
-        
-        if element_key not in self.element_fragments:
-            self.element_fragments[element_key] = 0
-        self.element_fragments[element_key] += amount
-        flag_modified(self, "element_fragments")
-        
-        # Log the transaction
-        if self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.FRAGMENT_GAINED,
-                {
-                    "fragment_type": "element",
-                    "element": element,
-                    "amount": amount,
-                    "source": source,
-                    "old_amount": old_amount,
-                    "new_amount": self.element_fragments[element_key]
-                }
-            )
-
-    async def consume_element_fragments(self, session: AsyncSession, element: str, amount: int, reason: str) -> bool:
-        """Consume element fragments with validation and logging"""
-        current = self.get_fragment_count(element)
-        if current < amount:
-            return False
-        
-        if self.element_fragments is None:
-            self.element_fragments = {}
-        
-        old_amount = current
-        self.element_fragments[element.lower()] -= amount
-        flag_modified(self, "element_fragments")
-        
-        # Log the transaction
-        if self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.FRAGMENT_CONSUMED,
-                {
-                    "fragment_type": "element",
-                    "element": element,
-                    "amount": amount,
-                    "reason": reason,
-                    "old_amount": old_amount,
-                    "new_amount": self.element_fragments[element.lower()]
-                }
-            )
-        
-        return True
 
     def get_fragment_craft_cost(self, tier: int) -> Dict[str, int]:
         """Get fragment costs for crafting specific tier"""
@@ -532,25 +163,12 @@ class Player(SQLModel, table=True):
             return {"tier_fragments": base_tier_cost, "element_fragments": base_element_cost}
         return config.get(f"tier_{tier}", {"tier_fragments": 100, "element_fragments": 50})
 
-    # --- DAILY ECHO SYSTEM ---
+    # --- SIMPLE DATE/TIME CHECKS ---
     
     def can_claim_daily_echo(self) -> bool:
         """Check if player can claim daily echo"""
         today = date.today()
         return self.last_daily_echo != today
-
-    async def claim_daily_echo(self, session: AsyncSession) -> bool:
-        """Claim daily echo with logging"""
-        if not self.can_claim_daily_echo():
-            return False
-        
-        self.last_daily_echo = date.today()
-        
-        # Note: Echo opening will be logged when the echo is actually opened
-        
-        return True
-
-    # --- QUEST SYSTEM ---
 
     def can_access_area(self, area_id: str) -> bool:
         """Check if player meets level requirement for an area."""
@@ -566,93 +184,7 @@ class Player(SQLModel, table=True):
         if area_id > self.highest_area_unlocked:
             self.highest_area_unlocked = area_id
 
-    async def apply_quest_rewards(self, session: AsyncSession, quest_data: dict) -> Dict[str, Any]:
-        """Applies quest rewards with proper logging"""
-        gains = {}
-        
-        if xp := quest_data.get("xp_reward"):
-            if await self.add_experience(session, xp):
-                gains['leveled_up'] = True
-            gains['xp'] = xp
-        
-        if jijies_range := quest_data.get("jijies_reward"):
-            jijies_gain = random.randint(jijies_range[0], jijies_range[1])
-            await self.add_currency(session, "jijies", jijies_gain, "quest_completion")
-            gains['jijies'] = jijies_gain
-
-        # Update quest completion counter
-        self.total_quests_completed += 1
-        self.last_quest = datetime.utcnow()
-
-        return gains
-
-    async def attempt_capture(self, area_data: dict, session: AsyncSession) -> Optional['Esprit']:
-        """
-        Handles all logic for attempting to capture an Esprit in an area.
-        Returns the new Esprit instance if successful, otherwise None.
-        """
-        if capturable_tiers := area_data.get("capturable_tiers"):
-            # Base capture chance from GameConstants
-            base_capture_chance = GameConstants.BASE_CAPTURE_CHANCE
-            
-            # Apply leader bonus if applicable
-            leader_bonuses = await self.get_leader_bonuses(session)
-            element_bonuses = leader_bonuses.get("element_bonuses", {})
-            type_bonuses = leader_bonuses.get("type_bonuses", {})
-            
-            capture_bonus = element_bonuses.get("capture_bonus", 0) + type_bonuses.get("capture_bonus", 0)
-            final_capture_chance = base_capture_chance * (1 + capture_bonus)
-            
-            if random.random() < final_capture_chance:
-                from src.database.models import EspritBase, Esprit
-                
-                # Prefer area element affinity
-                area_element = area_data.get("element_affinity")
-                
-                possible_esprits_stmt = select(EspritBase).where(
-                    col(EspritBase.base_tier).in_(capturable_tiers)
-                )
-                
-                if area_element:
-                    # 70% chance for area element
-                    config = ConfigManager.get("global_config") or {}
-                    area_bias = config.get("quest_system", {}).get("area_element_bias", 0.7)
-                    if random.random() < area_bias:
-                        possible_esprits_stmt = possible_esprits_stmt.where(
-                            EspritBase.element == area_element.title()
-                        )
-                
-                possible_esprits = (await session.execute(possible_esprits_stmt)).scalars().all()
-                
-                if possible_esprits:
-                    captured_esprit_base = random.choice(list(possible_esprits))
-                    
-                    assert self.id is not None, "Player must be saved and have an ID to capture an Esprit."
-                    
-                    # Add to universal stack
-                    new_stack = await Esprit.add_to_collection(
-                        session=session,
-                        owner_id=self.id,
-                        base=captured_esprit_base,
-                        quantity=1
-                    )
-                    
-                    # Log the capture
-                    if self.id is not None:
-                        transaction_logger.log_esprit_captured(
-                            self.id,
-                            captured_esprit_base.name,
-                            captured_esprit_base.base_tier,
-                            captured_esprit_base.element,
-                            area_data.get("id", "unknown")
-                        )
-                    
-                    # Invalidate cache and update stats
-                    await self.invalidate_power_cache()
-                    await self.recalculate_total_power(session)
-                    
-                    return new_stack
-        return None
+    # --- SIMPLE QUEST PROGRESS TRACKING ---
 
     def record_quest_completion(self, area_id: str, quest_id: str):
         """Records a quest as completed for the player."""
@@ -696,7 +228,7 @@ class Player(SQLModel, table=True):
         
         return completed_quests >= total_quests
 
-    # --- DAILY/WEEKLY RESETS ---
+    # --- SIMPLE RESET CHECKS ---
 
     def check_daily_reset(self):
         """Check and perform daily reset if needed"""
@@ -717,6 +249,8 @@ class Player(SQLModel, table=True):
             self.weekly_points = 0
             self.last_weekly_reset = this_monday
 
+    # --- SIMPLE REGENERATION CALCULATIONS ---
+
     def regenerate_energy(self) -> int:
         """Regenerates energy based on time passed. Returns amount gained."""
         if self.energy >= self.max_energy:
@@ -727,9 +261,6 @@ class Player(SQLModel, table=True):
         
         # Use GameConstants for base rate
         minutes_per_point = GameConstants.ENERGY_REGEN_MINUTES
-        
-        # Apply leader bonus if applicable (will need session context in actual use)
-        # For now, use base rate
         
         energy_to_add = int(minutes_passed // minutes_per_point)
         
@@ -749,11 +280,8 @@ class Player(SQLModel, table=True):
         now = datetime.utcnow()
         minutes_passed = (now - self.last_stamina_update).total_seconds() / 60
         
-        # Base rate: 10 minutes per stamina point (MW-style, slower than energy)
+        # Base rate: 10 minutes per stamina point
         minutes_per_point = 10
-        
-        # Apply any bonuses (future feature: items, leader effects, etc.)
-        # For now, just base rate
         
         stamina_to_add = int(minutes_passed // minutes_per_point)
         
@@ -765,50 +293,11 @@ class Player(SQLModel, table=True):
         
         return 0
 
-    async def consume_energy(self, session: AsyncSession, amount: int, reason: str) -> bool:
-        """Consume energy with logging. Returns True if successful."""
-        self.regenerate_energy()  # Always regen first
-        
-        if self.energy < amount:
-            return False
-        
-        old_energy = self.energy
-        self.energy -= amount
-        self.total_energy_spent += amount
-        
-        # Log the consumption
-        if self.id is not None:
-            transaction_logger.log_transaction(
-                self.id,
-                TransactionType.ENERGY_CONSUMED,
-                {
-                    "amount": amount,
-                    "reason": reason,
-                    "old_energy": old_energy,
-                    "new_energy": self.energy,
-                    "max_energy": self.max_energy
-                }
-            )
-        
-        return True
-    
-    async def consume_stamina(self, session: AsyncSession, amount: int, reason: str) -> bool:
-        """Consume stamina with logging. Returns True if successful."""
-        self.regenerate_stamina()  # Always regen first
-        
-        if self.stamina < amount:
-            return False
-        
-        self.stamina -= amount
-        self.total_stamina_spent += amount
-        
-        # Note: Add stamina consumption logging to TransactionType if needed
-        
-        return True
-
     def update_activity(self):
         """Update last active timestamp"""
         self.last_active = datetime.utcnow()
+
+    # --- SIMPLE STAT CALCULATIONS ---
 
     def get_win_rate(self) -> float:
         """Calculate battle win rate percentage"""
@@ -821,173 +310,6 @@ class Player(SQLModel, table=True):
         if self.total_fusions == 0:
             return 0.0
         return (self.successful_fusions / self.total_fusions) * 100
-
-    async def open_echo(self, session: AsyncSession, echo_type: str, esprit_base_list: list["EspritBase"]) -> Optional[tuple[None, "EspritBase", int]]:
-        """
-        Modified for universal stacks with logging.
-        Returns base and tier for stack addition.
-        """
-        assert self.id is not None, "Player ID cannot be None when opening an echo."
-
-        loot_tables = ConfigManager.get("loot_tables")
-        if not loot_tables or echo_type not in loot_tables:
-            raise ValueError(f"Loot table for {echo_type} not found.")
-        
-        table = loot_tables[echo_type]
-
-        # Determine correct level bracket
-        bracket_data = None
-        for bracket_range, data in table["level_brackets"].items():
-            parts = bracket_range.split('-')
-            low = int(parts[0])
-            high = int(parts[1]) if len(parts) > 1 else float('inf')
-            if low <= self.level <= high:
-                bracket_data = data
-                break
-                
-        if not bracket_data:
-            raise ValueError(f"No bracket found for level {self.level}")
-            
-        # Pick tier based on weights
-        tier_weights = bracket_data["tier_weights"]
-        tiers = []
-        weights = []
-        for tier, weight in tier_weights.items():
-            if int(tier) <= table.get("max_tier", 18):
-                tiers.append(int(tier))
-                weights.append(weight)
-                
-        if not tiers:
-            raise ValueError("No valid tiers found for player level")
-            
-        selected_tier = random.choices(tiers, weights=weights, k=1)[0]
-        
-        # Pick element preference
-        element_preferences = bracket_data.get("element_preference", {})
-        if self.favorite_element and self.favorite_element in element_preferences:
-            # Boost favorite element chance
-            element_preferences[self.favorite_element] *= 1.5
-            
-        # Filter bases by tier and apply element preference
-        valid_bases = []
-        for base in esprit_base_list:
-            if base.base_tier == selected_tier:
-                # Apply element preference if specified
-                weight = element_preferences.get(base.element.lower(), 1.0)
-                for _ in range(int(weight * 10)):  # Multiply for weighting
-                    valid_bases.append(base)
-                    
-        if not valid_bases:
-            raise ValueError(f"No Esprits found for tier {selected_tier}")
-            
-        selected_base = random.choice(valid_bases)
-        
-        # Update echo counter
-        self.total_echoes_opened += 1
-        
-        # Log the echo opening
-        if self.id is not None:
-            transaction_logger.log_echo_opened(
-                self.id,
-                echo_type,
-                {
-                    "esprit_name": selected_base.name,
-                    "tier": selected_tier,
-                    "element": selected_base.element,
-                    "player_level": self.level
-                }
-            )
-        
-        return None, selected_base, selected_tier
-    
-    # --- SKILL ALLOCATION METHODS ---
-    
-    async def allocate_skill_points(self, session: AsyncSession, skill: str, points: int) -> Dict[str, Any]:
-        """
-        Allocate skill points with logging.
-        """
-        if skill not in self.allocated_skills:
-            return {"success": False, "message": "Invalid skill type"}
-        
-        if points <= 0:
-            return {"success": False, "message": "Must allocate at least 1 point"}
-        
-        if self.skill_points < points:
-            return {"success": False, "message": f"Insufficient skill points. You have {self.skill_points}"}
-        
-        old_allocation = self.allocated_skills[skill]
-        
-        # Allocate the points
-        self.skill_points -= points
-        self.allocated_skills[skill] += points
-        flag_modified(self, "allocated_skills")
-        
-        # Apply effects immediately
-        if skill == "energy":
-            self.max_energy += points
-            self.energy = min(self.energy + points, self.max_energy)  # Top up
-        elif skill == "stamina":
-            self.max_stamina += points
-            self.stamina = min(self.stamina + points, self.max_stamina)  # Top up
-        
-        # Invalidate power cache if attack/defense changed
-        if skill in ["attack", "defense"]:
-            await self.invalidate_power_cache()
-        
-        return {
-            "success": True,
-            "message": f"Allocated {points} points to {skill}",
-            "new_total": self.allocated_skills[skill]
-        }
-    
-    async def reset_skill_points(self, session: AsyncSession, cost_erythl: int = 100) -> Dict[str, Any]:
-        """
-        Reset all allocated skill points with cost and logging.
-        """
-        total_allocated = sum(self.allocated_skills.values())
-        
-        if total_allocated == 0:
-            return {"success": False, "message": "No skill points to reset"}
-        
-        # Check if player can afford reset (scales with reset count)
-        reset_cost = cost_erythl * (1 + self.skill_reset_count)
-        if self.erythl < reset_cost:
-            return {"success": False, "message": f"Insufficient erythl. Need {reset_cost}"}
-        
-        # Spend the currency
-        if not await self.spend_currency(session, "erythl", reset_cost, "skill_reset"):
-            return {"success": False, "message": "Failed to process payment"}
-        
-        # Reset max energy/stamina
-        self.max_energy = GameConstants.MAX_ENERGY_BASE + (self.level * GameConstants.MAX_ENERGY_PER_LEVEL)
-        self.max_stamina = 50  # Base stamina
-        
-        # Return all points
-        self.skill_points += total_allocated
-        self.allocated_skills = {
-            "energy": 0,
-            "stamina": 0,
-            "attack": 0,
-            "defense": 0
-        }
-        flag_modified(self, "allocated_skills")
-        
-        # Track reset for potential monetization
-        self.skill_reset_count += 1
-        
-        # Ensure current values don't exceed new maximums
-        self.energy = min(self.energy, self.max_energy)
-        self.stamina = min(self.stamina, self.max_stamina)
-        
-        # Invalidate power cache
-        await self.invalidate_power_cache()
-        
-        return {
-            "success": True,
-            "message": f"Reset {total_allocated} skill points",
-            "reset_count": self.skill_reset_count,
-            "cost_paid": reset_cost
-        }
     
     def get_skill_bonuses(self) -> Dict[str, float]:
         """Get current bonuses from allocated skills. Returns percentages for stats."""
@@ -998,54 +320,7 @@ class Player(SQLModel, table=True):
             "bonus_stamina": float(self.allocated_skills.get("stamina", 0))
         }
 
-    # --- BUILDING/ECONOMY METHODS ---
-    
-    async def calculate_daily_upkeep(self, session: AsyncSession) -> int:
-        """Calculate total daily upkeep from all buildings"""
-        # TODO: Implement when Building model is created
-        # For now, return cached value
-        return self.total_upkeep_cost
-    
-    async def pay_daily_upkeep(self, session: AsyncSession) -> Dict[str, Any]:
-        """Process daily upkeep payment"""
-        upkeep_cost = await self.calculate_daily_upkeep(session)
-        
-        if upkeep_cost == 0:
-            return {"success": True, "cost": 0}
-        
-        # Check if upkeep is due
-        now = datetime.utcnow()
-        if now < self.upkeep_paid_until:
-            return {"success": True, "already_paid": True}
-        
-        # Try to pay upkeep
-        if self.jijies >= upkeep_cost:
-            await self.spend_currency(session, "jijies", upkeep_cost, "daily_upkeep")
-            self.upkeep_paid_until = now + timedelta(days=1)
-            self.total_upkeep_paid += upkeep_cost
-            
-            return {
-                "success": True,
-                "cost": upkeep_cost,
-                "next_due": self.upkeep_paid_until
-            }
-        else:
-            # Can't afford upkeep - buildings go inactive
-            self.times_went_bankrupt += 1
-            
-            return {
-                "success": False,
-                "cost": upkeep_cost,
-                "deficit": upkeep_cost - self.jijies
-            }
-    
-    async def collect_passive_income(self, session: AsyncSession) -> Dict[str, int]:
-        """Collect income from all buildings"""
-        # TODO: Implement when Building model is created
-        # For now, return empty
-        return {}
-
-    # --- UTILITY METHODS ---
+    # --- SIMPLE TIME CALCULATIONS ---
     
     def get_time_until_full_energy(self) -> timedelta:
         """Calculate time until energy is full"""
@@ -1066,63 +341,49 @@ class Player(SQLModel, table=True):
         return timedelta(minutes=minutes_needed)
     
     def get_collection_progress(self) -> Dict[str, Any]:
-        """Get overall collection progress stats"""
-        # TODO: Calculate based on owned Esprits vs total available
+        """Get overall collection progress stats (placeholder - implement in CollectionService)"""
         return {
-            "total_unique_owned": 0,  # To be implemented
-            "total_available": 0,     # To be implemented
+            "total_unique_owned": 0,  # To be implemented in CollectionService
+            "total_available": 0,     # To be implemented in CollectionService
             "completion_percent": 0.0
         }
     
-    async def start_boss_encounter(self, session: AsyncSession, quest_data: Dict[str, Any], area_data: Dict[str, Any]):
-        """Start a boss encounter - RUNTIME IMPORT to avoid circular imports"""
-        from src.domain.quest_domain import BossEncounter
-        return await BossEncounter.create_from_quest(quest_data, area_data)
+    # === BUSINESS LOGIC MOVED TO SERVICES ===
     
-    async def attempt_quest_capture(self, session: AsyncSession, area_data: Dict[str, Any]):
-        """Attempt to capture an esprit - RUNTIME IMPORT to avoid circular imports"""
-        from src.domain.quest_domain import CaptureSystem
-        return await CaptureSystem.attempt_capture(session, self, area_data)
+    # Leadership management moved to LeadershipService:
+    # - get_leader_bonuses() → LeadershipService.get_leader_bonuses()
+    # - set_leader_esprit() → LeadershipService.set_leader_esprit()
     
-    async def attempt_quest_capture_enhanced(self, session: AsyncSession, area_data: Dict[str, Any]):
-        """Enhanced capture attempt - RUNTIME IMPORT to avoid circular imports"""
-        from src.domain.quest_domain import CaptureSystem
-        return await CaptureSystem.attempt_capture(session, self, area_data)
+    # Power calculations moved to EspritService:
+    # - recalculate_total_power() → EspritService.calculate_collection_power()
+    # - invalidate_power_cache() → CacheService.invalidate_player_cache()
     
-    async def confirm_capture(self, session: AsyncSession, pending_capture):
-        """Confirm an esprit capture - RUNTIME IMPORT to avoid circular imports"""
-        from src.domain.quest_domain import PendingCapture
-        from src.database.models import Esprit
-        
-        # Handle None ID case
-        if not self.id:
-            return None
-        
-        # Create the esprit record
-        new_esprit = Esprit(
-            esprit_base_id=pending_capture.esprit_base.id,
-            owner_id=self.id,
-            quantity=1,
-            tier=pending_capture.esprit_base.base_tier,
-            element=pending_capture.esprit_base.element
-        )
-        
-        session.add(new_esprit)
-        
-        # Log transaction
-        transaction_logger.log_transaction(
-            player_id=self.id,
-            transaction_type=TransactionType.ESPRIT_CAPTURED,
-            details={
-                "amount": 1,
-                "reason": f"quest_capture_{pending_capture.source}",
-                "esprit_name": pending_capture.esprit_base.name,
-                "element": pending_capture.esprit_base.element,
-                "tier": pending_capture.esprit_base.base_tier
-            }
-        )
-        
-        # CRITICAL: Invalidate power cache so the new esprit is included in calculations
-        await self.invalidate_power_cache()
-        
-        return new_esprit
+    # Experience and currency moved to PlayerService:
+    # - add_experience() → PlayerService.add_experience()
+    # - add_currency() → PlayerService.add_currency()
+    # - spend_currency() → PlayerService.spend_currency()
+    # - consume_energy() → PlayerService.consume_energy()
+    # - consume_stamina() → PlayerService.consume_stamina()
+    
+    # Fragment management moved to PlayerService:
+    # - add_tier_fragments() → PlayerService.add_tier_fragments()
+    # - consume_tier_fragments() → PlayerService.consume_tier_fragments()
+    # - add_element_fragments() → PlayerService.add_element_fragments()
+    # - consume_element_fragments() → PlayerService.consume_element_fragments()
+    
+    # Quest operations moved to QuestService:
+    # - apply_quest_rewards() → QuestService.apply_quest_rewards()
+    # - attempt_capture() → QuestService.attempt_capture()
+    
+    # Echo operations moved to EchoService:
+    # - claim_daily_echo() → EchoService.claim_daily_echo()
+    # - open_echo() → EchoService.open_echo()
+    
+    # Skill system moved to PlayerService:
+    # - allocate_skill_points() → PlayerService.allocate_skill_points()
+    # - reset_skill_points() → PlayerService.reset_skill_points()
+    
+    # Building/economy moved to BuildingService:
+    # - calculate_daily_upkeep() → BuildingService.calculate_daily_upkeep()
+    # - pay_daily_upkeep() → BuildingService.pay_daily_upkeep()
+    # - collect_passive_income() → BuildingService.collect_passive_income()

@@ -1,10 +1,9 @@
 # src/database/models/esprit_base.py
 from typing import Dict, Optional, List, Any
-from sqlmodel import SQLModel, Field, select, col
+from sqlmodel import SQLModel, Field
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import JSONB, JSON
-from sqlalchemy import BigInteger, Column, Index, desc, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import BigInteger, Column, Index
 from sqlalchemy.orm.attributes import flag_modified
 from pydantic import validator
 from src.utils.game_constants import Elements, Tiers
@@ -13,11 +12,9 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 class EspritBase(SQLModel, table=True):
-    __tablename__: str = "esprit_base" # type: ignore
-    # SQLModel will use "espritbase" as table name by default
+    __tablename__: str = "esprit_base"  # type: ignore
     __table_args__ = (
         Index("ix_espritbase_element_tier", "element", "base_tier"),
-        # Index("ix_espritbase_type_tier", "type", "base_tier"),  # <- DELETE THIS LINE
         {'extend_existing': True}
     )
     
@@ -100,7 +97,6 @@ class EspritBase(SQLModel, table=True):
             return False
         
         # Get expected stats for this tier
-        # Using the stats from the tier's monster archetype
         expected_atk = getattr(tier_data, "atk", None)
         expected_def = getattr(tier_data, "def", None)
         expected_hp = getattr(tier_data, "hp", None)
@@ -176,14 +172,11 @@ class EspritBase(SQLModel, table=True):
     
     # --- ABILITY METHODS ---
     
-    
     def get_ability_details(self) -> Dict[str, Any]:
         """
         Get full ability details based on tier.
         Tiers 1-4: Universal abilities based on element/type
         Tiers 5+: Unique abilities from esprit_abilities.json
-        
-        Returns a properly structured dictionary that won't make Pylance cry.
         """
         from src.utils.ability_system import AbilitySystem
         
@@ -257,10 +250,7 @@ class EspritBase(SQLModel, table=True):
             }
     
     def get_formatted_abilities(self) -> List[str]:
-        """
-        Get abilities formatted for Discord display.
-        This method is already correct and doesn't need changes.
-        """
+        """Get abilities formatted for Discord display"""
         from src.utils.ability_system import AbilitySystem
         
         try:
@@ -517,98 +507,6 @@ class EspritBase(SQLModel, table=True):
             }
         }
 
-    
-    # --- CLASS METHODS FOR QUERIES ---
-    
-    @classmethod
-    async def get_by_element(cls, session: AsyncSession, element: str) -> List["EspritBase"]:
-        """Get all Esprits of a specific element"""
-        stmt = select(cls).where(cls.element == element.title())
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
-    @classmethod
-    async def get_by_tier(cls, session: AsyncSession, tier: int) -> List["EspritBase"]:
-        """Get all Esprits of a specific tier"""
-        stmt = select(cls).where(cls.base_tier == tier)
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
-    @classmethod
-    async def get_by_tier_range(cls, session: AsyncSession, min_tier: int, max_tier: int) -> List["EspritBase"]:
-        """Get all Esprits within a tier range"""
-        stmt = select(cls).where(cls.base_tier >= min_tier, cls.base_tier <= max_tier)
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
-    @classmethod
-    async def get_by_element_and_tier(cls, session: AsyncSession, element: str, tier: int) -> List["EspritBase"]:
-        """Get all Esprits of a specific element and tier"""
-        stmt = select(cls).where(
-            cls.element == element.title(),
-            cls.base_tier == tier
-        )
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
-    @classmethod
-    async def search_by_name(cls, session: AsyncSession, name_query: str) -> List["EspritBase"]:
-        """Search Esprits by name (case-insensitive partial match)"""
-        stmt = select(cls).where(col(cls.name).ilike(f"%{name_query}%"))
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
-    @classmethod
-    async def get_random_by_criteria(
-        cls, 
-        session: AsyncSession,
-        element: Optional[str] = None,
-        tier: Optional[int] = None,
-    ) -> Optional["EspritBase"]:
-        """Get a random Esprit matching the given criteria"""
-        stmt = select(cls)
-        
-        if element:
-            stmt = stmt.where(cls.element == element.title())
-        if tier:
-            stmt = stmt.where(cls.base_tier == tier)
-        
-        stmt = stmt.order_by(func.random()).limit(1)
-        
-        result = await session.execute(stmt)
-        return result.scalar_one_or_none()
-    
-    @classmethod
-    async def get_stat_leaders(
-        cls,
-        session: AsyncSession,
-        stat: str = "atk",
-        tier: Optional[int] = None,
-        limit: int = 10
-    ) -> List["EspritBase"]:
-        """Get Esprits with highest stats in a category"""
-        stmt = select(cls)
-        
-        if tier:
-            stmt = stmt.where(cls.base_tier == tier)
-        
-        if stat == "atk":
-            stmt = stmt.order_by(desc(getattr(cls, "base_atk")))
-        elif stat == "def":
-            stmt = stmt.order_by(desc(getattr(cls, "base_def")))
-        elif stat == "hp":
-            stmt = stmt.order_by(desc(getattr(cls, "base_hp")))
-        elif stat == "power":
-            # Order by calculated power
-            stmt = stmt.order_by(
-                desc((getattr(cls, "base_atk") + getattr(cls, "base_def") + (getattr(cls, "base_hp") / 10)))
-            )
-        
-        stmt = stmt.limit(limit)
-        
-        result = await session.execute(stmt)
-        return list(result.scalars().all())
-    
     # --- INITIALIZATION ---
     
     def __init__(self, **data):
@@ -617,3 +515,12 @@ class EspritBase(SQLModel, table=True):
         if self.tier_name is None and self.base_tier:
             tier_data = Tiers.get(self.base_tier)
             self.tier_name = tier_data.name if tier_data else "Unknown"
+    
+    # Business logic moved to SearchService:
+    # - get_by_element() → SearchService.get_esprits_by_element()
+    # - get_by_tier() → SearchService.get_esprits_by_tier()
+    # - get_by_tier_range() → SearchService.get_esprits_by_tier_range()
+    # - get_by_element_and_tier() → SearchService.get_esprits_by_element_and_tier()
+    # - search_by_name() → SearchService.search_esprits()
+    # - get_random_by_criteria() → SearchService.get_random_esprit()
+    # - get_stat_leaders() → SearchService.get_stat_leaders()

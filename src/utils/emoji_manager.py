@@ -1,69 +1,115 @@
 # src/utils/emoji_manager.py
+"""
+Pure emoji infrastructure utility - NO BUSINESS LOGIC
+Only provides emoji storage, retrieval, and Discord API operations.
+"""
+
 import disnake
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Any
 import json
 import os
 from src.utils.logger import get_logger
-from src.utils.database_service import DatabaseService
-from src.database.models import EspritBase
-from sqlalchemy import select
 import asyncio
 
 logger = get_logger(__name__)
 
 
-class EspritEmojiManager:
-    """Manages custom emojis across multiple servers because we have MONEY"""
+class EmojiStorageManager:
+    """
+    Pure infrastructure for managing custom emojis across Discord servers.
+    NO BUSINESS LOGIC - only handles storage, caching, and Discord API operations.
+    """
     
-    def __init__(self, bot):
+    def __init__(self, bot, config_path: Optional[str] = None):
         self.bot = bot
-        self.emoji_servers = []  # List of server IDs dedicated to emojis
-        self.emoji_cache: Dict[str, str] = {}  # esprit_name -> emoji_string
-        self.loaded = False
-
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        self.config_path = os.path.join(base_dir, "data", "config", "emoji_mapping.json")
+        self.emoji_servers: List[int] = []
+        self.emoji_cache: Dict[str, str] = {}  # name -> emoji_string
+        
+        # Set config path
+        if config_path:
+            self.config_path = config_path
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            self.config_path = os.path.join(base_dir, "data", "config", "emoji_mapping.json")
+        
         self.load_config()
     
     def load_config(self):
-        """Load emoji mapping from file"""
+        """Load emoji configuration from file"""
         if os.path.exists(self.config_path):
-            with open(self.config_path, 'r') as f:
-                data = json.load(f)
-                self.emoji_servers = data.get("emoji_servers", [])
-                self.emoji_cache = data.get("emoji_mapping", {})
-                logger.info(f"Loaded {len(self.emoji_cache)} emoji mappings")
+            try:
+                with open(self.config_path, 'r') as f:
+                    data = json.load(f)
+                    self.emoji_servers = data.get("emoji_servers", [])
+                    self.emoji_cache = data.get("emoji_mapping", {})
+                    logger.info(f"Loaded {len(self.emoji_cache)} emoji mappings from {self.config_path}")
+            except Exception as e:
+                logger.error(f"Failed to load emoji config: {e}")
+                self.emoji_servers = []
+                self.emoji_cache = {}
+        else:
+            logger.warning(f"Emoji config not found at {self.config_path}")
     
     def save_config(self):
-        """Save emoji mapping to file"""
-        os.makedirs("data", exist_ok=True)
-        data = {
-            "emoji_servers": self.emoji_servers,
-            "emoji_mapping": self.emoji_cache
-        }
-        with open(self.config_path, 'w') as f:
-            json.dump(data, f, indent=2)
+        """Save emoji configuration to file"""
+        try:
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+            data = {
+                "emoji_servers": self.emoji_servers,
+                "emoji_mapping": self.emoji_cache
+            }
+            with open(self.config_path, 'w') as f:
+                json.dump(data, f, indent=2)
+            logger.debug(f"Saved emoji config to {self.config_path}")
+        except Exception as e:
+            logger.error(f"Failed to save emoji config: {e}")
     
-    async def setup_emoji_servers(self, server_ids: List[int]):
-        """Setup which servers are used for emoji storage"""
+    def set_emoji_servers(self, server_ids: List[int]):
+        """Configure which servers are used for emoji storage"""
         self.emoji_servers = server_ids
         self.save_config()
         logger.info(f"Configured {len(server_ids)} servers for emoji storage")
     
+    def get_emoji(self, name: str, fallback: str = "🔮") -> str:
+        """Get emoji string by name with fallback"""
+        return self.emoji_cache.get(name.lower(), fallback)
+    
+    def has_emoji(self, name: str) -> bool:
+        """Check if emoji exists in cache"""
+        return name.lower() in self.emoji_cache
+    
+    def add_emoji_to_cache(self, name: str, emoji_string: str):
+        """Add emoji to cache and save config"""
+        self.emoji_cache[name.lower()] = emoji_string
+        self.save_config()
+    
+    def remove_emoji_from_cache(self, name: str) -> bool:
+        """Remove emoji from cache and save config"""
+        name_lower = name.lower()
+        if name_lower in self.emoji_cache:
+            del self.emoji_cache[name_lower]
+            self.save_config()
+            return True
+        return False
+    
+    def get_all_cached_emojis(self) -> Dict[str, str]:
+        """Get copy of all cached emojis"""
+        return self.emoji_cache.copy()
+    
     def get_available_slots(self) -> int:
-        """Get total available emoji slots across all servers"""
+        """Get total available emoji slots across all configured servers"""
         total = 0
         for server_id in self.emoji_servers:
             guild = self.bot.get_guild(server_id)
             if guild:
                 # Base: 50, +50 per boost level
-                slots = 50 + (guild.premium_tier * 50)
-                used = len(guild.emojis)
-                total += (slots - used)
+                max_slots = 50 + (guild.premium_tier * 50)
+                used_slots = len(guild.emojis)
+                total += (max_slots - used_slots)
         return total
     
-    async def find_server_with_space(self) -> Optional[disnake.Guild]:
-        """Find a server with available emoji slots"""
+    def find_server_with_space(self) -> Optional[disnake.Guild]:
+        """Find a configured server with available emoji slots"""
         for server_id in self.emoji_servers:
             guild = self.bot.get_guild(server_id)
             if guild:
@@ -72,133 +118,174 @@ class EspritEmojiManager:
                     return guild
         return None
     
-    async def upload_esprit_emoji(self, esprit_name: str, image_path: str) -> Optional[str]:
-        """Upload a new esprit emoji and return the emoji string"""
+    def get_server_emoji_info(self) -> List[Dict[str, Any]]:
+        """Get emoji slot information for all configured servers"""
+        server_info = []
+        for server_id in self.emoji_servers:
+            guild = self.bot.get_guild(server_id)
+            if guild:
+                max_slots = 50 + (guild.premium_tier * 50)
+                used_slots = len(guild.emojis)
+                server_info.append({
+                    "server_id": server_id,
+                    "server_name": guild.name,
+                    "max_slots": max_slots,
+                    "used_slots": used_slots,
+                    "available_slots": max_slots - used_slots,
+                    "boost_level": guild.premium_tier
+                })
+        return server_info
+    
+    async def upload_emoji_to_discord(self, name: str, image_path: str, reason: Optional[str] = None) -> Optional[str]:
+        """
+        Upload a single emoji to Discord and return the emoji string.
+        Pure Discord API operation - no business logic.
+        """
         try:
             # Find server with space
-            guild = await self.find_server_with_space()
+            guild = self.find_server_with_space()
             if not guild:
-                logger.error("No emoji slots available!")
+                logger.error("No emoji slots available in configured servers")
                 return None
             
-            # Read image
+            # Read image file
             with open(image_path, 'rb') as f:
                 image_data = f.read()
             
-            # Create emoji (discord limits name to 32 chars, alphanumeric + underscore)
-            safe_name = esprit_name.lower().replace(" ", "_").replace("-", "_")[:32]
-            safe_name = ''.join(c for c in safe_name if c.isalnum() or c == '_')
+            # Create safe emoji name (Discord limits: 32 chars, alphanumeric + underscore)
+            safe_name = self._create_safe_emoji_name(name)
             
+            # Upload to Discord
             emoji = await guild.create_custom_emoji(
-                name=f"e_{safe_name}",  # prefix with e_ to avoid conflicts
+                name=safe_name,
                 image=image_data,
-                reason=f"Esprit emoji for {esprit_name}"
+                reason=reason or f"Uploaded emoji: {name}"
             )
             
-            # Cache it
+            # Create emoji string
             emoji_string = f"<:{emoji.name}:{emoji.id}>"
-            self.emoji_cache[esprit_name.lower()] = emoji_string
-            self.save_config()
             
-            logger.info(f"Created emoji for {esprit_name}: {emoji_string}")
+            # Add to cache
+            self.add_emoji_to_cache(name, emoji_string)
+            
+            logger.info(f"Uploaded emoji '{name}' to {guild.name}: {emoji_string}")
             return emoji_string
             
         except Exception as e:
-            logger.error(f"Failed to create emoji for {esprit_name}: {e}")
+            logger.error(f"Failed to upload emoji '{name}': {e}")
             return None
     
-    async def bulk_upload_emojis(self, emoji_folder: str):
-        """Bulk upload emojis from a folder"""
+    async def delete_emoji_from_discord(self, emoji_string: str) -> bool:
+        """
+        Delete an emoji from Discord by emoji string.
+        Pure Discord API operation - no business logic.
+        """
+        try:
+            # Parse emoji ID from string like <:name:id>
+            if not emoji_string.startswith('<:') or not emoji_string.endswith('>'):
+                return False
+            
+            emoji_id = int(emoji_string.split(':')[2][:-1])
+            
+            # Find and delete the emoji
+            for server_id in self.emoji_servers:
+                guild = self.bot.get_guild(server_id)
+                if guild:
+                    emoji = disnake.utils.get(guild.emojis, id=emoji_id)
+                    if emoji:
+                        await emoji.delete(reason="Emoji cleanup")
+                        logger.info(f"Deleted emoji {emoji.name} from {guild.name}")
+                        return True
+            
+            logger.warning(f"Emoji with ID {emoji_id} not found in configured servers")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to delete emoji '{emoji_string}': {e}")
+            return False
+    
+    async def bulk_upload_from_directory(self, directory_path: str, rate_limit_delay: float = 1.0) -> Tuple[int, int]:
+        """
+        Upload multiple emojis from a directory.
+        Returns (uploaded_count, failed_count).
+        """
+        if not os.path.exists(directory_path):
+            logger.error(f"Directory not found: {directory_path}")
+            return 0, 0
+        
         uploaded = 0
         failed = 0
         
-        for filename in os.listdir(emoji_folder):
-            if filename.endswith(('.png', '.jpg', '.gif')):
-                # Extract esprit name from filename
-                esprit_name = filename.rsplit('.', 1)[0].replace('_', ' ')
-                image_path = os.path.join(emoji_folder, filename)
+        for filename in os.listdir(directory_path):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                # Extract name from filename (remove extension)
+                name = os.path.splitext(filename)[0]
+                image_path = os.path.join(directory_path, filename)
                 
-                # Skip if already uploaded
-                if esprit_name.lower() in self.emoji_cache:
-                    logger.info(f"Skipping {esprit_name} - already uploaded")
+                # Skip if already cached
+                if self.has_emoji(name):
+                    logger.debug(f"Skipping {name} - already cached")
                     continue
                 
                 # Upload
-                result = await self.upload_esprit_emoji(esprit_name, image_path)
+                result = await self.upload_emoji_to_discord(name, image_path)
                 if result:
                     uploaded += 1
                 else:
                     failed += 1
                 
-                # Rate limit respect
-                await asyncio.sleep(1)
+                # Rate limiting
+                await asyncio.sleep(rate_limit_delay)
         
-        logger.info(f"Bulk upload complete: {uploaded} success, {failed} failed")
+        logger.info(f"Bulk upload complete: {uploaded} uploaded, {failed} failed")
         return uploaded, failed
     
+    def _create_safe_emoji_name(self, name: str) -> str:
+        """Create a Discord-safe emoji name"""
+        # Convert to lowercase and replace spaces/hyphens with underscores
+        safe_name = name.lower().replace(" ", "_").replace("-", "_")
+        
+        # Keep only alphanumeric and underscore
+        safe_name = ''.join(c for c in safe_name if c.isalnum() or c == '_')
+        
+        # Ensure it starts with a letter
+        if safe_name and not safe_name[0].isalpha():
+            safe_name = f"e_{safe_name}"
+        elif not safe_name:
+            safe_name = "emoji"
+        
+        # Truncate to 32 characters (Discord limit)
+        return safe_name[:32]
+
+
+# Legacy compatibility wrapper
+class EspritEmojiManager(EmojiStorageManager):
+    """Legacy wrapper for backward compatibility"""
+    
     def get_emoji(self, esprit_name: str, fallback: str = "🎴") -> str:
-        """Get emoji string for an esprit, with fallback"""
-        return self.emoji_cache.get(esprit_name.lower(), fallback)
+        """Legacy method - get emoji for esprit name"""
+        return super().get_emoji(esprit_name, fallback)
     
-    async def sync_with_database(self, session):
-        """Make sure we have emojis for all esprits in the database"""
-        # Get all unique esprit names
-        stmt = select(EspritBase.name).distinct() # type: ignore
-        result = await session.execute(stmt)
-        all_names = [row[0] for row in result]
-        
-        missing = []
-        for name in all_names:
-            if name.lower() not in self.emoji_cache:
-                missing.append(name)
-        
-        if missing:
-            logger.warning(f"Missing emojis for {len(missing)} esprits: {missing[:5]}...")
-        
-        return missing
+    async def setup_emoji_servers(self, server_ids: List[int]):
+        """Legacy method - setup emoji servers"""
+        self.set_emoji_servers(server_ids)
     
-    async def cleanup_unused_emojis(self):
-        """Remove emojis that don't correspond to any esprit"""
-        # Get all esprit names from database
-        async with DatabaseService.get_session() as session:
-            stmt = select(EspritBase.name).distinct() # type: ignore
-            result = await session.execute(stmt)
-            valid_names = {row[0].lower() for row in result}
-        
-        removed = 0
-        for server_id in self.emoji_servers:
-            guild = self.bot.get_guild(server_id)
-            if not guild:
-                continue
-            
-            for emoji in guild.emojis:
-                # Extract esprit name from emoji name
-                if emoji.name.startswith("e_"):
-                    esprit_name = emoji.name[2:].replace("_", " ")
-                    if esprit_name not in valid_names:
-                        await emoji.delete(reason="Esprit no longer exists")
-                        removed += 1
-                        
-                        # Remove from cache
-                        self.emoji_cache.pop(esprit_name, None)
-        
-        self.save_config()
-        logger.info(f"Cleaned up {removed} unused emojis")
-        return removed
+    async def upload_esprit_emoji(self, esprit_name: str, image_path: str) -> Optional[str]:
+        """Legacy method - upload single esprit emoji"""
+        return await self.upload_emoji_to_discord(esprit_name, image_path, f"Esprit emoji for {esprit_name}")
+    
+    async def bulk_upload_emojis(self, emoji_folder: str):
+        """Legacy method - bulk upload emojis"""
+        return await self.bulk_upload_from_directory(emoji_folder)
 
 
-# Singleton instance
-emoji_manager: Optional[EspritEmojiManager] = None
+def setup_emoji_manager(bot) -> EmojiStorageManager:
+    """Factory function to create emoji manager instance"""
+    return EmojiStorageManager(bot)
 
 
-def setup_emoji_manager(bot) -> EspritEmojiManager:
-    """Initialize the emoji manager"""
-    global emoji_manager
-    if not emoji_manager:
-        emoji_manager = EspritEmojiManager(bot)
-    return emoji_manager
-
-
-def get_emoji_manager() -> Optional[EspritEmojiManager]:
-    """Get the emoji manager instance"""
-    return emoji_manager
+# NOTE: Business logic for emoji management has been moved to appropriate services:
+# - EspritService: Determining which esprits need emojis
+# - DisplayService: Using emojis in Discord embeds and messages
+# - AdminService: Bulk emoji operations based on database state
+# - DatabaseSyncService: Syncing emojis with esprit database
