@@ -1,7 +1,7 @@
 # src/services/fusion_service.py
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
-from sqlalchemy import select, and_
+from typing import Dict, Any, Optional, List, Tuple
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm.attributes import flag_modified
 import random
 
@@ -40,7 +40,6 @@ class FusionResultDetermination:
 class FusionService(BaseService):
     """Esprit fusion system following Monster Warlord rules"""
     
-    
     @classmethod
     async def preview_fusion(cls, player_id: int, esprit1_id: int, esprit2_id: int, 
                            use_fragments: bool = False, fragments_amount: int = 0) -> ServiceResult[Dict[str, Any]]:
@@ -52,17 +51,17 @@ class FusionService(BaseService):
                 # Get both Esprits with their bases
                 stmt1 = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.id == esprit1_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit1_id,  # type: ignore
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 )
                 
                 stmt2 = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.id == esprit2_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit2_id,  # type: ignore
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 )
                 
@@ -82,35 +81,36 @@ class FusionService(BaseService):
                 if esprit1_id == esprit2_id:
                     raise ValueError("Cannot fuse an Esprit with itself")
                 
+                if esprit1.tier != esprit2.tier:
+                    raise ValueError("Esprits must be the same tier to fuse")
+                
                 # Calculate fusion cost
                 fusion_cost = cls._calculate_fusion_cost(esprit1.tier, esprit2.tier)
                 
                 # Get player for currency check
-                player_stmt = select(Player).where(Player.id == player_id)
+                player_stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 can_afford = player.jijies >= fusion_cost
                 
-                # Get possible fusion results
-                possible_tiers = get_fusion_result(esprit1.tier, esprit2.tier)
-                if not possible_tiers:
-                    raise ValueError("Invalid fusion combination")
+                # Get possible fusion results (tier + 1)
+                result_tier = esprit1.tier + 1
+                if result_tier > 18:  # Max tier cap
+                    raise ValueError("Cannot fuse - result would exceed maximum tier")
                 
-                # Get possible Esprits for each tier
-                possible_results = {}
-                for tier in possible_tiers:
-                    tier_stmt = select(EspritBase).where(EspritBase.base_tier == tier)
-                    tier_bases = (await session.execute(tier_stmt)).all()
-                    
-                    possible_results[tier] = [
-                        {
-                            "id": base.id, "name": base.name, "element": base.element,
-                            "tier": base.base_tier, "rarity": base.get_rarity_name(),
-                            "image_url": base.image_url, "element_emoji": base.get_element_emoji(),
-                            "base_power": base.get_base_power()
-                        }
-                        for base in tier_bases
-                    ]
+                # Get possible Esprits for result tier
+                tier_stmt = select(EspritBase).where(EspritBase.base_tier == result_tier)  # type: ignore
+                tier_bases = (await session.execute(tier_stmt)).scalars().all()
+                
+                possible_results = [
+                    {
+                        "id": base.id, "name": base.name, "element": base.element,
+                        "tier": base.base_tier, "rarity": base.get_rarity_name(),
+                        "image_url": base.image_url, "element_emoji": base.get_element_emoji(),
+                        "base_power": base.get_base_power()
+                    }
+                    for base in tier_bases
+                ]
                 
                 # Calculate success rates
                 base_success_rate = cls._calculate_success_rate(esprit1.tier, esprit2.tier)
@@ -121,7 +121,7 @@ class FusionService(BaseService):
                 fragment_cost_valid = True
                 if use_fragments:
                     tier_fragments = player.tier_fragments or {}
-                    available_fragments = tier_fragments.get(str(max(esprit1.tier, esprit2.tier)), 0)
+                    available_fragments = tier_fragments.get(str(esprit1.tier), 0)
                     fragment_cost_valid = available_fragments >= fragments_amount
                 
                 return {
@@ -136,16 +136,17 @@ class FusionService(BaseService):
                         "awakening_level": esprit2.awakening_level
                     },
                     "fusion_cost": fusion_cost, "can_afford": can_afford,
-                    "possible_results": possible_results, "success_rates": {
+                    "possible_results": possible_results, "result_tier": result_tier,
+                    "success_rates": {
                         "base_rate": base_success_rate, "fragment_bonus": fragment_bonus,
                         "total_rate": total_success_rate
                     },
                     "fragment_requirements": {
                         "using_fragments": use_fragments, "fragments_amount": fragments_amount,
                         "fragment_cost_valid": fragment_cost_valid,
-                        "required_tier": max(esprit1.tier, esprit2.tier) if use_fragments else None
+                        "required_tier": esprit1.tier if use_fragments else None
                     },
-                    "warnings": cls._get_fusion_warnings(esprit1, esprit2)
+                    "warnings": cls._get_fusion_warnings(esprit1, esprit2, base1, base2)
                 }
         return await cls._safe_execute(_operation, "preview fusion")
     
@@ -160,17 +161,17 @@ class FusionService(BaseService):
                 # Get both Esprits with their bases (with locks)
                 stmt1 = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.id == esprit1_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit1_id,  # type: ignore
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 ).with_for_update()
                 
                 stmt2 = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.id == esprit2_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit2_id,  # type: ignore
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 ).with_for_update()
                 
@@ -190,8 +191,15 @@ class FusionService(BaseService):
                 if esprit1_id == esprit2_id:
                     raise ValueError("Cannot fuse an Esprit with itself")
                 
+                if esprit1.tier != esprit2.tier:
+                    raise ValueError("Esprits must be the same tier to fuse")
+                
+                result_tier = esprit1.tier + 1
+                if result_tier > 18:
+                    raise ValueError("Cannot fuse - result would exceed maximum tier")
+                
                 # Get player (with lock for currency)
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 # Calculate and validate costs
@@ -204,7 +212,7 @@ class FusionService(BaseService):
                     if fragments_amount <= 0:
                         raise ValueError("Fragment amount must be positive when using fragments")
                     
-                    required_tier = str(max(esprit1.tier, esprit2.tier))
+                    required_tier = str(esprit1.tier)
                     tier_fragments = player.tier_fragments or {}
                     available = tier_fragments.get(required_tier, 0)
                     
@@ -212,8 +220,9 @@ class FusionService(BaseService):
                         raise ValueError(f"Insufficient tier {required_tier} fragments. Need {fragments_amount}, have {available}")
                     
                     # Consume fragments
-                    tier_fragments[required_tier] = available - fragments_amount
-                    player.tier_fragments = tier_fragments
+                    if player.tier_fragments is None:
+                        player.tier_fragments = {}
+                    player.tier_fragments[required_tier] = available - fragments_amount
                     flag_modified(player, "tier_fragments")
                 
                 # Consume currency
@@ -225,6 +234,12 @@ class FusionService(BaseService):
                 total_success_rate = min(base_success_rate + fragment_bonus, 100)
                 
                 fusion_successful = random.randint(1, 100) <= total_success_rate
+                
+                # Store input data before consuming
+                input_data = [
+                    {"name": base1.name, "tier": esprit1.tier, "element": esprit1.element},
+                    {"name": base2.name, "tier": esprit2.tier, "element": esprit2.element}
+                ]
                 
                 # Consume input Esprits
                 esprit1.quantity -= 1
@@ -239,40 +254,46 @@ class FusionService(BaseService):
                 result_data = {
                     "successful": fusion_successful, "fusion_cost": fusion_cost,
                     "fragments_used": fragments_amount if use_fragments else 0,
-                    "success_rate": total_success_rate,
-                    "input_esprits": [
-                        {"name": base1.name, "tier": esprit1.tier + 1, "element": esprit1.element},  # +1 because we consumed one
-                        {"name": base2.name, "tier": esprit2.tier + 1, "element": esprit2.element}
-                    ]
+                    "success_rate": total_success_rate, "input_esprits": input_data
                 }
                 
                 if fusion_successful:
-                    # Get possible results and select one
-                    possible_tiers = get_fusion_result(esprit1.tier, esprit2.tier)
-                    selected_tier = random.choice(possible_tiers)
-                    
-                    # Get all possible Esprits of that tier
-                    tier_stmt = select(EspritBase).where(EspritBase.base_tier == selected_tier)
-                    possible_bases = (await session.execute(tier_stmt)).all()
+                    # Get all possible Esprits of result tier
+                    tier_stmt = select(EspritBase).where(EspritBase.base_tier == result_tier)  # type: ignore
+                    possible_bases = (await session.execute(tier_stmt)).scalars().all()
                     
                     if not possible_bases:
-                        raise ValueError(f"No Esprits available for tier {selected_tier}")
+                        raise ValueError(f"No Esprits available for tier {result_tier}")
                     
                     result_base = random.choice(possible_bases)
+                    
+                    # Ensure result_base.id is not None
+                    if result_base.id is None:
+                        raise ValueError("Result EspritBase has no id")
                     
                     # Add result to collection using EspritService logic
                     from src.services.esprit_service import EspritService
                     add_result = await EspritService.add_to_collection(player_id, result_base.id, 1)
                     
-                    if not add_result.success:
+                    if not add_result.success or not add_result.data:
                         raise ValueError("Failed to add result Esprit to collection")
                     
                     result_data["result_esprit"] = {
                         "id": add_result.data["esprit_id"], "name": result_base.name,
                         "tier": result_base.base_tier, "element": result_base.element,
                         "rarity": result_base.get_rarity_name(), "image_url": result_base.image_url,
-                        "element_emoji": result_base.get_element_emoji(), "is_new_capture": add_result.data["is_new_capture"]
+                        "element_emoji": result_base.get_element_emoji(), 
+                        "is_new_capture": add_result.data["is_new_capture"]
                     }
+                else:
+                    # Handle failed fusion - maybe give fragments
+                    if player.tier_fragments is None:
+                        player.tier_fragments = {}
+                    failed_tier = str(esprit1.tier)
+                    fragment_reward = max(1, esprit1.tier // 2)  # Give some fragments back
+                    player.tier_fragments[failed_tier] = player.tier_fragments.get(failed_tier, 0) + fragment_reward
+                    flag_modified(player, "tier_fragments")
+                    result_data["consolation_fragments"] = {"tier": esprit1.tier, "amount": fragment_reward}
                 
                 # Update player stats
                 player.total_fusions += 1
@@ -285,8 +306,7 @@ class FusionService(BaseService):
                 
                 # Log the fusion
                 transaction_logger.log_transaction(player_id, TransactionType.FUSION_ATTEMPTED, {
-                    "esprit1": {"name": base1.name, "tier": esprit1.tier + 1, "element": esprit1.element},
-                    "esprit2": {"name": base2.name, "tier": esprit2.tier + 1, "element": esprit2.element},
+                    "esprit1": input_data[0], "esprit2": input_data[1],
                     "fusion_cost": fusion_cost, "fragments_used": fragments_amount,
                     "success_rate": total_success_rate, "successful": fusion_successful,
                     "result": result_data.get("result_esprit", {})
@@ -303,21 +323,24 @@ class FusionService(BaseService):
     async def get_fusion_rates(cls, tier1: int, tier2: int) -> ServiceResult[Dict[str, Any]]:
         """Get fusion success rates and possible results for tier combination"""
         async def _operation():
+            if tier1 != tier2:
+                raise ValueError("Fusion requires same tier Esprits")
+            
+            result_tier = tier1 + 1
+            if result_tier > 18:
+                raise ValueError("Result tier would exceed maximum")
+            
             # Check cache first
             cache_key = f"fusion_rates:{tier1}_{tier2}"
             cached = await CacheService.get(cache_key)
             if cached.success and cached.data:
                 return cached.data
             
-            possible_tiers = get_fusion_result(tier1, tier2)
-            if not possible_tiers:
-                raise ValueError(f"Invalid tier combination: {tier1} + {tier2}")
-            
             base_success_rate = cls._calculate_success_rate(tier1, tier2)
             fusion_cost = cls._calculate_fusion_cost(tier1, tier2)
             
             result = {
-                "input_tiers": [tier1, tier2], "possible_result_tiers": possible_tiers,
+                "input_tiers": [tier1, tier2], "result_tier": result_tier,
                 "base_success_rate": base_success_rate, "fusion_cost": fusion_cost,
                 "fragment_bonus_per_fragment": 10, "max_fragment_bonus": 100 - base_success_rate,
                 "fragments_for_guaranteed": max(0, (100 - base_success_rate + 9) // 10)  # Ceiling division
@@ -330,7 +353,7 @@ class FusionService(BaseService):
         return await cls._safe_execute(_operation, "get fusion rates")
     
     @classmethod
-    async def get_player_fusion_history(cls, player_id: int, limit: int = 10) -> ServiceResult[List[Dict[str, Any]]]:
+    async def get_player_fusion_history(cls, player_id: int, limit: int = 10) -> ServiceResult[Dict[str, Any]]:
         """Get player's recent fusion history"""
         async def _operation():
             cls._validate_player_id(player_id)
@@ -338,7 +361,7 @@ class FusionService(BaseService):
             # This would require implementing transaction log querying
             # For now, get from player stats
             async with DatabaseService.get_session() as session:
-                player_stmt = select(Player).where(Player.id == player_id)
+                player_stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 return {
@@ -374,21 +397,21 @@ class FusionService(BaseService):
         return max(5, min(95, success_rate))
     
     @classmethod
-    def _get_fusion_warnings(cls, esprit1: Esprit, esprit2: Esprit) -> List[str]:
+    def _get_fusion_warnings(cls, esprit1: Esprit, esprit2: Esprit, base1: EspritBase, base2: EspritBase) -> List[str]:
         """Generate warnings for fusion preview"""
         warnings = []
         
         if esprit1.awakening_level > 0:
-            warnings.append(f"{esprit1.esprit_base_id} has {esprit1.awakening_level} awakening stars that will be lost")
+            warnings.append(f"{base1.name} has {esprit1.awakening_level} awakening stars that will be lost")
         
         if esprit2.awakening_level > 0:
-            warnings.append(f"{esprit2.esprit_base_id} has {esprit2.awakening_level} awakening stars that will be lost")
+            warnings.append(f"{base2.name} has {esprit2.awakening_level} awakening stars that will be lost")
         
         if esprit1.quantity == 1:
-            warnings.append(f"This is your last copy of {esprit1.esprit_base_id}")
+            warnings.append(f"This is your last copy of {base1.name}")
         
         if esprit2.quantity == 1:
-            warnings.append(f"This is your last copy of {esprit2.esprit_base_id}")
+            warnings.append(f"This is your last copy of {base2.name}")
         
         return warnings
     
@@ -407,13 +430,8 @@ class FusionService(BaseService):
         async def _operation():
             same_element = element1.lower() == element2.lower()
             
-            # Get base success rate from Tiers
-            tier_data = Tiers.get(tier)
-            if same_element:
-                base_rate = tier_data.combine_success_rate if tier_data else 0.5
-            else:
-                # Cross-element fusion has reduced base rate
-                base_rate = Tiers.get_fusion_success_rate(tier, same_element=False)
+            # Get base success rate
+            base_rate = cls._calculate_success_rate(tier, tier) / 100.0  # Convert to decimal
             
             bonuses_applied = {}
             final_rate = base_rate
@@ -429,12 +447,14 @@ class FusionService(BaseService):
                 if element_bonus > 0:
                     bonuses_applied["element_bonus"] = element_bonus
                     final_rate = min(final_rate * (1 + element_bonus), 0.95)
-            
-            # Check if guaranteed (fragments used, etc.)
-            guaranteed = player_bonuses.get("guaranteed", False) if player_bonuses else False
-            if guaranteed:
-                final_rate = 1.0
-                bonuses_applied["guaranteed"] = 1.0
+                
+                # Check if guaranteed (fragments used, etc.)
+                guaranteed = bool(player_bonuses.get("guaranteed", False))
+                if guaranteed:
+                    final_rate = 1.0
+                    bonuses_applied["guaranteed"] = 1.0
+            else:
+                guaranteed = False
             
             return FusionProbabilityResult(
                 base_success_rate=base_rate,
@@ -542,9 +562,9 @@ class FusionService(BaseService):
             
             # Check if result tier would be valid
             result_tier = tier1 + 1
-            if not Tiers.is_valid(result_tier):
+            if result_tier > 18:  # Max tier
                 validation_result["compatible"] = False
-                validation_result["issues"].append(f"Result tier {result_tier} exceeds maximum tier {Tiers.MAX_TIER}")
+                validation_result["issues"].append(f"Result tier {result_tier} exceeds maximum tier 18")
                 return validation_result
             
             # Check element compatibility
@@ -586,25 +606,19 @@ class FusionService(BaseService):
                 "fragments_consumed": 0
             }
             
-            # Get base fusion cost from tier data
-            tier_data = Tiers.get(tier)
-            if tier_data:
-                costs["jijies"] = tier_data.combine_cost_jijies
+            # Get base fusion cost
+            costs["jijies"] = cls._calculate_fusion_cost(tier, tier)
             
             # Fragment costs for guaranteed success
             if use_fragments:
-                required_fragments = 10  # Standard fragment cost for guarantee
+                base_rate = cls._calculate_success_rate(tier, tier)
+                required_fragments = max(0, (100 - base_rate + 9) // 10)  # Ceiling division
                 costs["fragments_required"] = required_fragments
                 
                 if fragment_count >= required_fragments:
                     costs["fragments_consumed"] = required_fragments
                 else:
                     costs["fragments_consumed"] = 0  # Can't afford guarantee
-            
-            # Different element fusions might have additional costs in the future
-            if fusion_type == "different_element":
-                # Placeholder for potential cross-element penalties
-                pass
             
             return costs
         
@@ -628,17 +642,18 @@ class FusionService(BaseService):
             
             # Determine tier range to analyze
             start_tier = tier_range[0] if tier_range else 1
-            end_tier = tier_range[1] if tier_range else 18
+            end_tier = tier_range[1] if tier_range else 17  # Max fuseable tier
             
             # Collect tier-specific data
             for tier in range(start_tier, min(end_tier + 1, 18)):  # Cap at max tier
-                tier_data = Tiers.get(tier)
-                if tier_data:
-                    stats["tier_data"][tier] = {
-                        "base_success_rate": tier_data.combine_success_rate,
-                        "cost_jijies": tier_data.combine_cost_jijies,
-                        "cross_element_rate": Tiers.get_fusion_success_rate(tier, same_element=False)
-                    }
+                success_rate = cls._calculate_success_rate(tier, tier)
+                fusion_cost = cls._calculate_fusion_cost(tier, tier)
+                
+                stats["tier_data"][tier] = {
+                    "base_success_rate": success_rate,
+                    "cost_jijies": fusion_cost,
+                    "result_tier": tier + 1
+                }
             
             # Analyze element combinations
             elements = ["inferno", "verdant", "abyssal", "tempest", "umbral", "radiant"]
@@ -676,14 +691,14 @@ class FusionService(BaseService):
             probability_result = await cls.calculate_fusion_success_rate(
                 tier, element1, element2, player_bonuses
             )
-            if not probability_result.success:
+            if not probability_result.success or not probability_result.data:
                 raise ValueError("Failed to calculate fusion probability")
             
             success_rate = probability_result.data.final_success_rate
             
             # Determine possible results
             result_determination = await cls.determine_fusion_result(element1, element2, tier)
-            if not result_determination.success:
+            if not result_determination.success or not result_determination.data:
                 raise ValueError("Failed to determine fusion results")
             
             result_data = result_determination.data

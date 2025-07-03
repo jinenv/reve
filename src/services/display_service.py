@@ -1,8 +1,7 @@
-# Methods to ADD to src/services/display_service.py (or create if it doesn't exist)
-
+# src/services/display_service.py
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from src.services.base_service import BaseService, ServiceResult
 from src.services.cache_service import CacheService
@@ -43,6 +42,10 @@ class DisplayService(BaseService):
         Implements fallback hierarchy: custom → element → rarity → generic
         """
         async def _operation():
+            # Validate input
+            if not esprit_name or not isinstance(esprit_name, str):
+                raise ValueError("esprit_name must be a non-empty string")
+            
             if not emoji_manager:
                 return EmojiSelectionResult(
                     emoji="🔮",
@@ -50,8 +53,8 @@ class DisplayService(BaseService):
                     esprit_name=esprit_name
                 )
             
-            # Try custom emoji first
-            custom_emoji = emoji_manager.get_emoji(esprit_name, None)
+            # Try custom emoji first - fix the None argument issue
+            custom_emoji = emoji_manager.get_emoji(esprit_name, "🔮")  # Provide fallback string
             if custom_emoji and custom_emoji != "🔮":
                 return EmojiSelectionResult(
                     emoji=custom_emoji,
@@ -61,8 +64,10 @@ class DisplayService(BaseService):
             
             # Fall back to element-based emoji
             async with DatabaseService.get_session() as session:
-                stmt = select(EspritBase).where(EspritBase.name == esprit_name)
-                esprit_base = (await session.execute(stmt)).scalar_one_or_none()
+                # Use exact pattern from search_service.py
+                stmt = select(EspritBase).where(EspritBase.name.ilike(esprit_name))
+                result = await session.execute(stmt)
+                esprit_base = result.scalar_one_or_none()
                 
                 if esprit_base:
                     # Element-based fallback
@@ -113,11 +118,16 @@ class DisplayService(BaseService):
         Identifies missing emojis and optionally uploads them.
         """
         async def _operation():
-            # Get all unique esprit names from database
+            # Validate inputs
+            if not emoji_manager:
+                raise ValueError("emoji_manager is required")
+            
+            # Get all unique esprit names from database - use exact pattern from search_service.py
             async with DatabaseService.get_session() as session:
-                stmt = select(EspritBase.name).distinct()
+                stmt = select(EspritBase)
                 result = await session.execute(stmt)
-                all_esprit_names = [row[0] for row in result]
+                all_esprits = result.scalars().all()
+                all_esprit_names = [esprit.name for esprit in all_esprits]
             
             # Find missing emojis
             missing_emojis = []
@@ -183,6 +193,14 @@ class DisplayService(BaseService):
         Operations: 'upload', 'cleanup', 'validate'
         """
         async def _operation():
+            # Validate inputs
+            if not emoji_manager:
+                raise ValueError("emoji_manager is required")
+            if not operation:
+                raise ValueError("operation is required")
+            if not criteria:
+                raise ValueError("criteria is required")
+            
             if operation == "upload":
                 directory = criteria.get("directory")
                 if not directory:
@@ -218,7 +236,7 @@ class DisplayService(BaseService):
                 # This would implement cleanup logic
                 # For now, just return what would be cleaned
                 sync_result = await cls.sync_emojis_with_database(emoji_manager)
-                if sync_result.success:
+                if sync_result.success and sync_result.data:  # Fix None access issue
                     return {
                         "operation": "cleanup",
                         "would_clean": sync_result.data.cleaned_count,
@@ -242,6 +260,10 @@ class DisplayService(BaseService):
     ) -> ServiceResult[str]:
         """Format esprit name for display with appropriate emoji"""
         async def _operation():
+            # Validate input
+            if not esprit_name or not isinstance(esprit_name, str):
+                raise ValueError("esprit_name must be a non-empty string")
+            
             if not include_emoji:
                 return esprit_name
             
@@ -249,7 +271,7 @@ class DisplayService(BaseService):
                 emoji_result = await cls.select_appropriate_emoji(
                     esprit_name, context, emoji_manager
                 )
-                if emoji_result.success:
+                if emoji_result.success and emoji_result.data:  # Fix None access issue
                     return f"{emoji_result.data.emoji} {esprit_name}"
             
             # Fallback without emoji manager
@@ -264,11 +286,16 @@ class DisplayService(BaseService):
     ) -> ServiceResult[Dict[str, Any]]:
         """Get comprehensive emoji usage statistics"""
         async def _operation():
-            # Get database stats
+            # Validate input
+            if not emoji_manager:
+                raise ValueError("emoji_manager is required")
+            
+            # Get database stats - use exact pattern from search_service.py
             async with DatabaseService.get_session() as session:
-                stmt = select(EspritBase.name).distinct()
+                stmt = select(EspritBase)
                 result = await session.execute(stmt)
-                total_esprits = len(list(result))
+                all_esprits = result.scalars().all()
+                total_esprits = len(all_esprits)
             
             # Get emoji manager stats
             cached_emojis = len(emoji_manager.get_all_cached_emojis())
@@ -276,7 +303,7 @@ class DisplayService(BaseService):
             server_info = emoji_manager.get_server_emoji_info()
             
             # Calculate coverage
-            coverage_percent = (cached_emojis / total_esprits * 100) if total_esprits > 0 else 0
+            coverage_percent = (cached_emojis / total_esprits * 100) if total_esprits and total_esprits > 0 else 0
             
             return {
                 "total_esprits": total_esprits,

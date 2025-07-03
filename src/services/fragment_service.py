@@ -23,7 +23,7 @@ class FragmentService(BaseService):
                 raise ValueError("Tier must be between 1 and 18")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.tier_fragments is None:
@@ -55,7 +55,7 @@ class FragmentService(BaseService):
                 raise ValueError("Tier must be between 1 and 18")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 tier_str = str(tier)
@@ -92,7 +92,7 @@ class FragmentService(BaseService):
                 raise ValueError(f"Invalid element. Must be one of: {valid_elements}")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.element_fragments is None:
@@ -125,7 +125,7 @@ class FragmentService(BaseService):
                 raise ValueError(f"Invalid element. Must be one of: {valid_elements}")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 current = player.element_fragments.get(element_key, 0) if player.element_fragments else 0
@@ -155,7 +155,7 @@ class FragmentService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 tier_total = sum(player.tier_fragments.values()) if player.tier_fragments else 0
@@ -211,7 +211,7 @@ class FragmentService(BaseService):
                 raise ValueError(f"Invalid element. Must be one of: {valid_elements}")
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 # Get crafting costs

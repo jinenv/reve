@@ -22,13 +22,11 @@ class AwakeningService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Esprit, EspritBase).where(
-                    and_(
-                        Esprit.id == esprit_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
-                    )
-                )
+                # Use individual WHERE clauses instead of and_()
+                stmt = (select(Esprit, EspritBase)
+                       .where(Esprit.id == esprit_id)  # type: ignore
+                       .where(Esprit.owner_id == player_id)  # type: ignore
+                       .where(Esprit.esprit_base_id == EspritBase.id))  # type: ignore
                 
                 result = (await session.execute(stmt)).first()
                 if not result:
@@ -95,13 +93,12 @@ class AwakeningService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Esprit, EspritBase).where(
-                    and_(
-                        Esprit.id == esprit_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
-                    )
-                ).with_for_update()
+                # Use individual WHERE clauses instead of and_()
+                stmt = (select(Esprit, EspritBase)
+                       .where(Esprit.id == esprit_id)  # type: ignore
+                       .where(Esprit.owner_id == player_id)  # type: ignore  
+                       .where(Esprit.esprit_base_id == EspritBase.id)  # type: ignore
+                       .with_for_update())
                 
                 result = (await session.execute(stmt)).first()
                 if not result:
@@ -137,7 +134,7 @@ class AwakeningService(BaseService):
                 }
                 
                 # Update player stats
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 player.total_awakenings += 1
                 player.update_activity()
@@ -145,7 +142,7 @@ class AwakeningService(BaseService):
                 await session.commit()
                 
                 # Log the awakening
-                transaction_logger.log_transaction(player_id, TransactionType.AWAKENING_PERFORMED, {
+                transaction_logger.log_transaction(player_id, TransactionType.ESPRIT_AWAKENED, {
                     "esprit_name": base.name, "esprit_id": esprit.id,
                     "old_awakening": old_awakening, "new_awakening": esprit.awakening_level,
                     "copies_consumed": copies_consumed, "remaining_copies": esprit.quantity,
@@ -153,7 +150,7 @@ class AwakeningService(BaseService):
                 })
                 
                 # Invalidate caches
-                await CacheService.invalidate_player_power(player_id)
+                await CacheService.invalidate_player_cache(player_id)
                 
                 return {
                     "esprit_info": {
@@ -179,13 +176,12 @@ class AwakeningService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Esprit, EspritBase).where(
-                    and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.awakening_level < 5,  # Not at max level
-                        Esprit.esprit_base_id == EspritBase.id
-                    )
-                ).order_by(Esprit.tier.desc(), Esprit.awakening_level.desc(), EspritBase.name)
+                # Use individual WHERE clauses instead of and_()
+                stmt = (select(Esprit, EspritBase)
+                       .where(Esprit.owner_id == player_id)  # type: ignore
+                       .where(Esprit.awakening_level < 5)  # type: ignore  # Not at max level
+                       .where(Esprit.esprit_base_id == EspritBase.id)  # type: ignore
+                       .order_by(Esprit.tier.desc(), Esprit.awakening_level.desc(), EspritBase.name))
                 
                 results = (await session.execute(stmt)).all()
                 
@@ -234,19 +230,15 @@ class AwakeningService(BaseService):
             
             async with DatabaseService.get_session() as session:
                 # Get player stats
-                player_stmt = select(Player).where(Player.id == player_id)
+                player_stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 # Get awakened Esprit counts by star level
-                awakened_stmt = select(
-                    Esprit.awakening_level,
-                    func.count().label('count')
-                ).where(
-                    and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.awakening_level > 0
-                    )
-                ).group_by(Esprit.awakening_level).order_by(Esprit.awakening_level)
+                awakened_stmt = (select(Esprit.awakening_level, func.count().label('count'))  # type: ignore
+                               .where(Esprit.owner_id == player_id)  # type: ignore
+                               .where(Esprit.awakening_level > 0)  # type: ignore
+                               .group_by(Esprit.awakening_level)
+                               .order_by(Esprit.awakening_level))
                 
                 awakened_results = (await session.execute(awakened_stmt)).all()
                 awakened_by_stars = {
@@ -258,32 +250,33 @@ class AwakeningService(BaseService):
                 total_stmt = select(
                     func.count().label('total'),
                     func.sum(func.case((Esprit.awakening_level > 0, 1), else_=0)).label('awakened')
-                ).where(Esprit.owner_id == player_id)
+                ).where(Esprit.owner_id == player_id)  # type: ignore
                 
                 total_result = (await session.execute(total_stmt)).first()
                 total_esprits = total_result.total if total_result else 0
                 total_awakened = total_result.awakened if total_result else 0
                 
-                # Get highest awakening level
-                max_awakening_stmt = select(
-                    func.max(Esprit.awakening_level).label('max_awakening'),
-                    func.count().label('max_count')
-                ).where(
-                    and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.awakening_level == select(func.max(Esprit.awakening_level)).where(Esprit.owner_id == player_id).scalar_subquery()
-                    )
-                )
+                # Get highest awakening level - simplified query
+                max_level_stmt = (select(func.max(Esprit.awakening_level).label('max_level'))
+                                .where(Esprit.owner_id == player_id))  # type: ignore
                 
-                max_result = (await session.execute(max_awakening_stmt)).first()
-                max_awakening_level = max_result.max_awakening if max_result else 0
-                max_awakening_count = max_result.max_count if max_result else 0
+                max_level_result = (await session.execute(max_level_stmt)).scalar()
+                max_awakening_level = max_level_result if max_level_result else 0
+                
+                # Count how many have max level
+                if max_awakening_level > 0:
+                    max_count_stmt = (select(func.count())
+                                    .where(Esprit.owner_id == player_id)  # type: ignore
+                                    .where(Esprit.awakening_level == max_awakening_level))  # type: ignore
+                    max_awakening_count = (await session.execute(max_count_stmt)).scalar() or 0
+                else:
+                    max_awakening_count = 0
                 
                 # Calculate awakening rate
                 awakening_rate = round((total_awakened / max(total_esprits, 1)) * 100, 1)
                 
                 return {
-                    "total_awakenings_performed": player.total_awakenings,
+                    "total_awakenings_performed": getattr(player, 'total_awakenings', 0),
                     "total_esprits": total_esprits, "total_awakened": total_awakened,
                     "unawakened": total_esprits - total_awakened, "awakening_rate": awakening_rate,
                     "awakened_by_stars": awakened_by_stars,
@@ -294,7 +287,7 @@ class AwakeningService(BaseService):
                     "achievements": {
                         "has_5_star": max_awakening_level >= 5,
                         "has_multiple_5_star": max_awakening_level >= 5 and max_awakening_count > 1,
-                        "awakening_master": player.total_awakenings >= 100
+                        "awakening_master": getattr(player, 'total_awakenings', 0) >= 100
                     }
                 }
         return await cls._safe_execute(_operation, "get awakening statistics")
@@ -314,13 +307,11 @@ class AwakeningService(BaseService):
                 total_power_gain = 0
                 
                 for esprit_id in esprit_ids:
-                    stmt = select(Esprit, EspritBase).where(
-                        and_(
-                            Esprit.id == esprit_id,
-                            Esprit.owner_id == player_id,
-                            Esprit.esprit_base_id == EspritBase.id
-                        )
-                    )
+                    # Use individual WHERE clauses instead of and_()
+                    stmt = (select(Esprit, EspritBase)
+                           .where(Esprit.id == esprit_id)  # type: ignore
+                           .where(Esprit.owner_id == player_id)  # type: ignore
+                           .where(Esprit.esprit_base_id == EspritBase.id))  # type: ignore
                     
                     result = (await session.execute(stmt)).first()
                     if not result:
@@ -348,6 +339,16 @@ class AwakeningService(BaseService):
                         
                         previews.append({
                             "esprit_id": esprit.id, "name": base.name,
+                            "current_awakening": esprit.awakening_level, "target_awakening": next_awakening,
+                            "copies_needed": copies_needed, "power_gain": power_gain,
+                            "can_awaken": True
+                        })
+                        
+                        total_copies_needed += copies_needed
+                        total_power_gain += power_gain
+                    else:
+                        previews.append({
+                            "esprit_id": esprit.id, "name": base.name,
                             "current_awakening": esprit.awakening_level,
                             "reason_cannot_awaken": "Maximum level" if esprit.awakening_level >= 5 else "Insufficient copies",
                             "copies_needed": awakening_cost["copies_needed"], "copies_available": esprit.quantity,
@@ -355,9 +356,12 @@ class AwakeningService(BaseService):
                         })
                 
                 return {
-                    "previews": previews, "summary": {
-                        "total_esprits": len(esprit_ids), "can_awaken_count": len([p for p in previews if p["can_awaken"]]),
-                        "total_copies_needed": total_copies_needed, "total_power_gain": total_power_gain,
+                    "previews": previews, 
+                    "summary": {
+                        "total_esprits": len(esprit_ids), 
+                        "can_awaken_count": len([p for p in previews if p["can_awaken"]]),
+                        "total_copies_needed": total_copies_needed, 
+                        "total_power_gain": total_power_gain,
                         "average_power_gain": round(total_power_gain / max(len([p for p in previews if p["can_awaken"]]), 1), 1)
                     }
                 }
@@ -379,13 +383,10 @@ class AwakeningService(BaseService):
             warnings.append("This will max out the Esprit at 5 stars")
         
         return warnings
-                            "current_awakening": esprit.awakening_level, "target_awakening": next_awakening,
-                            "copies_needed": copies_needed, "power_gain": power_gain,
-                            "can_awaken": True
-                        })
-                        
-                        total_copies_needed += copies_needed
-                        total_power_gain += power_gain
-                    else:
-                        previews.append({
-                            "esprit_id": esprit.id, "name": base.name,
+    
+    # Add missing validation methods
+    @staticmethod
+    def _validate_player_id(player_id: Any) -> None:
+        """Validate player ID parameter"""
+        if not isinstance(player_id, int) or player_id <= 0:
+            raise ValueError("Invalid player ID")

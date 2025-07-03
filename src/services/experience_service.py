@@ -17,8 +17,11 @@ class ExperienceService(BaseService):
     @classmethod
     async def add_experience(cls, player_id: int, amount: int, source: str) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            cls._validate_player_id(player_id)
+            cls._validate_positive_int(amount, "amount")
+            
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 old_level = player.level
@@ -89,12 +92,15 @@ class ExperienceService(BaseService):
     @classmethod
     async def allocate_skill_points(cls, player_id: int, skill: str, points: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            cls._validate_player_id(player_id)
+            cls._validate_positive_int(points, "points")
+            
             valid_skills = ["energy", "stamina", "attack", "defense"]
             if skill not in valid_skills:
                 raise ValueError(f"Invalid skill. Must be one of: {valid_skills}")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.skill_points < points:
@@ -132,8 +138,11 @@ class ExperienceService(BaseService):
     @classmethod
     async def reset_skill_points(cls, player_id: int, cost: int = 100) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            cls._validate_player_id(player_id)
+            cls._validate_positive_int(cost, "cost")
+            
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 points_to_restore = sum(player.allocated_skills.values())
@@ -175,8 +184,10 @@ class ExperienceService(BaseService):
     @classmethod
     async def get_level_progress(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            cls._validate_player_id(player_id)
+            
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 xp_for_next = player.xp_for_next_level()

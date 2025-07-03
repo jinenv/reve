@@ -17,8 +17,11 @@ class EchoService(BaseService):
     @classmethod
     async def can_claim_daily_echo(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            # Validate player_id
+            cls._validate_player_id(player_id)
+            
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 today = date.today()
@@ -36,8 +39,11 @@ class EchoService(BaseService):
     @classmethod
     async def claim_daily_echo(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            # Validate player_id
+            cls._validate_player_id(player_id)
+            
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 today = date.today()
@@ -73,12 +79,17 @@ class EchoService(BaseService):
     @classmethod
     async def open_echo(cls, player_id: int, echo_type: str, use_echo_key: bool = False) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            # Validate inputs
+            cls._validate_player_id(player_id)
+            if not echo_type or not isinstance(echo_type, str):
+                raise ValueError("echo_type must be a non-empty string")
+            
             valid_types = ["faded_echo", "vivid_echo", "brilliant_echo"]
             if echo_type not in valid_types:
                 raise ValueError(f"Invalid echo type. Must be one of: {valid_types}")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.inventory is None or player.inventory.get(echo_type, 0) == 0:
@@ -100,7 +111,11 @@ class EchoService(BaseService):
                 if echo_result is None:
                     raise ValueError("Echo opening failed")
                 
-                _, selected_base, selected_tier = echo_result
+                # Handle potential tuple unpacking safely
+                if len(echo_result) >= 3:
+                    _, selected_base, selected_tier = echo_result[0], echo_result[1], echo_result[2]
+                else:
+                    raise ValueError("Invalid echo result format")
                 
                 # Consume echo/key
                 if not use_echo_key:
@@ -126,12 +141,15 @@ class EchoService(BaseService):
                     "result_tier": selected_tier, "result_element": selected_base.element
                 })
                 
+                # Safely access add_result.data
+                esprit_data = add_result.data if add_result.data else {}
+                
                 return {
                     "echo_type": echo_type, "echo_key_used": use_echo_key,
                     "esprit_received": {
-                        "id": add_result.data["esprit_id"], "name": selected_base.name,
+                        "id": esprit_data.get("esprit_id"), "name": selected_base.name,
                         "tier": selected_tier, "element": selected_base.element,
-                        "rarity": selected_base.rarity, "description": selected_base.description
+                        "rarity": selected_base.get_rarity_name(), "description": selected_base.description
                     },
                     "remaining_echoes": player.inventory.get(echo_type, 0),
                     "remaining_keys": player.inventory.get("echo_key", 0),
@@ -142,8 +160,11 @@ class EchoService(BaseService):
     @classmethod
     async def get_echo_inventory(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
+            # Validate player_id
+            cls._validate_player_id(player_id)
+            
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 inventory = player.inventory or {}

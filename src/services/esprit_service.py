@@ -1,5 +1,6 @@
 # src/services/esprit_service.py
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -26,14 +27,14 @@ class EspritService(BaseService):
             
             async with DatabaseService.get_transaction() as session:
                 # Get the EspritBase
-                base_stmt = select(EspritBase).where(EspritBase.id == esprit_base_id)
+                base_stmt = select(EspritBase).where(EspritBase.id == esprit_base_id)  # type: ignore
                 base = (await session.execute(base_stmt)).scalar_one()
                 
                 # Check if player already owns this Esprit type
                 existing_stmt = select(Esprit).where(
                     and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == esprit_base_id
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == esprit_base_id  # type: ignore
                     )
                 ).with_for_update()
                 
@@ -65,7 +66,7 @@ class EspritService(BaseService):
                     is_new = True
                 
                 # Update player statistics
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 player.update_activity()
                 
@@ -100,9 +101,9 @@ class EspritService(BaseService):
             async with DatabaseService.get_session() as session:
                 stmt = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.id == esprit_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit_id,  # type: ignore
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 )
                 
@@ -148,16 +149,16 @@ class EspritService(BaseService):
             async with DatabaseService.get_session() as session:
                 stmt = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 )
                 
                 # Apply filters
                 if element_filter:
-                    stmt = stmt.where(Esprit.element.ilike(f"%{element_filter}%"))
+                    stmt = stmt.where(Esprit.element.ilike(f"%{element_filter}%"))  # type: ignore
                 if tier_filter:
-                    stmt = stmt.where(Esprit.tier == tier_filter)
+                    stmt = stmt.where(Esprit.tier == tier_filter)  # type: ignore
                 
                 # Apply sorting
                 if sort_by == "tier":
@@ -175,25 +176,14 @@ class EspritService(BaseService):
                     stmt = stmt.order_by((EspritBase.base_atk + EspritBase.base_def + EspritBase.base_hp).desc())
                 
                 # Get total count for pagination
-                count_stmt = select(func.count()).select_from(
-                    select(Esprit.id).where(
-                        and_(
-                            Esprit.owner_id == player_id,
-                            Esprit.esprit_base_id == EspritBase.id
-                        )
-                    ).subquery()
-                )
+                count_stmt = select(func.count(Esprit.id)).where(Esprit.owner_id == player_id)  # type: ignore
                 
-                if element_filter or tier_filter:
-                    # Rebuild count query with filters
-                    count_base = select(Esprit.id).where(Esprit.owner_id == player_id)
-                    if element_filter:
-                        count_base = count_base.where(Esprit.element.ilike(f"%{element_filter}%"))
-                    if tier_filter:
-                        count_base = count_base.where(Esprit.tier == tier_filter)
-                    count_stmt = select(func.count()).select_from(count_base.subquery())
+                if element_filter:
+                    count_stmt = count_stmt.where(Esprit.element.ilike(f"%{element_filter}%"))  # type: ignore
+                if tier_filter:
+                    count_stmt = count_stmt.where(Esprit.tier == tier_filter)  # type: ignore
                 
-                total_count = (await session.execute(count_stmt)).scalar()
+                total_count = (await session.execute(count_stmt)).scalar() or 0
                 
                 # Apply pagination
                 offset = (page - 1) * per_page
@@ -240,14 +230,14 @@ class EspritService(BaseService):
             
             async with DatabaseService.get_session() as session:
                 # Get player for skill bonuses
-                player_stmt = select(Player).where(Player.id == player_id)
+                player_stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 # Get all player's Esprits with their bases
                 esprits_stmt = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 )
                 esprit_results = (await session.execute(esprits_stmt)).all()
@@ -335,9 +325,9 @@ class EspritService(BaseService):
             async with DatabaseService.get_session() as session:
                 # Total unique and quantity
                 total_stmt = select(
-                    func.count(Esprit.id).label('unique_count'),
-                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
-                ).where(Esprit.owner_id == player_id)
+                    func.count(Esprit.id).label('unique_count'),  # type: ignore
+                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')  # type: ignore
+                ).where(Esprit.owner_id == player_id)  # type: ignore
                 
                 total_result = (await session.execute(total_stmt)).first()
                 unique_count = total_result.unique_count if total_result else 0
@@ -345,10 +335,10 @@ class EspritService(BaseService):
                 
                 # By element
                 element_stmt = select(
-                    Esprit.element,
-                    func.count().label('unique_count'),
-                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
-                ).where(Esprit.owner_id == player_id).group_by(Esprit.element)
+                    Esprit.element,  # type: ignore
+                    func.count().label('unique_count'),  # type: ignore
+                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')  # type: ignore
+                ).where(Esprit.owner_id == player_id).group_by(Esprit.element)  # type: ignore
                 
                 element_results = (await session.execute(element_stmt)).all()
                 element_stats = {
@@ -358,10 +348,10 @@ class EspritService(BaseService):
                 
                 # By tier
                 tier_stmt = select(
-                    Esprit.tier,
-                    func.count().label('unique_count'),
-                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
-                ).where(Esprit.owner_id == player_id).group_by(Esprit.tier).order_by(Esprit.tier)
+                    Esprit.tier,  # type: ignore
+                    func.count().label('unique_count'),  # type: ignore
+                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')  # type: ignore
+                ).where(Esprit.owner_id == player_id).group_by(Esprit.tier).order_by(Esprit.tier)  # type: ignore
                 
                 tier_results = (await session.execute(tier_stmt)).all()
                 tier_stats = {
@@ -371,13 +361,13 @@ class EspritService(BaseService):
                 
                 # Awakened stacks
                 awakened_stmt = select(
-                    Esprit.awakening_level,
-                    func.count().label('stack_count'),
-                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')
+                    Esprit.awakening_level,  # type: ignore
+                    func.count().label('stack_count'),  # type: ignore
+                    func.coalesce(func.sum(Esprit.quantity), 0).label('total_quantity')  # type: ignore
                 ).where(
                     and_(
-                        Esprit.owner_id == player_id,
-                        Esprit.awakening_level > 0
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.awakening_level > 0  # type: ignore
                     )
                 ).group_by(Esprit.awakening_level)
                 
@@ -411,9 +401,9 @@ class EspritService(BaseService):
             async with DatabaseService.get_transaction() as session:
                 stmt = select(Esprit, EspritBase).where(
                     and_(
-                        Esprit.id == esprit_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit_id,  # type: ignore
+                        Esprit.owner_id == player_id,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                 ).with_for_update()
                 
@@ -437,7 +427,7 @@ class EspritService(BaseService):
                     stack_deleted = True
                 
                 # Update player activity
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 player.update_activity()
                 

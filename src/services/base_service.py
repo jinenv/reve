@@ -52,24 +52,10 @@ class BaseService(ABC):
         return error_msg
     
     @staticmethod
-    async def _safe_execute(operation, context: str = "") -> ServiceResult:
-        """Safely execute an operation with standardized error handling"""
-        try:
-            result = await operation()
-            return ServiceResult.success_result(result)
-        except ValueError as e:
-            # User-facing validation errors
-            logger.warning(f"Validation error in {context}: {e}")
-            return ServiceResult.error_result(str(e))
-        except Exception as e:
-            logger.error(f"Service error in {context}: {e}", exc_info=True)
-            return ServiceResult.error_result(BaseService._format_error(e, context))
-    
-    @staticmethod
-    def _validate_positive_int(value: int, field_name: str) -> bool:
-        """Validate positive integer"""
+    def _validate_non_negative_int_old(value: int, field_name: str) -> bool:
+        """Validate non-negative integer (legacy)"""
         if not isinstance(value, int) or value < 0:
-            raise ValueError(f"{field_name} must be a positive integer")
+            raise ValueError(f"{field_name} must be a non-negative integer")
         return True
     
     @staticmethod
@@ -80,14 +66,7 @@ class BaseService(ABC):
         if amount > 999999999:  # Reasonable limit
             raise ValueError(f"{currency_type} amount is too large")
         return True
-    
-    @staticmethod
-    def _validate_player_id(player_id: int) -> bool:
-        """Validate player ID"""
-        if not isinstance(player_id, int) or player_id <= 0:
-            raise ValueError("Invalid player ID")
-        return True
-    
+        
     @staticmethod
     def _validate_discord_id(discord_id: int) -> bool:
         """Validate Discord user ID"""
@@ -115,3 +94,39 @@ class BaseService(ABC):
     def _days_between(date1: datetime, date2: datetime) -> int:
         """Calculate days between two dates"""
         return abs((date1.date() - date2.date()).days)
+    
+    @staticmethod
+    def _validate_player_id(player_id: Any) -> None:
+        """Validate player ID parameter"""
+        if not isinstance(player_id, int) or player_id <= 0:
+            raise ValueError("Invalid player ID")
+    
+    @staticmethod
+    def _validate_positive_int(value: Any, field_name: str) -> None:
+        """Validate positive integer parameter"""
+        if not isinstance(value, int) or value <= 0:
+            raise ValueError(f"{field_name} must be a positive integer")
+    
+    @staticmethod
+    def _validate_non_negative_int(value: Any, field_name: str) -> None:
+        """Validate non-negative integer parameter"""
+        if not isinstance(value, int) or value < 0:
+            raise ValueError(f"{field_name} must be a non-negative integer")
+    
+    @staticmethod
+    def _validate_string(value: Any, field_name: str, min_length: int = 1) -> None:
+        """Validate string parameter"""
+        if not isinstance(value, str) or len(value.strip()) < min_length:
+            raise ValueError(f"{field_name} must be a valid string")
+    
+    @classmethod
+    async def _safe_execute(cls, operation, description: str = "operation"):
+        """Execute operation with standardized error handling"""
+        try:
+            result = await operation()
+            return ServiceResult.success_result(result)
+        except ValueError as e:
+            return ServiceResult.error_result(str(e))
+        except Exception as e:
+            error_msg = cls._format_error(e, description)
+            return ServiceResult.error_result(error_msg)
