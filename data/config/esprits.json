@@ -8,7 +8,7 @@
       "base_atk": 25,
       "base_def": 2,
       "base_hp": 9,
-      "description": "A bouncy little fire spirit that leaves tiny scorch marks everywhere it goes. Gets excited easily.",
+      "description": "A bouncy fire spirit born from dying embers. Still warm to the touch, though the flame it remembers has long since been extinguished.",
       "image_url": "/assets/esprits/common/blazeblob.png",
       "portrait_url": "/assets/portraits/common/blazeblob_portrait.png",
       "abilities": null
@@ -21,7 +21,7 @@
       "base_atk": 11,
       "base_def": 4,
       "base_hp": 22,
-      "description": "A chubby water blob that wiggles when happy. Makes splash sounds when poked.",
+      "description": "A chubby water blob that weeps constantly, though it seems quite content. Its tears taste of salt from seas that no longer exist.",
       "image_url": "/assets/esprits/common/droozle.png",
       "portrait_url": "/assets/portraits/common/droozle_portrait.png",
       "abilities": null
@@ -34,7 +34,7 @@
       "base_atk": 26,
       "base_def": 1,
       "base_hp": 6,
-      "description": "A shadowy blob that giggles softly in dark corners. Probably harmless. Probably.",
+      "description": "A shadowy blob that giggles in empty rooms. Sometimes, if you listen closely, the laughter sounds like it's coming from somewhere else entirely.",
       "image_url": "/assets/esprits/common/gloomb.png",
       "portrait_url": "/assets/portraits/common/gloomb_portrait.png",
       "abilities": null
@@ -47,7 +47,7 @@
       "base_atk": 12,
       "base_def": 6,
       "base_hp": 17,
-      "description": "A sleepy moss mound that grows tiny leaves when content. Moves very, very slowly.",
+      "description": "A sleepy moss mound that grows tiny flowers when dreams. The petals fall upward, as if remembering a different sky.",
       "image_url": "/assets/esprits/common/muddroot.png",
       "portrait_url": "/assets/portraits/common/muddroot_portrait.png",
       "abilities": null
@@ -60,7 +60,7 @@
       "base_atk": 9,
       "base_def": 4,
       "base_hp": 25,
-      "description": "A gentle glowing spirit that smells like vanilla and starlight. Warm to the touch.",
+      "description": "A gentle spirit that smells of vanilla and old prayers. Its light never quite reaches the corners, as if afraid of what it might illuminate.",
       "image_url": "/assets/esprits/common/shynix.png",
       "portrait_url": "/assets/portraits/common/shynix_portrait.png",
       "abilities": null
@@ -73,7 +73,7 @@
       "base_atk": 22,
       "base_def": 4,
       "base_hp": 13,
-      "description": "A wobbly air spirit that never stops moving. Bounces across water and rides wind currents for fun.",
+      "description": "A restless air spirit that bounces endlessly across water. It cannot stop moving, for stillness brings back the memory of the great calm.",
       "image_url": "/assets/esprits/common/jelune.png",
       "portrait_url": "/assets/portraits/common/jelune_portrait.png",
       "abilities": null
@@ -86,7 +86,7 @@
       "base_atk": 28,
       "base_def": 2,
       "base_hp": 10,
-      "description": "A fierce little cyclops whose single eye burns with determination. Despite its small size, it practices intimidating poses in mirrors.",
+      "description": "A tiny cyclops whose burning eye holds fragments of a greater vision. Practices battle stances taught by shadows that no longer cast them.",
       "image_url": "/assets/esprits/common/emberjaw.png",
       "portrait_url": "/assets/portraits/common/emberjaw_portrait.png",
       "abilities": null
@@ -99,7 +99,7 @@
       "base_atk": 15,
       "base_def": 8,
       "base_hp": 32,
-      "description": "A crystalline ice cyclops that clinks softly when it walks. Its spiky exterior hides a surprisingly gentle nature - it apologizes when it accidentally freezes things.",
+      "description": "An ice cyclops whose crystalline hide rings like bells when struck. Apologizes constantly, though none recall what sin it seeks forgiveness for.",
       "image_url": "/assets/esprits/common/crysthide.png",
       "portrait_url": "/assets/portraits/common/crysthide_portrait.png",
       "abilities": null
@@ -112,7 +112,7 @@
       "base_atk": 13,
       "base_def": 6,
       "base_hp": 16,
-      "description": "A sturdy earth cyclops with bark-like skin and tiny mushrooms growing on its shoulders. Moves slowly but never gives up, even when everyone else has gone home.",
+      "description": "A patient earth cyclops whose mushroom crown grows from soil of the first garden. Moves slowly, as if carrying the weight of every step before.",
       "image_url": "/assets/esprits/common/boulderback.png",
       "portrait_url": "/assets/portraits/common/boulderback_portrait.png",
       "abilities": null
@@ -125,7 +125,7 @@
       "base_atk": 23,
       "base_def": 4,
       "base_hp": 18,
-      "description": "A wispy air cyclops that's constantly surrounded by gentle breezes. Has trouble sitting still and occasionally floats when excited.",
+      "description": "A wispy cyclops surrounded by gentle breezes that whisper in languages long forgotten. Floats when excited, remembering when all things were weightless.",
       "image_url": "/assets/esprits/common/mistral.png",
       "portrait_url": "/assets/portraits/common/mistral_portrait.png",
       "abilities": null
@@ -138,7 +138,7 @@
       "base_atk": 18,
       "base_def": 9,
       "base_hp": 25,
-      "description": "A moss-covered cyclops whose eye gem glows with forest light. Tiny flowers bloom wherever it steps, and it hums to help plants grow faster.",
+      "description": "A moss-covered cyclops whose eye glows with forest-light. Where it steps, flowers bloom in patterns that spell names no one can read.",
       "image_url": "/assets/esprits/common/verdiant.png",
       "portrait_url": "/assets/portraits/common/verdiant_portrait.png",
       "abilities": null
@@ -151,7 +151,7 @@
       "base_atk": 25,
       "base_def": 1,
       "base_hp": 6,
-      "description": "A spooky little cyclops that phases in and out of visibility. Pretends to be scary but mostly just wants to make friends and occasionally succeeds in startling people by accident.",
+      "description": "A timid cyclops that phases between realms when nervous. Its eye reflects places that exist only in the spaces between heartbeats.",
       "image_url": "/assets/esprits/common/cyghost.png",
       "portrait_url": "/assets/portraits/common/cyghost_portrait.png",
       "abilities": null
@@ -164,7 +164,7 @@
       "base_atk": 77,
       "base_def": 6,
       "base_hp": 27,
-      "description": "A young fire wolf whose tail burns brighter when excited. Has a habit of accidentally setting small things on fire when happy, then looking very apologetic about it.",
+      "description": "A young fire wolf whose tail burns with inherited fury. Its flame dims when alone, as if mourning pack-mates lost to the first conflagration.",
       "image_url": "/assets/esprits/uncommon/emberwolf.png",
       "portrait_url": "/assets/portraits/uncommon/emberwolf_portrait.png",
       "abilities": null
@@ -177,7 +177,7 @@
       "base_atk": 39,
       "base_def": 17,
       "base_hp": 55,
-      "description": "A forest wolf cub with moss growing along its spine. Tiny flowers bloom in its pawprints, and it gets distracted chasing butterflies during serious moments.",
+      "description": "A forest wolf whose spine grows thorns instead of fur. Chases butterflies down paths that lead deeper into woods that were never planted.",
       "image_url": "/assets/esprits/uncommon/thornpup.png",
       "portrait_url": "/assets/portraits/uncommon/thornpup_portrait.png",
       "abilities": null
@@ -190,7 +190,7 @@
       "base_atk": 55,
       "base_def": 11,
       "base_hp": 44,
-      "description": "A spiky-furred storm pup that crackles with static electricity. Gets overly excited during thunderstorms and has been known to accidentally summon rain clouds when playing.",
+      "description": "A storm pup whose fur crackles with static memory. Summons rain clouds when playing, unconsciously calling for the tempests that once danced overhead.",
       "image_url": "/assets/esprits/uncommon/stormcub.png",
       "portrait_url": "/assets/portraits/uncommon/stormcub_portrait.png",
       "abilities": null
@@ -203,7 +203,7 @@
       "base_atk": 33,
       "base_def": 11,
       "base_hp": 66,
-      "description": "An ice-touched wolf cub whose breath forms tiny snow clouds. Surprisingly warm to the touch despite its icy appearance, and loves to play in puddles that mysteriously freeze when it steps in them.",
+      "description": "An ice-touched wolf whose warm breath forms snow clouds. The puddles it freezes reflect depths far greater than their shallow waters suggest.",
       "image_url": "/assets/esprits/uncommon/frostpup.png",
       "portrait_url": "/assets/portraits/uncommon/frostpup_portrait.png",
       "abilities": null
@@ -216,7 +216,7 @@
       "base_atk": 88,
       "base_def": 6,
       "base_hp": 17,
-      "description": "A dark-furred wolf pub that phases in and out of shadows when nervous. Tries very hard to look intimidating but undermines the effect by wagging its tail when complimented.",
+      "description": "A dark wolf pup that wags its tail at compliments. Born in gentle darkness, it knows not why others flee from shadows.",
       "image_url": "/assets/esprits/uncommon/shadowcub.png",
       "portrait_url": "/assets/portraits/uncommon/shadowcub_portrait.png",
       "abilities": null
@@ -229,7 +229,7 @@
       "base_atk": 28,
       "base_def": 11,
       "base_hp": 72,
-      "description": "A gentle wolf cub whose fur glows with soft golden light. Has a habit of accidentally healing minor scrapes just by being nearby, and gets embarrassed when its glow brightens during emotional moments.",
+      "description": "A wolf cub whose golden fur heals wounds it cannot see. Its embarrassed glow brightens when it accidentally mends things meant to stay broken.",
       "image_url": "/assets/esprits/uncommon/glowpup.png",
       "portrait_url": "/assets/portraits/uncommon/glowpup_portrait.png",
       "abilities": null
@@ -242,7 +242,7 @@
       "base_atk": 110,
       "base_def": 37,
       "base_hp": 221,
-      "description": "A hulking creature of living ice that moves with surprising grace. Frost spreads from its footsteps, and its breath can freeze water solid.",
+      "description": "A hulking ice creature carved from the first glacier. Moves with grace learned from watching water flow before the great freezing began.",
       "image_url": "/assets/esprits/rare/frostcrag.png",
       "portrait_url": "/assets/portraits/rare/frostcrag_portrait.png",
       "abilities": null
@@ -255,7 +255,7 @@
       "base_atk": 129,
       "base_def": 55,
       "base_hp": 184,
-      "description": "A sturdy forest dweller whose bark-like hide grows flowers in spring. Small animals often nest in the moss on its shoulders.",
+      "description": "An ancient forest guardian whose bark-hide hosts creatures from an earlier age. Flowers bloom on its shoulders with the seasons of a world that stopped turning.",
       "image_url": "/assets/esprits/rare/mossback.png",
       "portrait_url": "/assets/portraits/rare/mossback_portrait.png",
       "abilities": null
@@ -268,7 +268,7 @@
       "base_atk": 258,
       "base_def": 18,
       "base_hp": 92,
-      "description": "A crackling mass of flame and fury that never sits still. Its fiery punches leave scorch marks that glow for hours afterward.",
+      "description": "Living flame given focus and rage. Its fiery fists leave scorch marks that glow for hours, as if the stone itself remembers burning.",
       "image_url": "/assets/esprits/rare/cinderbolt.png",
       "portrait_url": "/assets/portraits/rare/cinderbolt_portrait.png",
       "abilities": null
@@ -281,7 +281,7 @@
       "base_atk": 184,
       "base_def": 37,
       "base_hp": 147,
-      "description": "A construct of bronze and lightning that hums with electrical energy. Sparks fly when it moves, and its joints crackle with stored power.",
+      "description": "A bronze construct from the age when storms were harnessed. Hums with electrical songs that once powered cities beneath the eternal tempest.",
       "image_url": "/assets/esprits/rare/geargrind.png",
       "portrait_url": "/assets/portraits/rare/geargrind_portrait.png",
       "abilities": null
@@ -294,7 +294,7 @@
       "base_atk": 294,
       "base_def": 18,
       "base_hp": 55,
-      "description": "A being of crystallized shadow that seems to absorb light around it. Even its footsteps make no sound on solid ground.",
+      "description": "Crystallized shadow that drinks light from the air. Its footsteps make no sound, for it walks in the spaces between moments.",
       "image_url": "/assets/esprits/rare/voidstone.png",
       "portrait_url": "/assets/portraits/rare/voidstone_portrait.png",
       "abilities": null
@@ -307,7 +307,7 @@
       "base_atk": 92,
       "base_def": 37,
       "base_hp": 239,
-      "description": "A gentle giant that glows with soft, warm light. Its crystal body refracts sunlight into beautiful rainbow patterns that dance on nearby walls.",
+      "description": "A gentle giant whose crystal body refracts hope itself. Its rainbow light dances on walls that once housed the chambers of the lost sanctum.",
       "image_url": "/assets/esprits/rare/prismheart.png",
       "portrait_url": "/assets/portraits/rare/prismheart_portrait.png",
       "abilities": null
@@ -320,7 +320,7 @@
       "base_atk": 332500,
       "base_def": 23750,
       "base_hp": 118750,
-      "description": "A massive fire dragon with glowing crimson scales. Her wings beat with controlled fury and flames dance along her claws.",
+      "description": "Crimson scales shimmer with inner heat, and her broad wings spread like molten metal. Old scars crisscross her hide, each one telling of battles fought in places where fire itself was contested.",
       "image_url": "/assets/esprits/genesis/pyraxis.png",
       "portrait_url": "/assets/portraits/genesis/pyraxis_portrait.png",
       "abilities": null
@@ -333,7 +333,7 @@
       "base_atk": 237500,
       "base_def": 47500,
       "base_hp": 190000,
-      "description": "A storm dragon born from crystallized clouds. Lightning flickers across her shimmering wings as she soars.",
+      "description": "Crystalline blue scales catch and refract light like frozen storm clouds. Her elegant wings move through air that tastes of lightning, and thunder follows her flight with respectful distance.",
       "image_url": "/assets/esprits/genesis/azurewing.png",
       "portrait_url": "/assets/portraits/genesis/azurewing_portrait.png",
       "abilities": null
@@ -346,7 +346,7 @@
       "base_atk": 142500,
       "base_def": 47500,
       "base_hp": 285000,
-      "description": "An ancient ice dragon carved from glacial ice. Her breath can freeze entire lakes solid in seconds.",
+      "description": "Ice-white scales form patterns older than winter itself. Her breath has grown strange with age - where once it merely froze, now it preserves moments in crystalline amber that will never thaw.",
       "image_url": "/assets/esprits/genesis/glacivern.png",
       "portrait_url": "/assets/portraits/genesis/glacivern_portrait.png",
       "abilities": null
@@ -359,7 +359,7 @@
       "base_atk": 380000,
       "base_def": 23750,
       "base_hp": 71250,
-      "description": "A shadow dragon whose dark scales absorb light itself. Her roar echoes with ancient power.",
+      "description": "Dark purple scales drink in light until even her shadow seems too bright. Lightning crackles between her claws, but the thunder that should follow never comes - swallowed by the silence she carries.",
       "image_url": "/assets/esprits/genesis/stormbreaker.png",
       "portrait_url": "/assets/portraits/genesis/stormbreaker_portrait.png",
       "abilities": null
@@ -372,7 +372,7 @@
       "base_atk": 166250,
       "base_def": 71250,
       "base_hp": 237500,
-      "description": "A forest dragon whose scales bloom with living moss and thorns. New growth follows wherever she treads.",
+      "description": "Living bark has grown over her green scales, and moss spreads across her wings in patterns that hurt to study too closely. Where she nests, the forest grows wild and remembers things it should have forgotten.",
       "image_url": "/assets/esprits/genesis/thornwarden.png",
       "portrait_url": "/assets/portraits/genesis/thornwarden_portrait.png",
       "abilities": null
@@ -385,7 +385,7 @@
       "base_atk": 118750,
       "base_def": 47500,
       "base_hp": 308750,
-      "description": "A golden dragon whose scales shimmer with inner light. Her presence brings healing warmth to those she deems worthy.",
+      "description": "Golden scales pulse with inner radiance, each one reflecting light that seems to come from somewhere else entirely. She closes her eyes when she speaks, as if her own brightness pains her to witness.",
       "image_url": "/assets/esprits/genesis/radiara.png",
       "portrait_url": "/assets/portraits/genesis/radiara_portrait.png",
       "abilities": null
@@ -398,7 +398,7 @@
       "base_atk": 1120000,
       "base_def": 80000,
       "base_hp": 400000,
-      "description": "A legendary warrior whose twin blades burn with crimson fire. Her winged armor radiates intense heat.",
+      "description": "Crimson hair flows beneath spiked black armor, and twin curved blades gleam with inner fire. Her horned helm bears scorch marks that seem to shift when unobserved.",
       "image_url": "/assets/esprits/empyrean/ruby.png",
       "portrait_url": "/assets/portraits/empyrean/ruby_portrait.png",
       "abilities": null
@@ -411,7 +411,7 @@
       "base_atk": 800000,
       "base_def": 160000,
       "base_hp": 640000,
-      "description": "A wild sorceress who commands storms with unpredictable power. Her magical wheel spins with chaotic energy.",
+      "description": "Beneath her wide-brimmed hat, silver hair catches static sparks. The arcane wheel floating beside her spins without regard for physics or reason.",
       "image_url": "/assets/esprits/empyrean/luna.png",
       "portrait_url": "/assets/portraits/empyrean/luna_portrait.png",
       "abilities": null
@@ -424,7 +424,7 @@
       "base_atk": 480000,
       "base_def": 160000,
       "base_hp": 960000,
-      "description": "A master of deep ocean currents whose staff channels the power of ancient tides.",
+      "description": "Golden ornaments adorn her flowing robes, while a compass-like mandala floats behind her. Water droplets rise from the ground around her feet, defying gravity.",
       "image_url": "/assets/esprits/empyrean/nerida.png",
       "portrait_url": "/assets/portraits/empyrean/nerida_portrait.png",
       "abilities": null
@@ -437,7 +437,7 @@
       "base_atk": 1280000,
       "base_def": 80000,
       "base_hp": 240000,
-      "description": "An elegant shadow mage who wields darkness with deadly precision. Her presence drains warmth from the air.",
+      "description": "Elegant in dark robes that seem to drink in light, she carries a blade that cuts through more than flesh. Where she steps, warmth quietly dies.",
       "image_url": "/assets/esprits/empyrean/morticia.png",
       "portrait_url": "/assets/portraits/empyrean/morticia_portrait.png",
       "abilities": null
@@ -450,7 +450,7 @@
       "base_atk": 560000,
       "base_def": 240000,
       "base_hp": 800000,
-      "description": "A nature guardian whose beauty hides thorned defenses. Her armor grows from living plants.",
+      "description": "Thorned armor grows from her very skin, blooming with roses that wilt at the touch of anything false. Her beauty conceals defenses sharper than steel.",
       "image_url": "/assets/esprits/empyrean/rose.png",
       "portrait_url": "/assets/portraits/empyrean/rose_portrait.png",
       "abilities": null
@@ -463,7 +463,7 @@
       "base_atk": 400000,
       "base_def": 160000,
       "base_hp": 1040000,
-      "description": "A holy warrior who carries ancient light magic in her blade. Her sword gleams with divine power.",
+      "description": "Long blonde hair frames a face that has seen too much truth. Her silver blade gleams with light that reveals the honesty in all things, willing or not.",
       "image_url": "/assets/esprits/empyrean/aurora.png",
       "portrait_url": "/assets/portraits/empyrean/aurora_portrait.png",
       "abilities": null
@@ -476,7 +476,7 @@
       "base_atk": 3850000,
       "base_def": 275000,
       "base_hp": 1375000,
-      "description": "A master of flame elevated to divine levels. Her fires burn with perfect precision, purifying corruption without harming the pure.",
+      "description": "Purple robes cascade around her elegant form, while a spiked mandala of light hovers behind her. Her staff burns with precise, geometric flames.",
       "image_url": "/assets/esprits/void/voria.png",
       "portrait_url": "/assets/portraits/void/voria_portrait.png",
       "abilities": null
@@ -489,7 +489,7 @@
       "base_atk": 2750000,
       "base_def": 550000,
       "base_hp": 2200000,
-      "description": "Mistress of eternal storms who commands the winds between realms. Her tempests reshape landscapes with every breath.",
+      "description": "Crowned with a thorned halo of crackling energy, her teal dress flows as if caught in perpetual wind. Lightning dances between her fingertips.",
       "image_url": "/assets/esprits/void/storia.png",
       "portrait_url": "/assets/portraits/void/storia_portrait.png",
       "abilities": null
@@ -502,22 +502,22 @@
       "base_atk": 1650000,
       "base_def": 550000,
       "base_hp": 3300000,
-      "description": "A mystical oracle who communes with the deepest ocean trenches. Her wisdom flows from unfathomable depths.",
+      "description": "Behind her flows an ornate halo like frozen waves, and her aquamarine robes ripple with the memory of deep currents. Water pearls form in the air around her staff.",
       "image_url": "/assets/esprits/void/oceania.png",
       "portrait_url": "/assets/portraits/void/oceania_portrait.png",
       "abilities": null
     },
     {
-      "name": "Verdania",
+      "name": "Verdinia",
       "element": "Umbral",
       "base_tier": 11,
       "tier_name": "void",
       "base_atk": 4400000,
       "base_def": 275000,
       "base_hp": 825000,
-      "description": "Nature's final judgment given form. Her thorns grow through the cracks in reality itself.",
-      "image_url": "/assets/esprits/void/verdania.png",
-      "portrait_url": "/assets/portraits/void/verdania_portrait.png",
+      "description": "Dark wings spread beneath a jagged shadow-halo, and thorns grow from the fabric of her gown itself. Where she stands, the ground grows cold and still.",
+      "image_url": "/assets/esprits/void/verdinia.png",
+      "portrait_url": "/assets/portraits/void/verdinia_portrait.png",
       "abilities": null
     },
     {
@@ -528,7 +528,7 @@
       "base_atk": 1925000,
       "base_def": 825000,
       "base_hp": 2750000,
-      "description": "Nature's keeper of secret knowledge, crowned with thorns. She rules the spaces between growth and decay.",
+      "description": "Green-crowned and framed by a living mandala of thorns, she tends to knowledge that grows like vines through the spaces between words.",
       "image_url": "/assets/esprits/void/sylvanna.png",
       "portrait_url": "/assets/portraits/void/sylvanna_portrait.png",
       "abilities": null
@@ -541,7 +541,7 @@
       "base_atk": 1375000,
       "base_def": 550000,
       "base_hp": 3575000,
-      "description": "Divine light refined into perfect form. Her radiance doesn't just illuminate but transforms, revealing true essence.",
+      "description": "Radiant light forms an intricate halo behind her silver-white form, casting shadows that reveal more than illuminate. Her presence makes lies visible to the naked eye.",
       "image_url": "/assets/esprits/void/lumensis.png",
       "portrait_url": "/assets/portraits/void/lumensis_portrait.png",
       "abilities": null
@@ -554,7 +554,7 @@
       "base_atk": 3850000000,
       "base_def": 275000000,
       "base_hp": 1375000000,
-      "description": "The final ember of dying stars given form. Reality burns like kindling in her presence.",
+      "description": "A figure draped in flowing dark wings edged with molten orange. Her branching horns glow like embers, and the air shimmers with heat that has no source.",
       "image_url": "/assets/esprits/singularity/pyroclasm.png",
       "portrait_url": "/assets/portraits/singularity/pyroclasm_portrait.png",
       "abilities": null
@@ -567,7 +567,7 @@
       "base_atk": 2750000000,
       "base_def": 550000000,
       "base_hp": 2200000000,
-      "description": "The storm that ends all weather. Her winds scatter the forces that hold atoms together.",
+      "description": "Her golden antlers crackle with static, and wing-like appendages ripple as if caught in perpetual wind. Even in stillness, she seems to be moving.",
       "image_url": "/assets/esprits/singularity/tempesta.png",
       "portrait_url": "/assets/portraits/singularity/tempesta_portrait.png",
       "abilities": null
@@ -580,7 +580,7 @@
       "base_atk": 1650000000,
       "base_def": 550000000,
       "base_hp": 3300000000,
-      "description": "The deepest ocean's final secret. Her depths contain the weight of everything that has ever drowned.",
+      "description": "Azure-haired and draped in flowing blue-black wings that seem to hold the depth of oceans. Water droplets form and fall from nothing around her feet.",
       "image_url": "/assets/esprits/singularity/thalassa.png",
       "portrait_url": "/assets/portraits/singularity/thalassa_portrait.png",
       "abilities": null
@@ -593,7 +593,7 @@
       "base_atk": 4400000000,
       "base_def": 275000000,
       "base_hp": 825000000,
-      "description": "The void between thoughts made real. She doesn't destroy things. She makes them never have existed.",
+      "description": "Cloaked in wing-like shadows that absorb all light, her horned silhouette wavers as if reality itself is uncertain of her presence.",
       "image_url": "/assets/esprits/singularity/nethys.png",
       "portrait_url": "/assets/portraits/singularity/nethys_portrait.png",
       "abilities": null
@@ -606,7 +606,7 @@
       "base_atk": 1375000000,
       "base_def": 550000000,
       "base_hp": 3575000000,
-      "description": "Divine judgment corrupted into perfect destruction. Her light burns away the flaws in existence itself.",
+      "description": "Silver-winged and crowned with elegant horns, she emanates a light so pure it reveals flaws in everything it touches, including the air itself.",
       "image_url": "/assets/esprits/singularity/lumina.png",
       "portrait_url": "/assets/portraits/singularity/lumina_portrait.png",
       "abilities": null
@@ -619,7 +619,7 @@
       "base_atk": 1925000000,
       "base_def": 825000000,
       "base_hp": 2750000000,
-      "description": "The final bloom before entropy's end. Her thorned crown commands the last garden where existence takes root.",
+      "description": "Rose-crowned and wrapped in dark wings touched with pink, tiny flowers bloom and wither in her footsteps without soil or seed.",
       "image_url": "/assets/esprits/singularity/rosalia.png",
       "portrait_url": "/assets/portraits/singularity/rosalia_portrait.png",
       "abilities": null
