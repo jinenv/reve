@@ -157,8 +157,8 @@ class StatisticsService(BaseService):
             if not isinstance(success, bool):
                 raise ValueError("success parameter must be a boolean")
             
-            if tier < 1 or tier > 18:
-                raise ValueError("tier must be between 1 and 18")
+            if tier < 1 or tier > 12:
+                raise ValueError("tier must be between 1 and 12")
             
             async with DatabaseService.get_transaction() as session:
                 stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore

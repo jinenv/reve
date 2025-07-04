@@ -72,11 +72,11 @@
   
   "tier_effects": {
     "thresholds": {
-      "common": [1, 4],
-      "rare": [5, 9],
-      "epic": [10, 14],
-      "legendary": [15, 18],
-      "mythic": [19, 22]
+      "common": [1, 3],
+      "rare": [4, 6], 
+      "epic": [7, 9],
+      "legendary": [10, 11],
+      "mythic": [12, 12]
     },
     "effects": {
       "common": {

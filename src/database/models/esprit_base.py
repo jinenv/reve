@@ -388,14 +388,14 @@ class EspritBase(SQLModel, table=True):
             }
         
     def get_max_relic_slots(self) -> int:
-        """Tier-based slot progression: 1-6=1 slot, 7-12=2 slots, 13-18=3 slots"""
-        if self.base_tier <= 6:
+        """Tier-based slot progression: 1-4=1 slot, 5-8=2 slots, 9-12=3 slots"""
+        if self.base_tier <= 4:
             return 1
-        elif self.base_tier <= 18:
+        elif self.base_tier <= 8:
             return 2
-        else:
+        else:  # Tiers 9-12
             return 3
-    
+        
     def get_equipped_count(self) -> int:
         """Count actually equipped relics"""
         return sum(1 for relic in self.equipped_relics if relic is not None)

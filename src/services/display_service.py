@@ -84,9 +84,9 @@ class DisplayService(BaseService):
                     rarity_emojis = {
                         range(1, 4): "🔹",    # Tiers 1-3: Common
                         range(4, 7): "🔸",    # Tiers 4-6: Uncommon
-                        range(7, 11): "💎",   # Tiers 7-10: Rare
-                        range(11, 15): "⭐",  # Tiers 11-14: Epic
-                        range(15, 19): "🌟"   # Tiers 15-18: Legendary
+                        range(7, 10): "💎",   # Tiers 7-9: Rare
+                        range(10, 12): "⭐",  # Tiers 10-11: Epic
+                        range(12, 13): "🌟"   # Tier 12: Legendary
                     }
                     
                     for tier_range, emoji in rarity_emojis.items():

@@ -19,8 +19,8 @@ class FragmentService(BaseService):
             cls._validate_player_id(player_id)
             cls._validate_positive_int(amount, "fragment amount")
             
-            if tier < 1 or tier > 18:
-                raise ValueError("Tier must be between 1 and 18")
+            if tier < 1 or tier > 12:
+                raise ValueError("Tier must be between 1 and 12")
             
             async with DatabaseService.get_transaction() as session:
                 stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore

@@ -95,7 +95,7 @@ class FusionService(BaseService):
                 
                 # Get possible fusion results (tier + 1)
                 result_tier = esprit1.tier + 1
-                if result_tier > 18:  # Max tier cap
+                if result_tier > 12:  # Max tier cap
                     raise ValueError("Cannot fuse - result would exceed maximum tier")
                 
                 # Get possible Esprits for result tier
@@ -195,7 +195,7 @@ class FusionService(BaseService):
                     raise ValueError("Esprits must be the same tier to fuse")
                 
                 result_tier = esprit1.tier + 1
-                if result_tier > 18:
+                if result_tier > 12:
                     raise ValueError("Cannot fuse - result would exceed maximum tier")
                 
                 # Get player (with lock for currency)
@@ -327,7 +327,7 @@ class FusionService(BaseService):
                 raise ValueError("Fusion requires same tier Esprits")
             
             result_tier = tier1 + 1
-            if result_tier > 18:
+            if result_tier > 12:
                 raise ValueError("Result tier would exceed maximum")
             
             # Check cache first
@@ -562,9 +562,9 @@ class FusionService(BaseService):
             
             # Check if result tier would be valid
             result_tier = tier1 + 1
-            if result_tier > 18:  # Max tier
+            if result_tier > 12:  # Max tier
                 validation_result["compatible"] = False
-                validation_result["issues"].append(f"Result tier {result_tier} exceeds maximum tier 18")
+                validation_result["issues"].append(f"Result tier {result_tier} exceeds maximum tier 12")
                 return validation_result
             
             # Check element compatibility

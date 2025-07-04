@@ -353,13 +353,13 @@ class RelicService(BaseService):
     @classmethod
     def _calculate_max_slots_for_tier(cls, tier: int) -> int:
         """Calculate maximum relic slots based on tier"""
-        if tier <= 6:
+        if tier <= 4:
             return 1
-        elif tier <= 18:
+        elif tier <= 8:
             return 2
-        else:
+        else:  # Tiers 9-12
             return 3
-    
+        
     @classmethod
     def _ensure_proper_slot_array(cls, current_slots: List[Optional[str]], max_slots: int) -> List[Optional[str]]:
         """Ensure slot array has proper length for tier"""

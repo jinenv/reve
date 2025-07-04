@@ -17,8 +17,8 @@ from src.utils.config_manager import ConfigManager
 
 # Optional dependencies for advanced features
 try:
-    import numpy as np
-    from sklearn.cluster import KMeans
+    import numpy as np # type: ignore
+    from sklearn.cluster import KMeans  # type: ignore
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -160,7 +160,7 @@ class ImageConfig:
                     return effect
         
         # Fallback for very high tiers
-        if tier > 22:
+        if tier > 12:  # Changed from > 22
             effect = effects.get("mythic", {
                 "glow_intensity": 18.0,
                 "particle_count": 600,
