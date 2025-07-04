@@ -35,11 +35,11 @@ class CurrencyBalance:
     last_updated: datetime
 
 class ReviesService(BaseService):
-    """Currency management service for the Reve domain economy"""
+    """Currency management service for the Jiji domain economy"""
     
-    # Supported currencies (ready for future "revies" transition)
+    # Supported currencies (ready for future "jijies" transition)
     VALID_CURRENCIES = {"jijies", "erythl"}
-    PRIMARY_CURRENCY = "jijies"  # Will become "revies" 
+    PRIMARY_CURRENCY = "jijies"  # Will become "jijies" 
     PREMIUM_CURRENCY = "erythl"  # Premium currency
     
     @classmethod
@@ -570,10 +570,10 @@ class ReviesService(BaseService):
             
         return await cls._safe_execute(_operation, "get transaction history")
     
-    # Migration helpers for future "revies" transition
+    # Migration helpers for future "jijies" transition
     @classmethod
     async def prepare_currency_migration(cls) -> ServiceResult[Dict[str, Any]]:
-        """Prepare for currency migration from jijies to revies"""
+        """Prepare for currency migration from jijies to jijies"""
         async def _operation():
             stats_result = await cls.get_economy_stats()
             if not stats_result.success:

@@ -2,7 +2,7 @@
   "faded_echo": {
     "name": "Faded Echo",
     "description": "A common echo whose contents grow stronger with your experience.",
-    "max_tier": 6,
+    "max_tier": 7,
     "level_brackets": {
       "1-25": {
         "tier_weights": {
@@ -35,27 +35,11 @@
           "radiant": 1.0
         }
       },
-      "51-75": {
+      "51-100": {
         "tier_weights": {
-          "2": 50,
+          "2": 45,
           "3": 35,
-          "4": 12,
-          "5": 3
-        },
-        "element_preference": {
-          "inferno": 1.0,
-          "verdant": 1.0,
-          "abyssal": 1.0,
-          "tempest": 1.0,
-          "umbral": 1.0,
-          "radiant": 1.0
-        }
-      },
-      "76-100": {
-        "tier_weights": {
-          "2": 25,
-          "3": 45,
-          "4": 25,
+          "4": 15,
           "5": 5
         },
         "element_preference": {
@@ -70,8 +54,8 @@
       "101-150": {
         "tier_weights": {
           "3": 40,
-          "4": 40,
-          "5": 15,
+          "4": 35,
+          "5": 20,
           "6": 5
         },
         "element_preference": {
@@ -85,10 +69,11 @@
       },
       "151-200": {
         "tier_weights": {
-          "3": 20,
-          "4": 45,
+          "3": 25,
+          "4": 35,
           "5": 25,
-          "6": 10
+          "6": 12,
+          "7": 3
         },
         "element_preference": {
           "inferno": 1.0,
@@ -104,7 +89,7 @@
   "vivid_echo": {
     "name": "Vivid Echo",
     "description": "A strong echo, resonating with significant power.",
-    "max_tier": 8,
+    "max_tier": 10,
     "level_brackets": {
       "1-50": {
         "tier_weights": {
@@ -124,8 +109,8 @@
       "51-100": {
         "tier_weights": {
           "3": 30,
-          "4": 45,
-          "5": 20,
+          "4": 40,
+          "5": 25,
           "6": 5
         },
         "element_preference": {
@@ -139,10 +124,11 @@
       },
       "101-150": {
         "tier_weights": {
-          "4": 40,
+          "4": 35,
           "5": 35,
           "6": 20,
-          "7": 5
+          "7": 8,
+          "8": 2
         },
         "element_preference": {
           "inferno": 1.0,
@@ -155,11 +141,12 @@
       },
       "151-200": {
         "tier_weights": {
-          "4": 20,
-          "5": 40,
-          "6": 30,
-          "7": 8,
-          "8": 2
+          "5": 30,
+          "6": 35,
+          "7": 20,
+          "8": 10,
+          "9": 4,
+          "10": 1
         },
         "element_preference": {
           "inferno": 1.0,
@@ -175,14 +162,14 @@
   "brilliant_echo": {
     "name": "Brilliant Echo",
     "description": "An echo of immense power, pulsing with legendary energy.",
-    "max_tier": 10,
+    "max_tier": 12,
     "level_brackets": {
       "1-100": {
         "tier_weights": {
-          "5": 65,
+          "5": 60,
           "6": 25,
-          "7": 8,
-          "8": 2
+          "7": 12,
+          "8": 3
         },
         "element_preference": {
           "inferno": 1.0,
@@ -195,10 +182,11 @@
       },
       "101-150": {
         "tier_weights": {
-          "5": 35,
           "6": 40,
-          "7": 20,
-          "8": 5
+          "7": 30,
+          "8": 20,
+          "9": 8,
+          "10": 2
         },
         "element_preference": {
           "inferno": 1.0,
@@ -211,11 +199,12 @@
       },
       "151-200": {
         "tier_weights": {
-          "6": 40,
           "7": 35,
-          "8": 20,
-          "9": 4,
-          "10": 1
+          "8": 30,
+          "9": 20,
+          "10": 10,
+          "11": 4,
+          "12": 1
         },
         "element_preference": {
           "inferno": 1.0,
@@ -231,9 +220,9 @@
   "elemental_echo": {
     "name": "Elemental Echo",
     "description": "An echo attuned to a specific element.",
-    "max_tier": 8,
+    "max_tier": 9,
     "level_brackets": {
-      "1-200": {
+      "1-100": {
         "tier_weights": {
           "1": 20,
           "2": 25,
@@ -250,6 +239,66 @@
           "tempest": 0.2,
           "umbral": 0.2,
           "radiant": 0.2
+        }
+      },
+      "101-200": {
+        "tier_weights": {
+          "2": 15,
+          "3": 20,
+          "4": 25,
+          "5": 20,
+          "6": 12,
+          "7": 5,
+          "8": 2,
+          "9": 1
+        },
+        "element_preference": {
+          "inferno": 3.0,
+          "verdant": 0.2,
+          "abyssal": 0.2,
+          "tempest": 0.2,
+          "umbral": 0.2,
+          "radiant": 0.2
+        }
+      }
+    }
+  },
+  "cosmic_echo": {
+    "name": "Cosmic Echo", 
+    "description": "A transcendent echo containing the rarest Esprits. Reserved for the most dedicated Reveries.",
+    "max_tier": 12,
+    "level_brackets": {
+      "1-150": {
+        "tier_weights": {
+          "8": 40,
+          "9": 30,
+          "10": 20,
+          "11": 8,
+          "12": 2
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
+        }
+      },
+      "151-200": {
+        "tier_weights": {
+          "9": 35,
+          "10": 30,
+          "11": 25,
+          "12": 10
+        },
+        "element_preference": {
+          "inferno": 1.0,
+          "verdant": 1.0,
+          "abyssal": 1.0,
+          "tempest": 1.0,
+          "umbral": 1.0,
+          "radiant": 1.0
         }
       }
     }

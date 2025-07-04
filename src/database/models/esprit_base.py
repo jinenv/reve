@@ -65,7 +65,7 @@ class EspritBase(SQLModel, table=True):
     def validate_tier(cls, v):
         """Ensure tier is within valid range"""
         if not Tiers.is_valid(v):
-            raise ValueError(f"Invalid tier: {v}. Must be between 1 and 18")
+            raise ValueError(f"Invalid tier: {v}. Must be between 1 and 12")  # Changed from 1 and 18
         return v
     
     @validator('base_atk', 'base_def', 'base_hp')
@@ -391,7 +391,7 @@ class EspritBase(SQLModel, table=True):
         """Tier-based slot progression: 1-6=1 slot, 7-12=2 slots, 13-18=3 slots"""
         if self.base_tier <= 6:
             return 1
-        elif self.base_tier <= 12:
+        elif self.base_tier <= 18:
             return 2
         else:
             return 3

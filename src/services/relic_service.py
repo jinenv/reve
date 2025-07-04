@@ -355,7 +355,7 @@ class RelicService(BaseService):
         """Calculate maximum relic slots based on tier"""
         if tier <= 6:
             return 1
-        elif tier <= 12:
+        elif tier <= 18:
             return 2
         else:
             return 3

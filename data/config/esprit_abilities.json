@@ -1,6 +1,6 @@
 {
-  "description": "Strategic ability system with reasonable damage scaling",
-  "version": "2.0",
+  "description": "Strategic ability system with reasonable damage scaling - 12-tier system",
+  "version": "3.0",
   
   "tier_power_scaling": {
     "1": {"basic": 105, "ultimate": 140, "passive": 5},
@@ -14,13 +14,7 @@
     "9": {"basic": 125, "ultimate": 210, "passive": 22},
     "10": {"basic": 130, "ultimate": 225, "passive": 25},
     "11": {"basic": 135, "ultimate": 240, "passive": 28},
-    "12": {"basic": 140, "ultimate": 255, "passive": 30},
-    "13": {"basic": 145, "ultimate": 275, "passive": 35},
-    "14": {"basic": 150, "ultimate": 295, "passive": 40},
-    "15": {"basic": 155, "ultimate": 315, "passive": 45},
-    "16": {"basic": 160, "ultimate": 340, "passive": 50},
-    "17": {"basic": 165, "ultimate": 365, "passive": 55},
-    "18": {"basic": 170, "ultimate": 390, "passive": 60}
+    "12": {"basic": 140, "ultimate": 255, "passive": 30}
   },
 
   "generated_abilities": {
@@ -45,15 +39,10 @@
         "ultimate": {"name": "Apocalyptic Inferno", "description": "Deal {power}% ATK to all enemies and set battlefield ablaze (+25% fire damage for 5 turns)", "type": "field_change", "power": 225, "cooldown": 6},
         "passive": {"name": "Solar Dominance", "description": "All fire damage increased by {power}%, immune to burn", "type": "element_mastery", "power": 25}
       },
-      "15": {
-        "basic": {"name": "Genesis Flame", "description": "Deal {power}% ATK fire damage that ignores 50% defense", "type": "armor_pierce", "power": 155, "cooldown": 0},
-        "ultimate": {"name": "Stellar Armageddon", "description": "Deal {power}% ATK true fire damage to all enemies", "type": "true_aoe", "power": 315, "cooldown": 8},
-        "passive": {"name": "Eternal Conflagration", "description": "Immune to fire damage, all attacks deal +{power}% fire damage", "type": "transcendent", "power": 45}
-      },
-      "18": {
-        "basic": {"name": "Reality Burn", "description": "Deal {power}% ATK true fire damage", "type": "true_damage", "power": 170, "cooldown": 0},
-        "ultimate": {"name": "Universal Heat Death", "description": "Deal {power}% ATK true damage to all enemies and inflict Heat Death (-50% all stats for 3 turns)", "type": "debuff_aoe", "power": 390, "cooldown": 10},
-        "passive": {"name": "Thermodynamic Mastery", "description": "Control heat itself: +{power}% all damage, immune to temperature effects", "type": "cosmic", "power": 60}
+      "12": {
+        "basic": {"name": "Singularity Flame", "description": "Deal {power}% ATK true fire damage", "type": "true_damage", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Inferno Singularity", "description": "Deal {power}% ATK fire damage to all enemies", "type": "aoe_damage", "power": 255, "cooldown": 6},
+        "passive": {"name": "Fire Mastery", "description": "+{power}% fire damage and burn immunity", "type": "element_mastery", "power": 30}
       }
     },
 
@@ -73,15 +62,10 @@
         "ultimate": {"name": "Genesis Garden", "description": "Heal all allies for 50% max HP and grant regeneration (10% HP/turn for 5 turns)", "type": "mass_heal_regen", "power": 50, "cooldown": 6},
         "passive": {"name": "Primordial Life", "description": "All healing +{power}%, immune to instant death", "type": "life_mastery", "power": 25}
       },
-      "15": {
-        "basic": {"name": "Creation Strike", "description": "Deal {power}% ATK nature damage and heal all allies for 25% damage dealt", "type": "damage_mass_lifesteal", "power": 155, "cooldown": 0},
-        "ultimate": {"name": "Universal Bloom", "description": "Massive heal: restore all allies to full HP and grant immunity to debuffs for 3 turns", "type": "universal_heal", "power": 100, "cooldown": 8},
-        "passive": {"name": "Eternal Genesis", "description": "Cannot die while allies live, constantly regenerate +{power}% max HP", "type": "immortal", "power": 45}
-      },
-      "18": {
-        "basic": {"name": "Life Force", "description": "Deal {power}% ATK true nature damage and heal for 50% damage dealt", "type": "true_lifesteal", "power": 170, "cooldown": 0},
-        "ultimate": {"name": "Creation Itself", "description": "Restore all allies to full stats and grant Life Eternal (immune to death for 5 turns)", "type": "transcendent_heal", "power": 100, "cooldown": 10},
-        "passive": {"name": "Genesis Incarnate", "description": "Master of life: +{power}% all healing, revive fallen allies at 25% HP each turn", "type": "cosmic_life", "power": 60}
+      "12": {
+        "basic": {"name": "Genesis Touch", "description": "Deal {power}% ATK nature damage and heal all allies for 25% max HP", "type": "damage_mass_heal", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Life Singularity", "description": "Heal all allies to full HP", "type": "mass_full_heal", "power": 100, "cooldown": 8},
+        "passive": {"name": "Nature Mastery", "description": "+{power}% healing and nature damage", "type": "life_mastery", "power": 30}
       }
     },
 
@@ -101,15 +85,10 @@
         "ultimate": {"name": "Atmospheric Dominion", "description": "Deal {power}% ATK to all enemies and gain Storm Field (+25% electric damage, enemies -20% speed for 5 turns)", "type": "weather_control", "power": 225, "cooldown": 5},
         "passive": {"name": "Storm Lord", "description": "All abilities have cooldowns reduced by {power}%, immune to speed debuffs", "type": "cooldown_mastery", "power": 25}
       },
-      "15": {
-        "basic": {"name": "Tempest Incarnate", "description": "Deal {power}% ATK electric damage and gain Lightning Speed (attack twice next turn)", "type": "damage_double", "power": 155, "cooldown": 0},
-        "ultimate": {"name": "Maelstrom Genesis", "description": "Deal {power}% ATK true electric damage to all and reset all your cooldowns", "type": "true_aoe_reset", "power": 315, "cooldown": 8},
-        "passive": {"name": "Weather Mastery", "description": "Control weather: +{power}% damage, all weather effects enhanced", "type": "transcendent", "power": 45}
-      },
-      "18": {
-        "basic": {"name": "Quantum Storm", "description": "Deal {power}% ATK true electric damage and phase shift (immune to next attack)", "type": "true_damage_dodge", "power": 170, "cooldown": 0},
-        "ultimate": {"name": "Entropy Wind", "description": "Deal {power}% ATK true damage to all and inflict Temporal Decay (all stats -25% permanently)", "type": "reality_debuff", "power": 390, "cooldown": 10},
-        "passive": {"name": "Atmospheric Control", "description": "Master the air itself: +{power}% all damage, manipulate turn order", "type": "cosmic", "power": 60}
+      "12": {
+        "basic": {"name": "Storm Singularity", "description": "Deal {power}% ATK electric damage with 50% chance to stun", "type": "damage_stun", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Lightning Mastery", "description": "Deal {power}% ATK electric damage to all enemies", "type": "aoe_damage", "power": 255, "cooldown": 6},
+        "passive": {"name": "Wind Mastery", "description": "+{power}% speed and electric damage", "type": "speed_mastery", "power": 30}
       }
     },
 
@@ -129,15 +108,10 @@
         "ultimate": {"name": "Oceanic Dominion", "description": "Deal {power}% ATK to all enemies and flood battlefield (water attacks +50% damage for 5 turns)", "type": "field_buff", "power": 225, "cooldown": 6},
         "passive": {"name": "Abyssal Lord", "description": "Water mastery: +{power}% max HP, all water effects doubled", "type": "water_mastery", "power": 25}
       },
-      "15": {
-        "basic": {"name": "Depth Incarnate", "description": "Deal {power}% ATK water damage and create Crushing Depths (enemy takes 25% max HP as pressure damage next turn)", "type": "delayed_true", "power": 155, "cooldown": 0},
-        "ultimate": {"name": "Primordial Tide", "description": "Deal {power}% ATK true water damage to all and grant Oceanic Form (immune to physical damage for 3 turns)", "type": "true_aoe_immunity", "power": 315, "cooldown": 8},
-        "passive": {"name": "Ocean Eternal", "description": "Depth mastery: +{power}% all stats, cannot be reduced below 1 HP in one hit", "type": "transcendent", "power": 45}
-      },
-      "18": {
-        "basic": {"name": "Abyssal Void", "description": "Deal {power}% ATK true water damage and create Pressure Zone (all enemies -30% damage for 2 turns)", "type": "true_damage_debuff", "power": 170, "cooldown": 0},
-        "ultimate": {"name": "Universal Ocean", "description": "Deal {power}% ATK true damage to all and inflict Drowning Reality (enemies lose 15% max HP permanently)", "type": "reality_drain", "power": 390, "cooldown": 10},
-        "passive": {"name": "Hydro Genesis", "description": "Master all water: +{power}% all damage, control moisture in enemy bodies", "type": "cosmic", "power": 60}
+      "12": {
+        "basic": {"name": "Depth Mastery", "description": "Deal {power}% ATK water damage scaling with current HP", "type": "scaling_damage", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Abyssal Singularity", "description": "Deal {power}% ATK water damage to all enemies and gain shield (absorb next 5 attacks)", "type": "aoe_shield", "power": 255, "cooldown": 8},
+        "passive": {"name": "Water Mastery", "description": "+{power}% max HP and water damage", "type": "tank_mastery", "power": 30}
       }
     },
 
@@ -155,17 +129,12 @@
       "10": {
         "basic": {"name": "Entropy Strike", "description": "Deal {power}% ATK dark damage with 40% chance to inflict Decay (-20% ATK for 3 turns)", "type": "damage_debuff", "power": 130, "cooldown": 0},
         "ultimate": {"name": "Nihility Embrace", "description": "Deal {power}% ATK true dark damage to all and gain Void Form (next 3 attacks ignore all defenses)", "type": "true_aoe_pierce", "power": 225, "cooldown": 6},
-        "passive": {"name": "Void Mastery", "description": "Ultimate glass cannon: +{power}% ATK, cannot be healed but immune to debuffs", "type": "void_master", "power": 30}
+        "passive": {"name": "Void Mastery", "description": "Ultimate glass cannon: +{power}% ATK, cannot be healed but immune to debuffs", "type": "void_master", "power": 25}
       },
-      "15": {
-        "basic": {"name": "Reality Tear", "description": "Deal {power}% ATK true dark damage and create Void Rift (area denies healing for 4 turns)", "type": "true_damage_field", "power": 155, "cooldown": 0},
-        "ultimate": {"name": "Existence Denial", "description": "Deal {power}% ATK true damage to all and inflict Null State (target cannot use abilities for 2 turns)", "type": "true_aoe_silence", "power": 315, "cooldown": 8},
-        "passive": {"name": "Entropy Incarnate", "description": "Void transcendence: +{power}% damage, attacks reduce enemy max HP by 5%", "type": "transcendent", "power": 45}
-      },
-      "18": {
-        "basic": {"name": "Concept Erase", "description": "Deal {power}% ATK true dark damage and attempt Erasure (10% chance to instantly defeat non-boss enemies)", "type": "true_damage_death", "power": 170, "cooldown": 0},
-        "ultimate": {"name": "Universal Void", "description": "Deal {power}% ATK true damage to all and inflict Existential Crisis (all enemy abilities have double cooldown for 5 turns)", "type": "reality_disable", "power": 390, "cooldown": 10},
-        "passive": {"name": "Void Genesis", "description": "Master nothingness: +{power}% all damage, each kill permanently increases ATK by 5%", "type": "cosmic", "power": 60}
+      "12": {
+        "basic": {"name": "Void Mastery", "description": "Deal {power}% ATK true dark damage", "type": "true_damage", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Shadow Singularity", "description": "Deal {power}% ATK dark damage to all enemies with +50% critical chance", "type": "aoe_critical", "power": 255, "cooldown": 6},
+        "passive": {"name": "Darkness Mastery", "description": "+{power}% ATK but -{power2}% DEF (ultimate glass cannon)", "type": "extreme_glass", "power": 35, "power2": 15}
       }
     },
 
@@ -185,15 +154,10 @@
         "ultimate": {"name": "Divine Transcendence", "description": "Grant all allies Ascension: +40% all stats and immunity to debuffs for 4 turns", "type": "mass_transcend", "power": 40, "cooldown": 6},
         "passive": {"name": "Celestial Mastery", "description": "Perfect balance: +{power}% all stats, enhanced fusion rates for all allies", "type": "perfection", "power": 25}
       },
-      "15": {
-        "basic": {"name": "Purity Incarnate", "description": "Deal {power}% ATK true light damage and purify all negative effects from allies", "type": "true_damage_purify", "power": 155, "cooldown": 0},
-        "ultimate": {"name": "Universal Harmony", "description": "Achieve perfect balance: all allies gain +50% all stats and share damage taken for 5 turns", "type": "universal_bond", "power": 50, "cooldown": 8},
-        "passive": {"name": "Light Eternal", "description": "Perfection embodied: +{power}% all effects, allies cannot die while you live", "type": "transcendent", "power": 45}
-      },
-      "18": {
-        "basic": {"name": "Genesis Light", "description": "Deal {power}% ATK true light damage and grant target ally Evolution (+25% all stats permanently)", "type": "true_damage_evolve", "power": 170, "cooldown": 0},
-        "ultimate": {"name": "Creation's End", "description": "Rewrite reality: all allies gain +75% all stats and Perfect Form (immune to all negative effects permanently)", "type": "reality_perfect", "power": 75, "cooldown": 10},
-        "passive": {"name": "Divine Genesis", "description": "Master creation: +{power}% all damage, each victory grants all allies +2% all stats permanently", "type": "cosmic", "power": 60}
+      "12": {
+        "basic": {"name": "Divine Mastery", "description": "Deal {power}% ATK light damage and cleanse all debuffs from allies", "type": "damage_cleanse", "power": 140, "cooldown": 0},
+        "ultimate": {"name": "Radiant Singularity", "description": "Heal all allies for 75% max HP and deal {power}% ATK light damage to all enemies", "type": "heal_aoe_damage", "power": 255, "cooldown": 8},
+        "passive": {"name": "Light Mastery", "description": "+{power}% to all stats (perfect balance)", "type": "balanced_mastery", "power": 30}
       }
     }
   }

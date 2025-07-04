@@ -137,10 +137,8 @@ class ImageConfig:
         # Get nested configuration
         thresholds = cls.get_nested("tier_effects", "thresholds", default={
             "common": [1, 4],
-            "rare": [5, 9], 
-            "epic": [10, 14],
-            "legendary": [15, 18],
-            "mythic": [19, 22]
+            "rare": [5, 8], 
+            "epic": [9, 12]
         })
         
         effects = cls.get_nested("tier_effects", "effects", default={})
@@ -351,10 +349,8 @@ class ImageGenerator:
         
         # Tier-based folder structure
         tier_folders = [
-            "absolute", "astral", "celestial", "common", "divine",
-            "empyrean", "epic", "ethereal", "genesis", "legendary",
-            "mythic", "primal", "rare", "singularity", "sovereign",
-            "transcendent", "uncommon", "void"
+            "common", "uncommon", "rare", "epic", "mythic", "divine",
+            "legendary", "ethereal", "genesis", "empyrean", "void", "singularity"
         ]
         
         # Priority search: tier folder first
