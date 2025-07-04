@@ -72,7 +72,7 @@ class QuestService(BaseService):
             if apply_bonuses:
                 # Get player and apply bonuses
                 async with DatabaseService.get_session() as session:
-                    stmt = select(Player).where(Player.id == player_id)
+                    stmt = select(Player).where(Player.id == player_id) # type: ignore
                     player = (await session.execute(stmt)).scalar_one()
                     
                     # Apply leader bonuses
@@ -186,7 +186,7 @@ class QuestService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 # Get available areas
@@ -237,7 +237,7 @@ class QuestService(BaseService):
                             
                             recommendations["recommended_areas"].append({
                                 "area_id": area_id,
-                                "capture_chance": capture_calc.data.final_capture_chance,
+                                "capture_chance": capture_calc.data.final_capture_chance if capture_calc.data else 0.0,
                                 "capture_value": capture_value,
                                 "capturable_tiers": analysis.capturable_tiers
                             })
@@ -299,19 +299,21 @@ class QuestService(BaseService):
             if not quests_config or area_id not in quests_config:
                 raise ValueError(f"Area {area_id} not found")
             
+            # Use actual_attempts everywhere - NEVER reassign attempts parameter
+            actual_attempts = attempts
             area_data = quests_config[area_id]
             energy_cost = area_data.get("energy_cost", 10)
             
             # Check if player has enough energy
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if use_current_energy:
                     max_attempts = player.energy // energy_cost
-                    attempts = min(attempts, max_attempts)
+                    actual_attempts = min(actual_attempts, max_attempts)  # ✅ Update actual_attempts
             
-            if attempts <= 0:
+            if actual_attempts <= 0:  # ✅ Use actual_attempts
                 return {
                     "attempts": 0,
                     "reason": "Insufficient energy",
@@ -324,12 +326,12 @@ class QuestService(BaseService):
             if not capture_calc.success:
                 raise ValueError("Failed to calculate capture probability")
             
-            capture_chance = capture_calc.data.final_capture_chance
+            capture_chance = capture_calc.data.final_capture_chance if capture_calc.data else 0.0
             
             # Simulate attempts
             simulation_results = {
-                "attempts": attempts,
-                "energy_cost": energy_cost * attempts,
+                "attempts": actual_attempts,  # ✅ Use actual_attempts
+                "energy_cost": energy_cost * actual_attempts,  # ✅ Use actual_attempts
                 "captures": 0,
                 "total_xp": 0,
                 "total_jijies": 0,
@@ -340,7 +342,7 @@ class QuestService(BaseService):
             xp_reward = cls._extract_xp_reward(area_data)
             jijies_range = area_data.get("jijies_reward", [50, 100])
             
-            for attempt in range(attempts):
+            for attempt in range(actual_attempts):  # ✅ Use actual_attempts
                 # Always get quest rewards
                 simulation_results["total_xp"] += xp_reward
                 jijies_gain = random.randint(jijies_range[0], jijies_range[1])
@@ -358,11 +360,11 @@ class QuestService(BaseService):
                             "attempt": attempt + 1
                         })
             
-            simulation_results["success_rate"] = (simulation_results["captures"] / attempts * 100) if attempts > 0 else 0
+            simulation_results["success_rate"] = (simulation_results["captures"] / actual_attempts * 100) if actual_attempts > 0 else 0  # ✅ Use actual_attempts
             
             # Add efficiency metrics
-            simulation_results["xp_per_energy"] = simulation_results["total_xp"] / (energy_cost * attempts) if attempts > 0 else 0
-            simulation_results["captures_per_energy"] = simulation_results["captures"] / (energy_cost * attempts) if attempts > 0 else 0
+            simulation_results["xp_per_energy"] = simulation_results["total_xp"] / (energy_cost * actual_attempts) if actual_attempts > 0 else 0  # ✅ Use actual_attempts
+            simulation_results["captures_per_energy"] = simulation_results["captures"] / (energy_cost * actual_attempts) if actual_attempts > 0 else 0  # ✅ Use actual_attempts
             
             return simulation_results
         

@@ -43,7 +43,7 @@ class PlayerService(BaseService):
                 raise ValueError("Invalid Discord ID")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.discord_id == discord_id)
+                stmt = select(Player).where(Player.discord_id == discord_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one_or_none()
                 
                 if player:
@@ -111,7 +111,7 @@ class PlayerService(BaseService):
     async def get_basic_profile(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 return {
@@ -133,7 +133,7 @@ class PlayerService(BaseService):
                 raise ValueError("Username cannot be empty")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 old_username = player.username
@@ -167,7 +167,7 @@ class PlayerService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.energy >= player.max_energy:
@@ -253,7 +253,7 @@ class PlayerService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.stamina >= player.max_stamina:
@@ -333,7 +333,7 @@ class PlayerService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 old_level = player.level
@@ -428,7 +428,7 @@ class PlayerService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 base_bonuses = player.get_skill_bonuses()
@@ -503,7 +503,7 @@ class PlayerService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 current_allocation = player.allocated_skills.copy()
@@ -567,7 +567,7 @@ class PlayerService(BaseService):
         """
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 today = date.today()

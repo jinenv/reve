@@ -52,7 +52,7 @@ class RelicService(BaseService):
         """Get relic slot information for an esprit"""
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(EspritBase).where(EspritBase.id == esprit_base_id)
+                stmt = select(EspritBase).where(EspritBase.id == esprit_base_id) # type: ignore
                 esprit_base = (await session.execute(stmt)).scalar_one()
                 
                 max_slots = cls._calculate_max_slots_for_tier(esprit_base.base_tier)
@@ -82,7 +82,7 @@ class RelicService(BaseService):
         async def _operation():
             async with DatabaseService.get_transaction() as session:
                 # Get esprit base with lock
-                stmt = select(EspritBase).where(EspritBase.id == esprit_base_id).with_for_update()
+                stmt = select(EspritBase).where(EspritBase.id == esprit_base_id).with_for_update() # type: ignore
                 esprit_base = (await session.execute(stmt)).scalar_one()
                 
                 # Validate slot index
@@ -388,14 +388,23 @@ class RelicService(BaseService):
             esprit_base.equipped_relics, base_stats
         )
         
-        return calculation_result.data if calculation_result.success else StatCalculationResult(
-            final_atk=base_stats["atk"],
-            final_def=base_stats["def"],
-            final_hp=base_stats["hp"],
-            base_atk=base_stats["atk"],
-            base_def=base_stats["def"],
-            base_hp=base_stats["hp"],
-            conversions={"converted_atk": base_stats["atk"], "converted_def": base_stats["def"], "converted_hp": base_stats["hp"]},
-            total_bonuses={},
-            relic_count=0
-        )
+        # ✅ FIX: Add None check for calculation_result.data
+        if calculation_result.success and calculation_result.data is not None:
+            return calculation_result.data
+        else:
+            # Return fallback StatCalculationResult with base stats only
+            return StatCalculationResult(
+                final_atk=base_stats["atk"],
+                final_def=base_stats["def"],
+                final_hp=base_stats["hp"],
+                base_atk=base_stats["atk"],
+                base_def=base_stats["def"],
+                base_hp=base_stats["hp"],
+                conversions={
+                    "converted_atk": base_stats["atk"], 
+                    "converted_def": base_stats["def"], 
+                    "converted_hp": base_stats["hp"]
+                },
+                total_bonuses={},
+                relic_count=0
+            )

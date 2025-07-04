@@ -1,7 +1,7 @@
 # src/services/search_service.py
 from typing import Dict, Any, Optional, List
-from sqlalchemy import select, func, and_, or_, desc, asc
-from sqlalchemy.orm import aliased
+from sqlalchemy import select, func, and_, or_, desc, asc  # type: ignore
+from sqlalchemy.orm import aliased  # type: ignore
 
 from src.services.base_service import BaseService, ServiceResult
 from src.services.cache_service import CacheService
@@ -17,56 +17,60 @@ class SearchService(BaseService):
     async def search_esprits(cls, query: str, filters: Optional[Dict[str, Any]] = None, 
                            limit: int = 20, offset: int = 0) -> ServiceResult[Dict[str, Any]]:
         """Search Esprits by name with optional filters"""
+        # ✅ FIX: Assign filters outside nested function to avoid scoping issues
+        search_filters = filters or {}
+        
         async def _operation():
             if not query or len(query) < 2:
                 raise ValueError("Search query must be at least 2 characters")
-            
-            filters = filters or {}
             
             async with DatabaseService.get_session() as session:
                 stmt = select(EspritBase)
                 
                 # Apply name search
-                stmt = stmt.where(EspritBase.name.ilike(f"%{query}%"))
+                stmt = stmt.where(EspritBase.name.ilike(f"%{query}%"))  # type: ignore
                 
                 # Apply filters
-                if filters.get("element"):
-                    stmt = stmt.where(EspritBase.element.ilike(f"%{filters['element']}%"))
+                if search_filters.get("element"):
+                    stmt = stmt.where(EspritBase.element.ilike(f"%{search_filters['element']}%"))  # type: ignore
                 
-                if filters.get("tier"):
-                    if isinstance(filters["tier"], list):
-                        stmt = stmt.where(EspritBase.base_tier.in_(filters["tier"]))
+                if search_filters.get("tier"):
+                    if isinstance(search_filters["tier"], list):
+                        stmt = stmt.where(EspritBase.base_tier.in_(search_filters["tier"]))  # type: ignore
                     else:
-                        stmt = stmt.where(EspritBase.base_tier == filters["tier"])
+                        stmt = stmt.where(EspritBase.base_tier == search_filters["tier"])  # type: ignore
                 
-                if filters.get("min_tier"):
-                    stmt = stmt.where(EspritBase.base_tier >= filters["min_tier"])
+                if search_filters.get("min_tier"):
+                    stmt = stmt.where(EspritBase.base_tier >= search_filters["min_tier"])  # type: ignore
                 
-                if filters.get("max_tier"):
-                    stmt = stmt.where(EspritBase.base_tier <= filters["max_tier"])
+                # ✅ FIX: Add None check for max_tier comparison
+                max_tier = search_filters.get("max_tier")
+                if max_tier is not None:
+                    stmt = stmt.where(EspritBase.base_tier <= max_tier)  # type: ignore
                 
                 # Apply sorting
-                sort_by = filters.get("sort_by", "name")
-                sort_order = filters.get("sort_order", "asc")
+                sort_by = search_filters.get("sort_by", "name")
+                sort_order = search_filters.get("sort_order", "asc")
                 
                 if sort_by == "name":
-                    stmt = stmt.order_by(asc(EspritBase.name) if sort_order == "asc" else desc(EspritBase.name))
+                    stmt = stmt.order_by(asc(EspritBase.name) if sort_order == "asc" else desc(EspritBase.name))  # type: ignore
                 elif sort_by == "tier":
-                    stmt = stmt.order_by(asc(EspritBase.base_tier) if sort_order == "asc" else desc(EspritBase.base_tier))
+                    stmt = stmt.order_by(asc(EspritBase.base_tier) if sort_order == "asc" else desc(EspritBase.base_tier))  # type: ignore
                 elif sort_by == "element":
-                    stmt = stmt.order_by(asc(EspritBase.element) if sort_order == "asc" else desc(EspritBase.element))
+                    stmt = stmt.order_by(asc(EspritBase.element) if sort_order == "asc" else desc(EspritBase.element))  # type: ignore
                 elif sort_by == "power":
-                    power_expr = EspritBase.base_atk + EspritBase.base_def + (EspritBase.base_hp / 10)
-                    stmt = stmt.order_by(asc(power_expr) if sort_order == "asc" else desc(power_expr))
+                    power_expr = EspritBase.base_atk + EspritBase.base_def + (EspritBase.base_hp / 10)  # type: ignore
+                    stmt = stmt.order_by(asc(power_expr) if sort_order == "asc" else desc(power_expr))  # type: ignore
                 
                 # Get total count
-                count_stmt = select(func.count()).select_from(stmt.subquery())
+                count_stmt = select(func.count()).select_from(stmt.subquery())  # type: ignore
                 total_count = (await session.execute(count_stmt)).scalar()
                 
                 # Apply pagination
                 stmt = stmt.offset(offset).limit(limit)
                 
-                results = (await session.execute(stmt)).all()
+                # ✅ FIX: Use .scalars().all() instead of .all()
+                results = (await session.execute(stmt)).scalars().all()
                 
                 esprits = []
                 for base in results:
@@ -81,10 +85,10 @@ class SearchService(BaseService):
                     })
                 
                 return {
-                    "query": query, "filters": filters, "results": esprits,
+                    "query": query, "filters": search_filters, "results": esprits,
                     "pagination": {
                         "total_count": total_count, "limit": limit, "offset": offset,
-                        "has_more": offset + limit < total_count
+                        "has_more": (total_count is not None and offset + limit < total_count)
                     }
                 }
         return await cls._safe_execute(_operation, "search esprits")
@@ -94,7 +98,7 @@ class SearchService(BaseService):
         """Get exact Esprit match by name"""
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(EspritBase).where(EspritBase.name.ilike(name))
+                stmt = select(EspritBase).where(EspritBase.name.ilike(name))  # type: ignore
                 base = (await session.execute(stmt)).scalar_one_or_none()
                 
                 if not base:
@@ -123,10 +127,11 @@ class SearchService(BaseService):
             
             async with DatabaseService.get_session() as session:
                 stmt = select(EspritBase).where(
-                    EspritBase.element == element_obj.name
-                ).order_by(desc(EspritBase.base_tier), EspritBase.name).limit(limit)
+                    EspritBase.element == element_obj.name  # type: ignore
+                ).order_by(desc(EspritBase.base_tier), EspritBase.name).limit(limit)  # type: ignore
                 
-                results = (await session.execute(stmt)).all()
+                # ✅ FIX: Use .scalars().all() instead of .all()
+                results = (await session.execute(stmt)).scalars().all()
                 
                 esprits = []
                 for base in results:
@@ -150,10 +155,11 @@ class SearchService(BaseService):
             
             async with DatabaseService.get_session() as session:
                 stmt = select(EspritBase).where(
-                    EspritBase.base_tier == tier
+                    EspritBase.base_tier == tier  # type: ignore
                 ).order_by(EspritBase.element, EspritBase.name).limit(limit)
                 
-                results = (await session.execute(stmt)).all()
+                # ✅ FIX: Use .scalars().all() instead of .all()
+                results = (await session.execute(stmt)).scalars().all()
                 
                 esprits = []
                 for base in results:
@@ -184,28 +190,29 @@ class SearchService(BaseService):
                 if tier is not None:
                     if not Tiers.is_valid(tier):
                         raise ValueError(f"Invalid tier: {tier}")
-                    stmt = stmt.where(EspritBase.base_tier == tier)
+                    stmt = stmt.where(EspritBase.base_tier == tier)  # type: ignore
                 
                 if element:
                     element_obj = Elements.from_string(element)
                     if not element_obj:
                         raise ValueError(f"Invalid element: {element}")
-                    stmt = stmt.where(EspritBase.element == element_obj.name)
+                    stmt = stmt.where(EspritBase.element == element_obj.name)  # type: ignore
                 
                 # Apply sorting
                 if stat == "atk":
-                    stmt = stmt.order_by(desc(EspritBase.base_atk))
+                    stmt = stmt.order_by(desc(EspritBase.base_atk))  # type: ignore
                 elif stat == "def":
-                    stmt = stmt.order_by(desc(EspritBase.base_def))
+                    stmt = stmt.order_by(desc(EspritBase.base_def))  # type: ignore
                 elif stat == "hp":
-                    stmt = stmt.order_by(desc(EspritBase.base_hp))
+                    stmt = stmt.order_by(desc(EspritBase.base_hp))  # type: ignore
                 elif stat == "power":
-                    power_expr = EspritBase.base_atk + EspritBase.base_def + (EspritBase.base_hp / 10)
-                    stmt = stmt.order_by(desc(power_expr))
+                    power_expr = EspritBase.base_atk + EspritBase.base_def + (EspritBase.base_hp / 10)  # type: ignore
+                    stmt = stmt.order_by(desc(power_expr))  # type: ignore
                 
                 stmt = stmt.limit(limit)
                 
-                results = (await session.execute(stmt)).all()
+                # ✅ FIX: Use .scalars().all() instead of .all()
+                results = (await session.execute(stmt)).scalars().all()
                 
                 leaders = []
                 for i, base in enumerate(results, 1):
@@ -225,29 +232,32 @@ class SearchService(BaseService):
     @classmethod
     async def get_random_esprit(cls, filters: Optional[Dict[str, Any]] = None) -> ServiceResult[Dict[str, Any]]:
         """Get a random Esprit matching optional criteria"""
+        # ✅ FIX: Assign filters outside nested function to avoid scoping issues
+        search_filters = filters or {}
+        
         async def _operation():
-            filters = filters or {}
-            
             async with DatabaseService.get_session() as session:
                 stmt = select(EspritBase)
                 
                 # Apply filters
-                if filters.get("element"):
-                    element_obj = Elements.from_string(filters["element"])
+                if search_filters.get("element"):
+                    element_obj = Elements.from_string(search_filters["element"])
                     if element_obj:
-                        stmt = stmt.where(EspritBase.element == element_obj.name)
+                        stmt = stmt.where(EspritBase.element == element_obj.name)  # type: ignore
                 
-                if filters.get("tier"):
-                    stmt = stmt.where(EspritBase.base_tier == filters["tier"])
+                if search_filters.get("tier"):
+                    stmt = stmt.where(EspritBase.base_tier == search_filters["tier"])  # type: ignore
                 
-                if filters.get("min_tier"):
-                    stmt = stmt.where(EspritBase.base_tier >= filters["min_tier"])
+                if search_filters.get("min_tier"):
+                    stmt = stmt.where(EspritBase.base_tier >= search_filters["min_tier"])  # type: ignore
                 
-                if filters.get("max_tier"):
-                    stmt = stmt.where(EspritBase.base_tier <= filters["max_tier"])
+                # ✅ FIX: Add None check for max_tier comparison
+                max_tier = search_filters.get("max_tier")
+                if max_tier is not None:
+                    stmt = stmt.where(EspritBase.base_tier <= max_tier)  # type: ignore
                 
                 # Get random result
-                stmt = stmt.order_by(func.random()).limit(1)
+                stmt = stmt.order_by(func.random()).limit(1)  # type: ignore
                 
                 base = (await session.execute(stmt)).scalar_one_or_none()
                 
@@ -273,47 +283,54 @@ class SearchService(BaseService):
             
             async with DatabaseService.get_session() as session:
                 # Get player's owned Esprits
-                owned_stmt = select(Esprit.esprit_base_id).where(Esprit.owner_id == player_id)
-                owned_ids = [row[0] for row in (await session.execute(owned_stmt)).all()]
+                owned_stmt = select(Esprit.esprit_base_id).where(Esprit.owner_id == player_id)  # type: ignore
+                owned_result = await session.execute(owned_stmt)
+                owned_ids = [row[0] for row in owned_result.all()]
                 
                 if not owned_ids:
                     # New player - suggest some starter tier Esprits
                     stmt = select(EspritBase).where(
-                        EspritBase.base_tier.in_([1, 2, 3])
-                    ).order_by(func.random()).limit(limit)
+                        EspritBase.base_tier.in_([1, 2, 3])  # type: ignore
+                    ).order_by(func.random()).limit(limit)  # type: ignore
                 else:
-                    # Get player's most common elements and tiers
+                    # ✅ FIX: Proper select statement for collection analysis
                     collection_stmt = select(
-                        Esprit.element,
-                        Esprit.tier,
+                        Esprit.element, # type: ignore
+                        Esprit.tier, # type: ignore
                         func.count().label('count')
-                    ).where(Esprit.owner_id == player_id).group_by(
+                    ).where(Esprit.owner_id == player_id).group_by(  # type: ignore
                         Esprit.element, Esprit.tier
-                    ).order_by(desc('count')).limit(3)
+                    ).order_by(desc(func.count())).limit(3)  # type: ignore
                     
-                    collection_data = (await session.execute(collection_stmt)).all()
+                    collection_result = await session.execute(collection_stmt)
+                    collection_data = collection_result.all()
                     
                     if collection_data:
                         # Suggest similar Esprits they don't own
                         favorite_elements = [row.element for row in collection_data]
                         favorite_tiers = [row.tier for row in collection_data]
                         
-                        stmt = select(EspritBase).where(
-                            and_(
-                                ~EspritBase.id.in_(owned_ids),  # Not owned
-                                or_(
-                                    EspritBase.element.in_(favorite_elements),
-                                    EspritBase.base_tier.in_(favorite_tiers)
-                                )
-                            )
-                        ).order_by(func.random()).limit(limit)
+                        # ✅ FIX: Ensure proper column references for .in_() calls
+                        element_condition = EspritBase.element.in_(favorite_elements) if favorite_elements else None  # type: ignore
+                        tier_condition = EspritBase.base_tier.in_(favorite_tiers) if favorite_tiers else None  # type: ignore
+                        
+                        conditions = [~EspritBase.id.in_(owned_ids)]  # type: ignore
+                        if element_condition is not None and tier_condition is not None:
+                            conditions.append(or_(element_condition, tier_condition))
+                        elif element_condition is not None:
+                            conditions.append(element_condition)
+                        elif tier_condition is not None:
+                            conditions.append(tier_condition)
+                        
+                        stmt = select(EspritBase).where(and_(*conditions)).order_by(func.random()).limit(limit)  # type: ignore
                     else:
                         # Fallback to random suggestions
                         stmt = select(EspritBase).where(
-                            ~EspritBase.id.in_(owned_ids)
-                        ).order_by(func.random()).limit(limit)
+                            ~EspritBase.id.in_(owned_ids)  # type: ignore
+                        ).order_by(func.random()).limit(limit)  # type: ignore
                 
-                results = (await session.execute(stmt)).all()
+                # ✅ FIX: Use .scalars().all() instead of .all()
+                results = (await session.execute(stmt)).scalars().all()
                 
                 suggestions = []
                 for base in results:
@@ -336,8 +353,9 @@ class SearchService(BaseService):
                 raise ValueError("Can compare between 2 and 5 Esprits")
             
             async with DatabaseService.get_session() as session:
-                stmt = select(EspritBase).where(EspritBase.id.in_(esprit_ids))
-                results = (await session.execute(stmt)).all()
+                stmt = select(EspritBase).where(EspritBase.id.in_(esprit_ids))  # type: ignore
+                # ✅ FIX: Use .scalars().all() instead of .all()
+                results = (await session.execute(stmt)).scalars().all()
                 
                 if len(results) != len(esprit_ids):
                     raise ValueError("One or more Esprit IDs not found")

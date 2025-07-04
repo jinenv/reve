@@ -16,7 +16,7 @@ class ResourceService(BaseService):
     async def consume_energy(cls, player_id: int, amount: int, context: str = "quest") -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 energy_regen = player.regenerate_energy()
@@ -44,7 +44,7 @@ class ResourceService(BaseService):
     async def consume_stamina(cls, player_id: int, amount: int, context: str = "battle") -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 stamina_regen = player.regenerate_stamina()
@@ -72,7 +72,7 @@ class ResourceService(BaseService):
     async def restore_energy(cls, player_id: int, amount: int, source: str = "item") -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 old_energy = player.energy
@@ -94,7 +94,7 @@ class ResourceService(BaseService):
     async def get_resource_status(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 return {

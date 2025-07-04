@@ -20,7 +20,7 @@ class PowerService(BaseService):
                 return cached.data
             
             async with DatabaseService.get_transaction() as session:
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 power_data = await player.recalculate_total_power(session)
@@ -39,12 +39,12 @@ class PowerService(BaseService):
     async def get_power_breakdown(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_session() as session:
-                player_stmt = select(Player).where(Player.id == player_id)
+                player_stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 esprits_stmt = select(Esprit, EspritBase).where(
-                    Esprit.owner_id == player_id,
-                    Esprit.esprit_base_id == EspritBase.id
+                    Esprit.owner_id == player_id, # type: ignore
+                    Esprit.esprit_base_id == EspritBase.id # type: ignore
                 )
                 esprit_results = (await session.execute(esprits_stmt)).all()
                 

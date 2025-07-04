@@ -2,6 +2,7 @@
 from typing import Dict, Any, List
 from sqlalchemy import select
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.services.base_service import BaseService, ServiceResult
 from src.services.cache_service import CacheService
 from src.database.models.player import Player
@@ -18,13 +19,13 @@ class LeadershipService(BaseService):
     async def set_leader_esprit(cls, player_id: int, esprit_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_transaction() as session:
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 esprit_stmt = select(Esprit, EspritBase).where(
-                    Esprit.id == esprit_id,
-                    Esprit.owner_id == player_id,
-                    Esprit.esprit_base_id == EspritBase.id
+                    Esprit.id == esprit_id, # type: ignore
+                    Esprit.owner_id == player_id, # type: ignore
+                    Esprit.esprit_base_id == EspritBase.id # type: ignore
                 )
                 
                 esprit_result = (await session.execute(esprit_stmt)).first()
@@ -68,7 +69,7 @@ class LeadershipService(BaseService):
                 return cached.data
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if not player.leader_esprit_stack_id:
@@ -77,7 +78,7 @@ class LeadershipService(BaseService):
                         "description": "No leader Esprit set"
                     }
                 
-                bonuses = await player.get_leader_bonuses(session)
+                bonuses = await cls._calculate_leader_bonuses(player, session)
                 await CacheService.cache_leader_bonuses(player_id, bonuses)
                 
                 return {"has_leader": True, **bonuses}
@@ -88,9 +89,9 @@ class LeadershipService(BaseService):
         async def _operation():
             async with DatabaseService.get_session() as session:
                 stmt = select(Esprit, EspritBase).where(
-                    Esprit.owner_id == player_id,
-                    Esprit.esprit_base_id == EspritBase.id,
-                    Esprit.quantity > 0
+                    Esprit.owner_id == player_id, # type: ignore
+                    Esprit.esprit_base_id == EspritBase.id, # type: ignore
+                    Esprit.quantity > 0 # type: ignore
                 ).order_by(EspritBase.base_tier.desc(), EspritBase.name)
                 
                 results = (await session.execute(stmt)).all()
@@ -118,3 +119,55 @@ class LeadershipService(BaseService):
                 eligible_leaders.sort(key=lambda x: x["total_power"], reverse=True)
                 return eligible_leaders
         return await cls._safe_execute(_operation, "get eligible leaders")
+    
+    @classmethod
+    async def _calculate_leader_bonuses(
+        cls, 
+        player: Player, 
+        session: AsyncSession
+    ) -> Dict[str, Any]:
+        """
+        Calculate bonuses provided by the player's leader esprit.
+        BUSINESS LOGIC: Moved from Player model to LeadershipService.
+        """
+        if not player.leader_esprit_stack_id:
+            return {
+                "bonuses": {},
+                "element": None,
+                "description": "No leader Esprit set"
+            }
+        
+        # Get the leader esprit with its base data
+        leader_stmt = select(Esprit, EspritBase).where(
+            Esprit.id == player.leader_esprit_stack_id,  # type: ignore
+            Esprit.esprit_base_id == EspritBase.id  # type: ignore
+        )
+        
+        leader_result = (await session.execute(leader_stmt)).first()
+        if not leader_result:
+            return {
+                "bonuses": {},
+                "element": None,
+                "description": "Leader Esprit not found"
+            }
+        
+        leader_esprit, leader_base = leader_result
+        
+        # Calculate element-based bonuses
+        element = Elements.from_string(leader_esprit.element)
+        bonuses = {}
+        
+        if element:
+            bonuses = element.calculate_leadership_bonuses(
+                tier=leader_base.base_tier,
+                awakening_level=leader_esprit.awakening_level
+            )
+        
+        return {
+            "bonuses": bonuses,
+            "element": leader_esprit.element,
+            "leader_name": leader_base.name,
+            "leader_tier": leader_base.base_tier,
+            "awakening_level": leader_esprit.awakening_level,
+            "description": f"{leader_base.name} ({leader_esprit.element}) provides {element.name if element else 'unknown'} element bonuses"
+        }

@@ -51,7 +51,7 @@ class ProgressionService(BaseService):
                     player.experience -= player.xp_for_next_level()
                     player.level += 1
                     levels_gained += 1
-                    level_rewards = ConfigManager.get("level_rewards", {})
+                    level_rewards = ConfigManager.get("level_rewards") or {}
                     player.skill_points += level_rewards.get("skill_points_per_level", 1)
 
                 # Update inventory and fragments
@@ -102,7 +102,7 @@ class ProgressionService(BaseService):
                 if not player:
                     raise ValueError("Player not found.")
 
-                quests_config = ConfigManager.get("quests", {})
+                quests_config = ConfigManager.get("quests") or {}
                 if area_id not in quests_config:
                     raise ValueError(f"Invalid area ID: {area_id}")
 

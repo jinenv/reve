@@ -29,7 +29,7 @@ class NotificationService(BaseService):
                     raise ValueError(f"Invalid notification setting: {setting_key}")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 # Initialize settings if needed
@@ -71,7 +71,7 @@ class NotificationService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 # Ensure all default settings exist
@@ -123,7 +123,7 @@ class NotificationService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 # Default to True if settings don't exist
@@ -149,7 +149,7 @@ class NotificationService(BaseService):
                 raise ValueError(f"Invalid notification type: {notification_type}")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.notification_settings is None:
@@ -245,7 +245,7 @@ class NotificationService(BaseService):
             if not settings_result.success:
                 return settings_result
             
-            settings = settings_result.data["settings"]
+            settings = settings_result.data["settings"] if settings_result.data and "settings" in settings_result.data else {}
             
             enabled_count = sum(1 for enabled in settings.values() if enabled)
             total_count = len(settings)

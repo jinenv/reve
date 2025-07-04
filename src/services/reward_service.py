@@ -16,7 +16,7 @@ class RewardService(BaseService):
     async def claim_daily_reward(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         async def _operation():
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 today = date.today()

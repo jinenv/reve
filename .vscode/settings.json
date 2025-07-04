@@ -1,7 +1,9 @@
+
 {
     "python.analysis.diagnosticSeverityOverrides": {
         "reportIncompatibleVariableOverride": "none",
-        "reportAttributeAccessIssue": "none"
+        "reportAttributeAccessIssue": "none",
+        "reportArgumentType": "information"
     },
     "python.analysis.typeCheckingMode": "basic"
 }

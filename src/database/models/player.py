@@ -1,3 +1,4 @@
+
 # src/database/models/player.py
 from typing import List, Optional, Dict, Any
 from sqlmodel import BigInteger, SQLModel, Field, Column
@@ -80,7 +81,7 @@ class Player(SQLModel, table=True):
     guild_id: Optional[int] = Field(default=None)
     guild_contribution_points: int = Field(default=0)
     
-    # --- Notification & Settings ---
+    # --- Notification Settings ---
     notification_settings: Dict[str, bool] = Field(default_factory=lambda: {
         "daily_energy_full": True,
         "quest_rewards": True,
@@ -108,149 +109,35 @@ class Player(SQLModel, table=True):
     }, sa_column=Column(JSON))
     skill_reset_count: int = Field(default=0)  # Track resets for monetization
 
-    # Economic tracking
+    # --- Building & Economic Systems ---
     upkeep_paid_until: datetime = Field(default_factory=datetime.utcnow)
     total_upkeep_cost: int = Field(default=0)  # Cached daily upkeep
     last_upkeep_calculation: datetime = Field(default_factory=datetime.utcnow)
-
-    # Building slots (expandable)
     building_slots: int = Field(default=3)
     total_buildings_owned: int = Field(default=0)
-
-    # Economic stats
     total_passive_income_collected: int = Field(default=0)
     total_upkeep_paid: int = Field(default=0)
     times_went_bankrupt: int = Field(default=0)  # Times they couldn't pay upkeep
 
-    # Achievement tracking
+    # --- Achievement System ---
     achievements_earned: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     achievement_points: int = Field(default=0)
 
-    # Daily rewards
-    last_daily_reward: Optional[date] = Field(default=None)
-    daily_streak: int = Field(default=0)
-
-    # Shop purchases
-    shop_purchase_history: Dict[str, List[datetime]] = Field(default_factory=dict, sa_column=Column(JSON))
-
-    # --- SIMPLE CALCULATION METHODS ONLY ---
-
+    # --- XP PROGRESSION HELPERS ---
+    
     def xp_for_next_level(self) -> int:
-        """Calculate XP required for next level using GameConstants"""
+        """Calculate XP needed for next level"""
         return GameConstants.get_xp_required(self.level)
-
-    # --- SIMPLE GETTERS FOR FRAGMENTS ---
     
-    def get_tier_fragment_count(self, tier: int) -> int:
-        """Get fragment count for specific tier"""
-        if self.tier_fragments is None:
-            self.tier_fragments = {}
-        return self.tier_fragments.get(str(tier), 0)
-
-    def get_fragment_count(self, element: str) -> int:
-        """Get fragment count for specific element"""
-        if self.element_fragments is None:
-            self.element_fragments = {}
-        return self.element_fragments.get(element.lower(), 0)
-
-    def get_fragment_craft_cost(self, tier: int) -> Dict[str, int]:
-        """Get fragment costs for crafting specific tier"""
-        config = ConfigManager.get("crafting_costs")
-        if not config:
-            # Default costs if config missing
-            base_tier_cost = 50 + (tier * 10)
-            base_element_cost = 25 + (tier * 5)
-            return {"tier_fragments": base_tier_cost, "element_fragments": base_element_cost}
-        return config.get(f"tier_{tier}", {"tier_fragments": 100, "element_fragments": 50})
-
-    # --- SIMPLE DATE/TIME CHECKS ---
+    def xp_progress_percent(self) -> float:
+        """Calculate XP progress percentage for current level"""
+        xp_needed = self.xp_for_next_level()
+        if xp_needed == 0:
+            return 100.0
+        return (self.experience / xp_needed) * 100
     
-    def can_claim_daily_echo(self) -> bool:
-        """Check if player can claim daily echo"""
-        today = date.today()
-        return self.last_daily_echo != today
-
-    def can_access_area(self, area_id: str) -> bool:
-        """Check if player meets level requirement for an area."""
-        quests_config = ConfigManager.get("quests")
-        if not quests_config or area_id not in quests_config:
-            return False
-            
-        required_level = quests_config[area_id].get("level_requirement", 1)
-        return self.level >= required_level
-
-    def unlock_area(self, area_id: str):
-        """Unlock a new area if it's higher than current highest"""
-        if area_id > self.highest_area_unlocked:
-            self.highest_area_unlocked = area_id
-
-    # --- SIMPLE QUEST PROGRESS TRACKING ---
-
-    def record_quest_completion(self, area_id: str, quest_id: str):
-        """Records a quest as completed for the player."""
-        if self.quest_progress is None:
-            self.quest_progress = {}
-        if area_id not in self.quest_progress:
-            self.quest_progress[area_id] = []
-        if quest_id not in self.quest_progress[area_id]:
-            self.quest_progress[area_id].append(quest_id)
-            flag_modified(self, "quest_progress")
-
-    def get_completed_quests(self, area_id: str) -> List[str]:
-        """Get list of completed quest IDs for an area."""
-        if self.quest_progress is None:
-            return []
-        return self.quest_progress.get(area_id, [])
-
-    def get_next_available_quest(self, area_id: str) -> Optional[dict]:
-        """Get the next available quest in an area, or None if all completed."""
-        quests_config = ConfigManager.get("quests")
-        if not quests_config or area_id not in quests_config:
-            return None
-            
-        area_data = quests_config[area_id]
-        completed_quests = self.get_completed_quests(area_id)
-        
-        for quest in area_data.get("quests", []):
-            if quest["id"] not in completed_quests:
-                return quest
-        return None
-
-    def has_completed_area(self, area_id: str) -> bool:
-        """Check if player has completed all quests in an area."""
-        quests_config = ConfigManager.get("quests")
-        if not quests_config or area_id not in quests_config:
-            return False
-            
-        area_data = quests_config[area_id]
-        total_quests = len(area_data.get("quests", []))
-        completed_quests = len(self.get_completed_quests(area_id))
-        
-        return completed_quests >= total_quests
-
-    # --- SIMPLE RESET CHECKS ---
-
-    def check_daily_reset(self):
-        """Check and perform daily reset if needed"""
-        today = date.today()
-        if self.last_daily_reset < today:
-            self.last_daily_reset = today
-            if (today - self.last_daily_reset).days > 1:
-                self.daily_quest_streak = 0
-
-    def check_weekly_reset(self):
-        """Check and perform weekly reset if needed"""
-        today = date.today()
-        days_since_monday = today.weekday()
-        this_monday = today - timedelta(days=days_since_monday)
-        last_monday = self.last_weekly_reset
-        
-        if this_monday > last_monday:
-            self.weekly_points = 0
-            self.last_weekly_reset = this_monday
-
-    # --- SIMPLE REGENERATION CALCULATIONS ---
-
+    # --- RESOURCE REGENERATION ---
+    
     def regenerate_energy(self) -> int:
         """Regenerates energy based on time passed. Returns amount gained."""
         if self.energy >= self.max_energy:
@@ -365,25 +252,9 @@ class Player(SQLModel, table=True):
     # - consume_energy() → PlayerService.consume_energy()
     # - consume_stamina() → PlayerService.consume_stamina()
     
-    # Fragment management moved to PlayerService:
-    # - add_tier_fragments() → PlayerService.add_tier_fragments()
-    # - consume_tier_fragments() → PlayerService.consume_tier_fragments()
-    # - add_element_fragments() → PlayerService.add_element_fragments()
-    # - consume_element_fragments() → PlayerService.consume_element_fragments()
+    # Quest and progression moved to QuestService & ProgressionService:
+    # - complete_quest() → QuestService.complete_quest()
+    # - unlock_area() → ProgressionService.unlock_area()
     
-    # Quest operations moved to QuestService:
-    # - apply_quest_rewards() → QuestService.apply_quest_rewards()
-    # - attempt_capture() → QuestService.attempt_capture()
-    
-    # Echo operations moved to EchoService:
-    # - claim_daily_echo() → EchoService.claim_daily_echo()
-    # - open_echo() → EchoService.open_echo()
-    
-    # Skill system moved to PlayerService:
-    # - allocate_skill_points() → PlayerService.allocate_skill_points()
-    # - reset_skill_points() → PlayerService.reset_skill_points()
-    
-    # Building/economy moved to BuildingService:
-    # - calculate_daily_upkeep() → BuildingService.calculate_daily_upkeep()
-    # - pay_daily_upkeep() → BuildingService.pay_daily_upkeep()
-    # - collect_passive_income() → BuildingService.collect_passive_income()
+    # ALL COMPLEX BUSINESS LOGIC NOW LIVES IN SERVICES
+    # This model is now a pure data container with only simple calculations

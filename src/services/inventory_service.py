@@ -23,7 +23,7 @@ class InventoryService(BaseService):
                 raise ValueError("Item name cannot be empty")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if player.inventory is None:
@@ -56,7 +56,7 @@ class InventoryService(BaseService):
                 raise ValueError("Item name cannot be empty")
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 current_quantity = player.inventory.get(item_name, 0) if player.inventory else 0
@@ -87,7 +87,7 @@ class InventoryService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 inventory = player.inventory or {}
@@ -139,7 +139,7 @@ class InventoryService(BaseService):
             item_effects = item_config[item_name]
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 # Check if player has the item
@@ -210,7 +210,7 @@ class InventoryService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id) # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 return player.inventory.get(item_name, 0) if player.inventory else 0
@@ -223,7 +223,7 @@ class InventoryService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_transaction() as session:
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+                stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
                 if not player.inventory:
