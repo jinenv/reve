@@ -28,18 +28,18 @@ class CurrencyTransaction:
 @dataclass
 class CurrencyBalance:
     """Player currency balance"""
-    jijies: int
+    revies: int
     erythl: int
-    total_jijies_earned: int
+    total_revies_earned: int
     total_erythl_earned: int
     last_updated: datetime
 
 class ReviesService(BaseService):
-    """Currency management service for the Jiji domain economy"""
+    """Currency management service for the Reve domain economy"""
     
-    # Supported currencies (ready for future "jijies" transition)
-    VALID_CURRENCIES = {"jijies", "erythl"}
-    PRIMARY_CURRENCY = "jijies"  # Will become "jijies" 
+    # Supported currencies (ready for future "revies" transition)
+    VALID_CURRENCIES = {"revies", "erythl"}
+    PRIMARY_CURRENCY = "revies"  # Will become "revies" 
     PREMIUM_CURRENCY = "erythl"  # Premium currency
     
     @classmethod
@@ -53,9 +53,9 @@ class ReviesService(BaseService):
                 player = (await session.execute(stmt)).scalar_one()
                 
                 balance = CurrencyBalance(
-                    jijies=player.jijies,
+                    revies=player.revies,
                     erythl=player.erythl,
-                    total_jijies_earned=player.total_jijies_earned,
+                    total_revies_earned=player.total_revies_earned,
                     total_erythl_earned=player.total_erythl_earned,
                     last_updated=player.last_activity
                 )
@@ -97,7 +97,7 @@ class ReviesService(BaseService):
                 
                 # Update earning totals
                 if currency == cls.PRIMARY_CURRENCY:
-                    player.total_jijies_earned += amount
+                    player.total_revies_earned += amount
                 elif currency == cls.PREMIUM_CURRENCY:
                     player.total_erythl_earned += amount
                 
@@ -406,7 +406,7 @@ class ReviesService(BaseService):
                         # Update earning totals if adding
                         if amount > 0:
                             if currency == cls.PRIMARY_CURRENCY:
-                                player.total_jijies_earned += amount
+                                player.total_revies_earned += amount
                             elif currency == cls.PREMIUM_CURRENCY:
                                 player.total_erythl_earned += amount
                         
@@ -461,8 +461,8 @@ class ReviesService(BaseService):
             
             async with DatabaseService.get_transaction() as session:
                 # Order by the specified currency
-                if currency == "jijies":
-                    stmt = select(Player).order_by(Player.jijies.desc()).limit(capped_limit)
+                if currency == "revies":
+                    stmt = select(Player).order_by(Player.revies.desc()).limit(capped_limit)
                 elif currency == "erythl":
                     stmt = select(Player).order_by(Player.erythl.desc()).limit(capped_limit)
                 else:
@@ -495,39 +495,39 @@ class ReviesService(BaseService):
                 total_players = (await session.execute(total_players_stmt)).scalar() or 0
                 
                 # Get currency in circulation
-                total_jijies_stmt = select(func.sum(Player.jijies))  # type: ignore
+                total_revies_stmt = select(func.sum(Player.revies))  # type: ignore
                 total_erythl_stmt = select(func.sum(Player.erythl))  # type: ignore
                 
-                total_jijies = (await session.execute(total_jijies_stmt)).scalar() or 0
+                total_revies = (await session.execute(total_revies_stmt)).scalar() or 0
                 total_erythl = (await session.execute(total_erythl_stmt)).scalar() or 0
                 
                 # Get total earned (all time)
-                total_jijies_earned_stmt = select(func.sum(Player.total_jijies_earned))  # type: ignore
+                total_revies_earned_stmt = select(func.sum(Player.total_revies_earned))  # type: ignore
                 total_erythl_earned_stmt = select(func.sum(Player.total_erythl_earned))  # type: ignore
                 
-                total_jijies_earned = (await session.execute(total_jijies_earned_stmt)).scalar() or 0
+                total_revies_earned = (await session.execute(total_revies_earned_stmt)).scalar() or 0
                 total_erythl_earned = (await session.execute(total_erythl_earned_stmt)).scalar() or 0
                 
                 # Calculate averages
-                avg_jijies = total_jijies / max(total_players, 1)
+                avg_revies = total_revies / max(total_players, 1)
                 avg_erythl = total_erythl / max(total_players, 1)
                 
                 return {
                     "total_players": total_players,
                     "currency_in_circulation": {
-                        "jijies": total_jijies,
+                        "revies": total_revies,
                         "erythl": total_erythl
                     },
                     "total_currency_earned": {
-                        "jijies": total_jijies_earned,
+                        "revies": total_revies_earned,
                         "erythl": total_erythl_earned
                     },
                     "average_balance": {
-                        "jijies": round(avg_jijies, 2),
+                        "revies": round(avg_revies, 2),
                         "erythl": round(avg_erythl, 2)
                     },
                     "currency_velocity": {
-                        "jijies": round((total_jijies_earned - total_jijies) / max(total_jijies_earned, 1) * 100, 2),
+                        "revies": round((total_revies_earned - total_revies) / max(total_revies_earned, 1) * 100, 2),
                         "erythl": round((total_erythl_earned - total_erythl) / max(total_erythl_earned, 1) * 100, 2)
                     }
                 }
@@ -570,10 +570,10 @@ class ReviesService(BaseService):
             
         return await cls._safe_execute(_operation, "get transaction history")
     
-    # Migration helpers for future "jijies" transition
+    # Migration helpers for future "revies" transition
     @classmethod
     async def prepare_currency_migration(cls) -> ServiceResult[Dict[str, Any]]:
-        """Prepare for currency migration from jijies to jijies"""
+        """Prepare for currency migration from revies to revies"""
         async def _operation():
             stats_result = await cls.get_economy_stats()
             if not stats_result.success:

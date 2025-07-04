@@ -39,7 +39,7 @@ class StatisticsService(BaseService):
     async def get_leaderboard(cls, category: str = "level", limit: int = 10, offset: int = 0) -> ServiceResult[List[Dict[str, Any]]]:
         """Get player leaderboard for specified category"""
         async def _operation():
-            valid_categories = ["level", "jijies", "erythl", "battles_won", "total_fusions", "successful_fusions"]
+            valid_categories = ["level", "revies", "erythl", "battles_won", "total_fusions", "successful_fusions"]
             if category not in valid_categories:
                 raise ValueError(f"Invalid category. Must be one of: {valid_categories}")
             
@@ -56,8 +56,8 @@ class StatisticsService(BaseService):
                 # Map category to proper column
                 if category == "level":
                     order_column = Player.level
-                elif category == "jijies":
-                    order_column = Player.jijies
+                elif category == "revies":
+                    order_column = Player.revies
                 elif category == "erythl":
                     order_column = Player.erythl
                 elif category == "battles_won":
@@ -234,9 +234,9 @@ class StatisticsService(BaseService):
                 }
                 
                 economic_stats = {
-                    "jijies": player.jijies,
+                    "revies": player.revies,
                     "erythl": player.erythl,
-                    "total_jijies_earned": player.total_jijies_earned,
+                    "total_revies_earned": player.total_revies_earned,
                     "total_erythl_earned": player.total_erythl_earned,
                     "total_energy_spent": player.total_energy_spent
                 }
@@ -270,8 +270,8 @@ class StatisticsService(BaseService):
                 active_players = (await session.execute(active_players_stmt)).scalar() or 0
                 
                 # Get currency circulation
-                total_jijies_stmt = select(func.sum(Player.jijies)).select_from(Player)  # type: ignore
-                total_jijies = (await session.execute(total_jijies_stmt)).scalar() or 0
+                total_revies_stmt = select(func.sum(Player.revies)).select_from(Player)  # type: ignore
+                total_revies = (await session.execute(total_revies_stmt)).scalar() or 0
                 
                 total_erythl_stmt = select(func.sum(Player.erythl)).select_from(Player)  # type: ignore
                 total_erythl = (await session.execute(total_erythl_stmt)).scalar() or 0
@@ -297,9 +297,9 @@ class StatisticsService(BaseService):
                         "activity_rate": round(activity_rate, 2)
                     },
                     "economy_metrics": {
-                        "total_jijies": total_jijies,
+                        "total_revies": total_revies,
                         "total_erythl": total_erythl,
-                        "avg_jijies_per_player": round(total_jijies / total_players) if total_players > 0 else 0,
+                        "avg_revies_per_player": round(total_revies / total_players) if total_players > 0 else 0,
                         "avg_erythl_per_player": round(total_erythl / total_players) if total_players > 0 else 0
                     },
                     "gameplay_metrics": {
@@ -320,7 +320,7 @@ class StatisticsService(BaseService):
             cls._validate_player_id(player_id)
             
             rankings = {}
-            categories = ["level", "jijies", "erythl", "battles_won", "total_fusions"]
+            categories = ["level", "revies", "erythl", "battles_won", "total_fusions"]
             
             async with DatabaseService.get_session() as session:
                 # Get player data
@@ -335,9 +335,9 @@ class StatisticsService(BaseService):
                         rank_stmt = select(func.count()).select_from(Player).where(
                             Player.level > player_value  # type: ignore
                         )
-                    elif category == "jijies":
+                    elif category == "revies":
                         rank_stmt = select(func.count()).select_from(Player).where(
-                            Player.jijies > player_value  # type: ignore
+                            Player.revies > player_value  # type: ignore
                         )
                     elif category == "erythl":
                         rank_stmt = select(func.count()).select_from(Player).where(

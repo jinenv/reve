@@ -437,7 +437,7 @@ class BossCombatView(disnake.ui.View):
         )
         
         # Victory rewards
-        rewards_text = f"💰 **+{victory_reward.jijies:,}** Jijies\n"
+        rewards_text = f"💰 **+{victory_reward.revies:,}** Revies\n"
         rewards_text += f"✨ **+{victory_reward.xp}** Experience"
         
         if victory_reward.items:
@@ -799,9 +799,9 @@ class Quest(commands.Cog):
         quest_details = f"{quest_type}\n"
         quest_details += f"⚡ **{energy_cost}** Energy Required\n"
         
-        if next_quest.get("jijies_reward"):
-            jijies_range = next_quest["jijies_reward"]
-            quest_details += f"💰 **{jijies_range[0]:,} - {jijies_range[1]:,}** Jijies\n"
+        if next_quest.get("revies_reward"):
+            revies_range = next_quest["revies_reward"]
+            quest_details += f"💰 **{revies_range[0]:,} - {revies_range[1]:,}** Revies\n"
         
         if next_quest.get("xp_reward"):
             quest_details += f"✨ **{next_quest['xp_reward']}** Experience\n"
@@ -900,7 +900,7 @@ class Quest(commands.Cog):
         
         # Quest completion feedback
         rewards_text = f"**{quest_data['name']}** completed successfully!\n\n"
-        rewards_text += f"💰 **+{gains.get('jijies', 0):,}** Jijies\n"
+        rewards_text += f"💰 **+{gains.get('revies', 0):,}** Revies\n"
         rewards_text += f"✨ **+{gains.get('xp', 0)}** Experience"
         
         if gains.get('leveled_up'):

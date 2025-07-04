@@ -91,7 +91,7 @@ class FusionService(BaseService):
                 player_stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(player_stmt)).scalar_one()
                 
-                can_afford = player.jijies >= fusion_cost
+                can_afford = player.revies >= fusion_cost
                 
                 # Get possible fusion results (tier + 1)
                 result_tier = esprit1.tier + 1
@@ -204,8 +204,8 @@ class FusionService(BaseService):
                 
                 # Calculate and validate costs
                 fusion_cost = cls._calculate_fusion_cost(esprit1.tier, esprit2.tier)
-                if player.jijies < fusion_cost:
-                    raise ValueError(f"Insufficient jijies. Need {fusion_cost}, have {player.jijies}")
+                if player.revies < fusion_cost:
+                    raise ValueError(f"Insufficient revies. Need {fusion_cost}, have {player.revies}")
                 
                 # Validate and consume fragments if using them
                 if use_fragments:
@@ -226,7 +226,7 @@ class FusionService(BaseService):
                     flag_modified(player, "tier_fragments")
                 
                 # Consume currency
-                player.jijies -= fusion_cost
+                player.revies -= fusion_cost
                 
                 # Calculate success
                 base_success_rate = cls._calculate_success_rate(esprit1.tier, esprit2.tier)
@@ -375,7 +375,7 @@ class FusionService(BaseService):
     
     @classmethod
     def _calculate_fusion_cost(cls, tier1: int, tier2: int) -> int:
-        """Calculate jijies cost for fusion based on tiers"""
+        """Calculate revies cost for fusion based on tiers"""
         config = ConfigManager.get("fusion_system") or {}
         base_cost = config.get("base_fusion_cost", 1000)
         tier_multiplier = config.get("tier_cost_multiplier", 100)
@@ -597,17 +597,17 @@ class FusionService(BaseService):
     ) -> ServiceResult[Dict[str, int]]:
         """
         Calculate all costs associated with a fusion operation.
-        Includes jijies cost and optional fragment consumption.
+        Includes revies cost and optional fragment consumption.
         """
         async def _operation():
             costs = {
-                "jijies": 0,
+                "revies": 0,
                 "fragments_required": 0,
                 "fragments_consumed": 0
             }
             
             # Get base fusion cost
-            costs["jijies"] = cls._calculate_fusion_cost(tier, tier)
+            costs["revies"] = cls._calculate_fusion_cost(tier, tier)
             
             # Fragment costs for guaranteed success
             if use_fragments:
@@ -651,7 +651,7 @@ class FusionService(BaseService):
                 
                 stats["tier_data"][tier] = {
                     "base_success_rate": success_rate,
-                    "cost_jijies": fusion_cost,
+                    "cost_revies": fusion_cost,
                     "result_tier": tier + 1
                 }
             
@@ -741,3 +741,5 @@ class FusionService(BaseService):
             }
         
         return await cls._safe_execute(_operation, f"predict fusion outcome for {element1} + {element2}")
+    
+    

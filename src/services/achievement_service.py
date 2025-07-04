@@ -306,7 +306,7 @@ class AchievementService(BaseService):
                 return False
             elif req_type == "daily_streak" and getattr(player, 'daily_streak', 0) < req_value:
                 return False
-            elif req_type == "jijies_earned" and getattr(player, 'total_jijies_earned', 0) < req_value:
+            elif req_type == "revies_earned" and getattr(player, 'total_revies_earned', 0) < req_value:
                 return False
             elif req_type == "erythl_earned" and getattr(player, 'total_erythl_earned', 0) < req_value:
                 return False
@@ -339,8 +339,8 @@ class AchievementService(BaseService):
                 current_value = getattr(player, 'total_echoes_opened', 0)
             elif req_type == "daily_streak":
                 current_value = getattr(player, 'daily_streak', 0)
-            elif req_type == "jijies_earned":
-                current_value = getattr(player, 'total_jijies_earned', 0)
+            elif req_type == "revies_earned":
+                current_value = getattr(player, 'total_revies_earned', 0)
             elif req_type == "erythl_earned":
                 current_value = getattr(player, 'total_erythl_earned', 0)
             
@@ -383,12 +383,12 @@ class AchievementService(BaseService):
             rewards = achievement_data.get("rewards", {})
             rewards_granted = {}
             
-            if "jijies" in rewards:
-                jijies_reward = rewards["jijies"]
-                player.jijies += jijies_reward
-                if hasattr(player, 'total_jijies_earned'):
-                    player.total_jijies_earned += jijies_reward
-                rewards_granted["jijies"] = jijies_reward
+            if "revies" in rewards:
+                revies_reward = rewards["revies"]
+                player.revies += revies_reward
+                if hasattr(player, 'total_revies_earned'):
+                    player.total_revies_earned += revies_reward
+                rewards_granted["revies"] = revies_reward
             
             if "erythl" in rewards:
                 erythl_reward = rewards["erythl"]

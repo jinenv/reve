@@ -175,11 +175,11 @@ class InventoryService(BaseService):
                         "new_total": player.stamina
                     }
                 
-                if "jijies" in item_effects:
-                    jijies_gain = item_effects["jijies"]
-                    player.jijies += jijies_gain
-                    player.total_jijies_earned += jijies_gain
-                    effects_applied["jijies"] = {"gained": jijies_gain, "new_total": player.jijies}
+                if "revies" in item_effects:
+                    revies_gain = item_effects["revies"]
+                    player.revies += revies_gain
+                    player.total_revies_earned += revies_gain
+                    effects_applied["revies"] = {"gained": revies_gain, "new_total": player.revies}
                 
                 if "erythl" in item_effects:
                     erythl_gain = item_effects["erythl"]

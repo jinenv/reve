@@ -468,9 +468,9 @@ class CollectionService(BaseService):
                     from src.services.revies_service import ReviesService
                     
                     rewards = milestone.get("rewards", {})
-                    if rewards.get("jijies", 0) > 0:
+                    if rewards.get("revies", 0) > 0:
                         await ReviesService.add_currency(
-                            player_id, "jijies", rewards["jijies"], 
+                            player_id, "revies", rewards["revies"], 
                             reason=f"Collection milestone: {milestone['title']}"
                         )
                     
@@ -514,13 +514,13 @@ class CollectionService(BaseService):
         
         # Fallback defaults if config not found
         return [
-            {"target": 10, "title": "Budding Collector", "description": "Collect 10 unique Esprits", "rewards": {"jijies": 5000, "erythl": 10}},
-            {"target": 25, "title": "Novice Collector", "description": "Collect 25 unique Esprits", "rewards": {"jijies": 10000, "erythl": 25}},
-            {"target": 50, "title": "Esprit Enthusiast", "description": "Collect 50 unique Esprits", "rewards": {"jijies": 25000, "erythl": 50}},
-            {"target": 100, "title": "Seasoned Collector", "description": "Collect 100 unique Esprits", "rewards": {"jijies": 50000, "erythl": 100}},
-            {"target": 200, "title": "Master Collector", "description": "Collect 200 unique Esprits", "rewards": {"jijies": 100000, "erythl": 250}},
-            {"target": 500, "title": "Legendary Collector", "description": "Collect 500 unique Esprits", "rewards": {"jijies": 250000, "erythl": 500}},
-            {"target": 1000, "title": "Ultimate Collector", "description": "Collect 1000 unique Esprits", "rewards": {"jijies": 500000, "erythl": 1000}}
+            {"target": 10, "title": "Budding Collector", "description": "Collect 10 unique Esprits", "rewards": {"revies": 5000, "erythl": 10}},
+            {"target": 25, "title": "Novice Collector", "description": "Collect 25 unique Esprits", "rewards": {"revies": 10000, "erythl": 25}},
+            {"target": 50, "title": "Esprit Enthusiast", "description": "Collect 50 unique Esprits", "rewards": {"revies": 25000, "erythl": 50}},
+            {"target": 100, "title": "Seasoned Collector", "description": "Collect 100 unique Esprits", "rewards": {"revies": 50000, "erythl": 100}},
+            {"target": 200, "title": "Master Collector", "description": "Collect 200 unique Esprits", "rewards": {"revies": 100000, "erythl": 250}},
+            {"target": 500, "title": "Legendary Collector", "description": "Collect 500 unique Esprits", "rewards": {"revies": 250000, "erythl": 500}},
+            {"target": 1000, "title": "Ultimate Collector", "description": "Collect 1000 unique Esprits", "rewards": {"revies": 500000, "erythl": 1000}}
         ]
     
     @classmethod

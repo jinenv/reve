@@ -334,19 +334,19 @@ class QuestService(BaseService):
                 "energy_cost": energy_cost * actual_attempts,  # ✅ Use actual_attempts
                 "captures": 0,
                 "total_xp": 0,
-                "total_jijies": 0,
+                "total_revies": 0,
                 "captured_esprits": [],
                 "success_rate": 0.0
             }
             
             xp_reward = cls._extract_xp_reward(area_data)
-            jijies_range = area_data.get("jijies_reward", [50, 100])
+            revies_range = area_data.get("revies_reward", [50, 100])
             
             for attempt in range(actual_attempts):  # ✅ Use actual_attempts
                 # Always get quest rewards
                 simulation_results["total_xp"] += xp_reward
-                jijies_gain = random.randint(jijies_range[0], jijies_range[1])
-                simulation_results["total_jijies"] += jijies_gain
+                revies_gain = random.randint(revies_range[0], revies_range[1])
+                simulation_results["total_revies"] += revies_gain
                 
                 # Check for capture
                 if random.random() < capture_chance:
@@ -393,10 +393,10 @@ class QuestService(BaseService):
         rewards["xp"] = xp_reward
         
         # Currency rewards
-        jijies_range = area_data.get("jijies_reward", [0, 0])
-        rewards["jijies_min"] = jijies_range[0]
-        rewards["jijies_max"] = jijies_range[1]
-        rewards["jijies_avg"] = sum(jijies_range) / 2
+        revies_range = area_data.get("revies_reward", [0, 0])
+        rewards["revies_min"] = revies_range[0]
+        rewards["revies_max"] = revies_range[1]
+        rewards["revies_avg"] = sum(revies_range) / 2
         
         # Capture rewards
         capturable_tiers = area_data.get("capturable_tiers", [])

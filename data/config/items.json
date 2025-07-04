@@ -166,37 +166,37 @@
       "possible_items": [
         {
           "item_id": "energy_potion",
-          "cost": {"jijies": 1000},
+          "cost": {"revies": 1000},
           "weight": 30,
           "stock": 5
         },
         {
           "item_id": "stamina_elixir",
-          "cost": {"jijies": 2500},
+          "cost": {"revies": 2500},
           "weight": 20,
           "stock": 3
         },
         {
           "item_id": "xp_orb",
-          "cost": {"jijies": 500},
+          "cost": {"revies": 500},
           "weight": 25,
           "stock": 10
         },
         {
           "item_id": "echo_key",
-          "cost": {"jijies": 10000},
+          "cost": {"revies": 10000},
           "weight": 10,
           "stock": 1
         },
         {
           "item_id": "capture_charm",
-          "cost": {"jijies": 15000},
+          "cost": {"revies": 15000},
           "weight": 10,
           "stock": 2
         },
         {
           "item_id": "fragment_bundle_small",
-          "cost": {"jijies": 5000},
+          "cost": {"revies": 5000},
           "weight": 5,
           "stock": 3
         }
@@ -244,7 +244,7 @@
         "description": "Great value for new summoners!",
         "cost": {"erythl": 100},
         "contents": {
-          "jijies": 50000,
+          "revies": 50000,
           "items": {
             "energy_potion": 10,
             "stamina_elixir": 5,
@@ -265,7 +265,7 @@
             "building_boost": 5,
             "building_slot": 1
           },
-          "jijies": 100000
+          "revies": 100000
         },
         "limit": 3
       },

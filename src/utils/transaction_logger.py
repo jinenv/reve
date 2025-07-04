@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from enum import Enum
 
-class JijiJSONEncoder(json.JSONEncoder):
-    """Custom JSON encoder for Jiji transaction logging"""
+class ReveJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder for Reve transaction logging"""
     
     def default(self, obj):
         if isinstance(obj, Decimal):
@@ -125,7 +125,7 @@ class TransactionLogger:
         
         try:
             # Use custom encoder to handle Decimal and other types
-            self.logger.info(json.dumps(transaction, cls=JijiJSONEncoder))
+            self.logger.info(json.dumps(transaction, cls=ReveJSONEncoder))
         except Exception as e:
             # Fallback: log without JSON serialization
             self.logger.error(f"Transaction logging failed for player {player_id}: {e}")
@@ -196,7 +196,7 @@ class TransactionLogger:
                 "materials": [material1, material2],
                 "result": result,
                 "success": success,
-                "jijies_cost": cost
+                "revies_cost": cost
             },
             metadata=metadata
         )
@@ -297,7 +297,7 @@ class TransactionLogger:
             }
             
             try:
-                self.logger.info(json.dumps(transaction, cls=JijiJSONEncoder))
+                self.logger.info(json.dumps(transaction, cls=ReveJSONEncoder))
             except Exception as e:
                 self.logger.error(f"Legacy transaction logging failed for player {player_id}: {e}")
                 self.logger.info(f"Transaction: {action} - Player: {player_id}")

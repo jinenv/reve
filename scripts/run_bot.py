@@ -28,7 +28,7 @@ def setup_windows_unicode():
 
 def main():
     """Main launcher"""
-    print("🎮 Jiji Discord Bot Launcher")
+    print("🎮 Reve Discord Bot Launcher")
     print("=" * 40)
     
     # Setup Unicode support
@@ -62,7 +62,7 @@ def main():
     else:
         print("⚠ .env file not found - make sure DISCORD_TOKEN is set")
     
-    print("\n🚀 Starting Jiji bot...")
+    print("\n🚀 Starting Reve bot...")
     print("   Press Ctrl+C to stop the bot")
     print("-" * 40)
     

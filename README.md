@@ -1,4 +1,4 @@
-# JIJI
+# REVE
 
 This project implements a **real-time, stateful Discord bot** with RPG and gacha mechanics. It is designed for **scalability**, **atomic state transitions**, and **strict separation of concerns**.
 
@@ -103,7 +103,7 @@ class Player(SQLModel):
     # Data fields only
     id: Optional[int] = Field(default=None, primary_key=True)
     discord_id: int = Field(sa_column=Column(BigInteger, unique=True, index=True))
-    jijies: int = Field(default=0)
+    revies: int = Field(default=0)
     
     # Simple calculations only
     def get_skill_bonuses(self) -> Dict[str, float]:
@@ -250,4 +250,4 @@ result = await FusionService.execute_fusion(player_id, esprit1_id, esprit2_id)
 - **Error Tracking**: Structured error logs with full context
 - **Business Intelligence**: Player behavior and economy tracking through StatisticsService
 
-This architecture ensures Jiji can scale efficiently while maintaining data integrity and providing excellent user experience through consistent, fast responses. With 23 specialized services handling all business logic and pure infrastructure utilities, the codebase is now ready for professional-grade Discord bot development with Monster Warlord-inspired gameplay mechanics.
+This architecture ensures Reve can scale efficiently while maintaining data integrity and providing excellent user experience through consistent, fast responses. With 23 specialized services handling all business logic and pure infrastructure utilities, the codebase is now ready for professional-grade Discord bot development with Monster Warlord-inspired gameplay mechanics.

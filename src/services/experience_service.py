@@ -50,9 +50,9 @@ class ExperienceService(BaseService):
                     milestone_rewards = level_config.get("milestone_rewards", {})
                     if str(player.level) in milestone_rewards:
                         milestone = milestone_rewards[str(player.level)]
-                        if "jijies" in milestone:
-                            player.jijies += milestone["jijies"]
-                            player.total_jijies_earned += milestone["jijies"]
+                        if "revies" in milestone:
+                            player.revies += milestone["revies"]
+                            player.total_revies_earned += milestone["revies"]
                         if "erythl" in milestone:
                             player.erythl += milestone["erythl"]
                             player.total_erythl_earned += milestone["erythl"]

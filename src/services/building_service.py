@@ -57,15 +57,15 @@ class BuildingService(BaseService):
                 for currency, amount in total_cost.items():
                     if currency == "erythl" and player.erythl < amount:
                         raise ValueError(f"Insufficient erythl. Need {amount}, have {player.erythl}")
-                    elif currency == "jijies" and player.jijies < amount:
-                        raise ValueError(f"Insufficient jijies. Need {amount}, have {player.jijies}")
+                    elif currency == "revies" and player.revies < amount:
+                        raise ValueError(f"Insufficient revies. Need {amount}, have {player.revies}")
                 
                 # Deduct cost
                 for currency, amount in total_cost.items():
                     if currency == "erythl":
                         player.erythl -= amount
-                    elif currency == "jijies":
-                        player.jijies -= amount
+                    elif currency == "revies":
+                        player.revies -= amount
                 
                 # Add slots
                 old_slots = player.building_slots
@@ -81,7 +81,7 @@ class BuildingService(BaseService):
                 
                 return {
                     "slots_added": slots_to_add, "old_slots": old_slots, "new_slots": player.building_slots,
-                    "cost": total_cost, "remaining_erythl": player.erythl, "remaining_jijies": player.jijies
+                    "cost": total_cost, "remaining_erythl": player.erythl, "remaining_revies": player.revies
                 }
         return await cls._safe_execute(_operation, "expand building slots")
     
@@ -118,8 +118,8 @@ class BuildingService(BaseService):
                     "hours_overdue": round(hours_overdue, 2),
                     "time_until_next": str(time_until_next),
                     "next_upkeep_time": next_upkeep.isoformat(),
-                    "can_afford": player.jijies >= upkeep_cost,
-                    "current_jijies": player.jijies
+                    "can_afford": player.revies >= upkeep_cost,
+                    "current_revies": player.revies
                 }
         return await cls._safe_execute(_operation, "calculate daily upkeep")
     
@@ -145,7 +145,7 @@ class BuildingService(BaseService):
                     return {"cost": upkeep_cost, "already_paid": True, "next_due": upkeep_paid_until.isoformat()}
                 
                 # Check if player can afford
-                if player.jijies < upkeep_cost:
+                if player.revies < upkeep_cost:
                     # Can't afford - buildings go inactive
                     times_bankrupt = getattr(player, 'times_went_bankrupt', 0)
                     times_bankrupt += 1
@@ -157,16 +157,16 @@ class BuildingService(BaseService):
                     
                     transaction_logger.log_transaction(player_id, TransactionType.CURRENCY_SPEND, {
                         "action": "upkeep_bankruptcy", "cost": upkeep_cost,
-                        "deficit": upkeep_cost - player.jijies, "bankruptcy_count": times_bankrupt
+                        "deficit": upkeep_cost - player.revies, "bankruptcy_count": times_bankrupt
                     })
                     
                     return {
-                        "success": False, "cost": upkeep_cost, "deficit": upkeep_cost - player.jijies,
+                        "success": False, "cost": upkeep_cost, "deficit": upkeep_cost - player.revies,
                         "bankruptcy_count": times_bankrupt, "buildings_inactive": True
                     }
                 
                 # Pay upkeep
-                player.jijies -= upkeep_cost
+                player.revies -= upkeep_cost
                 total_upkeep_paid = getattr(player, 'total_upkeep_paid', 0) + upkeep_cost
                 if hasattr(player, 'total_upkeep_paid'):
                     player.total_upkeep_paid = total_upkeep_paid
@@ -178,11 +178,11 @@ class BuildingService(BaseService):
                 
                 transaction_logger.log_transaction(player_id, TransactionType.CURRENCY_SPEND, {
                     "action": "daily_upkeep", "cost": upkeep_cost,
-                    "remaining_jijies": player.jijies, "next_due": (now + timedelta(days=1)).isoformat()
+                    "remaining_revies": player.revies, "next_due": (now + timedelta(days=1)).isoformat()
                 })
                 
                 return {
-                    "success": True, "cost": upkeep_cost, "remaining_jijies": player.jijies,
+                    "success": True, "cost": upkeep_cost, "remaining_revies": player.revies,
                     "next_due": (now + timedelta(days=1)).isoformat(), "total_paid": total_upkeep_paid
                 }
         return await cls._safe_execute(_operation, "pay upkeep")
@@ -216,22 +216,22 @@ class BuildingService(BaseService):
                 
                 # Simulate income based on slots (placeholder logic)
                 income_collected = {}
-                base_income_per_slot = 100  # Base jijies per slot per collection
+                base_income_per_slot = 100  # Base revies per slot per collection
                 building_slots = getattr(player, 'building_slots', 3)
                 
                 if building_slots > 3:  # Only slots beyond the free 3 generate income
                     income_slots = building_slots - 3
-                    jijies_income = income_slots * base_income_per_slot
+                    revies_income = income_slots * base_income_per_slot
                     
-                    player.jijies += jijies_income
-                    if hasattr(player, 'total_jijies_earned'):
-                        player.total_jijies_earned += jijies_income
+                    player.revies += revies_income
+                    if hasattr(player, 'total_revies_earned'):
+                        player.total_revies_earned += revies_income
                     
-                    total_passive_income = getattr(player, 'total_passive_income_collected', 0) + jijies_income
+                    total_passive_income = getattr(player, 'total_passive_income_collected', 0) + revies_income
                     if hasattr(player, 'total_passive_income_collected'):
                         player.total_passive_income_collected = total_passive_income
                     
-                    income_collected["jijies"] = jijies_income
+                    income_collected["revies"] = revies_income
                 
                 total_income = sum(income_collected.values())
                 
@@ -286,7 +286,7 @@ class BuildingService(BaseService):
                     "cost": total_upkeep_cost,
                     "paid_until": upkeep_paid_until.isoformat(),
                     "is_current": now < upkeep_paid_until,
-                    "can_afford": player.jijies >= total_upkeep_cost
+                    "can_afford": player.revies >= total_upkeep_cost
                 }
                 
                 return {

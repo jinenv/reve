@@ -1,293 +1,148 @@
 {
-  "bot_info": {
-    "name": "Jiji",
-    "version": "1.0.0",
-    "description": "Mreow"
-  },
-  
-  "player_progression": {
-    "xp_formula": {
-      "base": 100,
-      "exponent": 1.5
-    },
-    "energy_regeneration": {
-      "minutes_per_point": 6,
-      "max_energy_base": 100,
-      "max_energy_per_level": 10
-    },
-    "stamina_regeneration": {
-      "minutes_per_point": 10,
-      "max_stamina_base": 50,
-      "max_stamina_per_level": 0
-    },
-    "skill_points": {
-      "per_level": 1,
-      "reset_base_cost": 100,
-      "reset_cost_multiplier": 1
-    }
-  },
-  
-  "quest_system": {
-    "capture_chance": 0.10,
-    "energy_refill_on_levelup": true,
-    "auto_quest_limit": 10,
-    "boss_capture_bonus": 0.05,
-    "area_element_bias": 0.70,
-    "always_auto_victory": true
-  },
-  
   "fusion_rules": {
     "fragments_guarantee_tier_monster": true,
     "element_fusion_penalty": 0.75,
     "fragment_drops": {
-      "tier_1_3": [1, 3],
-      "tier_4_6": [2, 5],
-      "tier_7_9": [3, 8],
-      "tier_10_12": [5, 12]
+      "tier_1_3": [2, 5],
+      "tier_4_6": [3, 8], 
+      "tier_7_9": [5, 12],
+      "tier_10_12": [8, 20]
     },
     "fragments_needed": {
-      "tier_1_3": 10,
-      "tier_4_6": 25,
-      "tier_7_9": 50,
+      "tier_1_3": 8,
+      "tier_4_6": 20,
+      "tier_7_9": 45,
       "tier_10_12": 100
     },
     "max_tier": 12
   },
-  
-  "awakening_system": {
-    "max_stars": 5,
-    "bonus_per_star": 0.20,
-    "cost_formula": "star_level",
-    "available_all_tiers": true,
-    "leadership_bonus_scaling": 0.10
+
+  "economy": {
+    "revies_multipliers": {
+      "quest_base": 1.0,
+      "verdant_leader_bonus": 0.15,
+      "daily_login_base": 2500,
+      "weekly_login_base": 25000,
+      "boss_victory_bonus": 2.0,
+      "tier_scaling_multiplier": 1.5
+    },
+    "erythl_sources": {
+      "level_milestone_10": 5,
+      "level_milestone_25": 15,
+      "level_milestone_50": 30,
+      "level_milestone_75": 50,
+      "level_milestone_100": 100,
+      "level_milestone_125": 200,
+      "achievement_completion": 3,
+      "weekly_rank_1": 75,
+      "weekly_rank_2_10": 40,
+      "weekly_rank_11_50": 20,
+      "weekly_rank_51_100": 8,
+      "daily_quest_completion": 1,
+      "tier_10_plus_fusion": 5
+    },
+    "building_upkeep": {
+      "payment_interval_hours": 24,
+      "bankruptcy_penalty": "buildings_inactive",
+      "grace_period_hours": 8
+    }
   },
-  
-  "universal_stack_system": {
-    "enabled": true,
-    "max_stack_size": 999999,
-    "auto_combine_on_gacha": true,
-    "all_esprits_contribute_power": true
-  },
-  
-  "leader_system": {
-    "enabled": true,
-    "bonuses_stack": false,
-    "can_change_anytime": true,
-    "awakening_boosts_leadership": true
-  },
-  
+
   "building_system": {
     "enabled": true,
     "starting_slots": 3,
     "max_slots": 10,
     "slot_costs": [
-      {"slot": 4, "cost": {"erythl": 50}},
-      {"slot": 5, "cost": {"erythl": 100}},
-      {"slot": 6, "cost": {"erythl": 200}},
-      {"slot": 7, "cost": {"erythl": 400}},
-      {"slot": 8, "cost": {"erythl": 800}},
-      {"slot": 9, "cost": {"erythl": 1600}},
-      {"slot": 10, "cost": {"erythl": 3200}}
+      {"slot": 4, "cost": {"erythl": 25}},
+      {"slot": 5, "cost": {"erythl": 50}},
+      {"slot": 6, "cost": {"erythl": 100}},
+      {"slot": 7, "cost": {"erythl": 200}},
+      {"slot": 8, "cost": {"erythl": 400}},
+      {"slot": 9, "cost": {"erythl": 800}},
+      {"slot": 10, "cost": {"erythl": 1500}}
     ],
     "production_rates": {
-      "jijies": "per_hour",
-      "xp_orbs": "per_hour",
+      "revies": "per_hour",
+      "xp_orbs": "per_hour", 
       "erythl": "per_hour",
       "echo_keys": "per_hour",
       "random_fragments": "per_hour"
     }
   },
-  
-  "combat_system": {
-    "enabled": false,
-    "boss_fights_only": true,
-    "leader_determines_skills": true,
-    "power_calculation": "total_all_esprits",
-    "pvp_enabled": false,
-    "stamina_per_pvp": 5,
-    "stamina_per_boss": 10
-  },
-  
-  "economy": {
-    "jijies_multipliers": {
-      "quest_base": 1.0,
-      "verdant_leader_bonus": 0.15,
-      "daily_login_base": 1000,
-      "weekly_login_base": 10000
-    },
-    "erythl_sources": {
-      "level_milestone_10": 10,
-      "level_milestone_50": 50,
-      "level_milestone_100": 100,
-      "achievement_completion": 5,
-      "weekly_rank_1": 100,
-      "weekly_rank_2_10": 50,
-      "weekly_rank_11_50": 25,
-      "weekly_rank_51_100": 10
-    },
-    "building_upkeep": {
-      "payment_interval_hours": 24,
-      "bankruptcy_penalty": "buildings_inactive",
-      "grace_period_hours": 6
+
+  "daily_rewards": {
+    "enabled": true,
+    "reset_time_utc": "00:00",
+    "rewards": [
+      {"day": 1, "revies": 2500, "items": {"energy_potion": 2}},
+      {"day": 2, "revies": 5000, "items": {"xp_orb": 8}},
+      {"day": 3, "revies": 7500, "items": {"stamina_elixir": 2}},
+      {"day": 4, "revies": 10000, "items": {"capture_charm": 2}},
+      {"day": 5, "revies": 15000, "items": {"fragment_bundle_small": 2}},
+      {"day": 6, "revies": 20000, "items": {"echo_key": 2}},
+      {"day": 7, "erythl": 15, "items": {"fusion_catalyst": 2}}
+    ],
+    "streak_bonuses": {
+      "7": {"erythl": 8, "revies": 25000},
+      "14": {"erythl": 20, "items": {"skill_reset_token": 1}},
+      "21": {"erythl": 35, "items": {"fragment_bundle_large": 1}},
+      "28": {"erythl": 50, "items": {"building_slot": 1}}
     }
   },
-  
+
+  "starter_bonuses": {
+    "description": "Additional items/currency for new players",
+    "revies": 10000,
+    "erythl": 15,
+    "energy": 150,
+    "stamina": 75,
+    "items": {
+      "energy_potion": 8,
+      "xp_orb": 15,
+      "faded_echo": 2,
+      "capture_charm": 3
+    },
+    "tier_fragments": {
+      "1": 10,
+      "2": 5
+    }
+  },
+
   "echo_rates": {
     "daily_echo_type": "faded_echo",
     "quest_echo_chances": {
-      "faded_echo": 0.05,
-      "vivid_echo": 0.01,
-      "brilliant_echo": 0.001
+      "faded_echo": 0.08,
+      "vivid_echo": 0.015,
+      "brilliant_echo": 0.002
     },
-    "boss_echo_multiplier": 2.0,
+    "boss_echo_multiplier": 2.5,
     "echo_key_usage": {
       "preserves_echo": true,
       "works_on_all_types": true
     }
   },
-  
-  "item_system": {
-    "enabled": true,
-    "inventory_shared": true,
-    "stack_limits": {
-      "consumable": 999,
-      "permanent": 1
-    }
-  },
-  
-  "shop_system": {
-    "daily_reset_time_utc": "00:00",
-    "weekly_reset_day": "monday",
-    "tax_rate": 0.0
-  },
-  
-  "guild_system": {
-    "enabled": false,
-    "max_members": 50,
-    "creation_cost": {"jijies": 1000000, "erythl": 100},
-    "benefits": {
-      "xp_bonus_per_level": 0.01,
-      "capture_bonus_per_level": 0.005,
-      "building_cost_reduction_per_level": 0.01
-    }
-  },
-  
-  "achievement_system": {
-    "enabled": true,
-    "retroactive": true,
-    "point_multipliers": {
-      "first_completion": 1.0,
-      "seasonal": 2.0
-    }
-  },
-  
-  "event_system": {
-    "enabled": false,
-    "types": ["double_xp", "capture_boost", "fusion_discount", "building_rush"],
-    "duration_hours": 48
-  },
-  
-"daily_rewards": {
-  "enabled": true,
-  "reset_time_utc": "00:00",
-  "rewards": [
-    {"day": 1, "jijies": 1000, "items": {"energy_potion": 1}},
-    {"day": 2, "jijies": 2000, "items": {"xp_orb": 5}},
-    {"day": 3, "jijies": 3000, "items": {"stamina_elixir": 1}},
-    {"day": 4, "jijies": 5000, "items": {"capture_charm": 1}},
-    {"day": 5, "jijies": 7500, "items": {"fragment_bundle_small": 1}},
-    {"day": 6, "jijies": 10000, "items": {"echo_key": 1}},
-    {"day": 7, "erythl": 10, "items": {"fusion_catalyst": 1}}
-  ],
-  "streak_bonuses": {
-    "7": {"erythl": 5},
-    "14": {"erythl": 10, "items": {"skill_reset_token": 1}},
-    "28": {"erythl": 25, "items": {"building_slot": 1}}
-  }
-},
 
-"starter_system": {
-    "description": "Configuration for new player onboarding",
-    "version": "1.0"
-  },
-  
-  "starter_pool": {
-    "description": "Pool of possible starter Esprits - must be tier 1",
-    "selection_count": 2,
-    "selection_method": "random",
-    "available_starters": [
-      {
-        "name": "Blazeblob",
-        "element": "Inferno",
-        "weight": 1.0
-      },
-      {
-        "name": "Muddroot",
-        "element": "Verdant",
-        "weight": 1.0
-      },
-      {
-        "name": "Droozle",
-        "element": "Abyssal",
-        "weight": 1.0
-      },
-      {
-        "name": "Jelune",
-        "element": "Tempest",
-        "weight": 1.0
-      },
-      {
-        "name": "Gloomb",
-        "element": "Umbral",
-        "weight": 1.0
-      },
-      {
-        "name": "Shynix",
-        "element": "Radiant",
-        "weight": 1.0
-      }
-    ]
-  },
-  
-  "guaranteed_starters": {
-    "description": "If you want specific starters always given",
-    "enabled": false,
-    "esprits": []
-  },
-  
-  "element_selection": {
-    "description": "Alternative: Let players pick their starter element",
-    "enabled": false,
-    "options": {
-      "inferno": ["Blazeblob", "Emberjaw"],
-      "verdant": ["Muddroot", "Verdiant"],
-      "abyssal": ["Droozle", "Crysthide"],
-      "tempest": ["Jelune", "Mistral"],
-      "umbral": ["Gloomb", "Cyghost"],
-      "radiant": ["Shynix"]
+  "quest_system": {
+    "capture_chance": 0.12,
+    "energy_refill_on_levelup": true,
+    "auto_quest_limit": 15,
+    "boss_capture_bonus": 0.08,
+    "area_element_bias": 0.70,
+    "always_auto_victory": true,
+    "tier_unlock_requirements": {
+      "tier_4": {"player_level": 10},
+      "tier_6": {"player_level": 25}, 
+      "tier_8": {"player_level": 50},
+      "tier_10": {"player_level": 75},
+      "tier_12": {"player_level": 100}
     }
   },
-  
-  "starter_bonuses": {
-    "description": "Additional items/currency for new players",
-    "jijies": 5000,
-    "erythl": 10,
-    "energy": 100,
-    "stamina": 50,
-    "items": {
-      "energy_potion": 5,
-      "xp_orb": 10,
-      "faded_echo": 1
-    },
-    "tier_fragments": {
-      "1": 5
-    }
-  },
-  
+
   "rate_limits": {
-    "quest": {"uses": 50, "per_seconds": 3600},
-    "fusion": {"uses": 20, "per_seconds": 300},
-    "echo": {"uses": 10, "per_seconds": 60},
-    "shop": {"uses": 30, "per_seconds": 600}
+    "quest": {"uses": 75, "per_seconds": 3600},
+    "fusion": {"uses": 30, "per_seconds": 300},
+    "echo": {"uses": 15, "per_seconds": 60},
+    "shop": {"uses": 50, "per_seconds": 600},
+    "awakening": {"uses": 25, "per_seconds": 300}
   }
 }

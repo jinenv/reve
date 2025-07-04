@@ -49,7 +49,7 @@ class Player(SQLModel, table=True):
     total_quests_completed: int = Field(default=0)
     
     # --- Currencies & Resources ---
-    jijies: int = Field(default=0)  # Primary currency
+    revies: int = Field(default=0)  # Primary currency
     erythl: int = Field(default=0)  # Premium currency
     inventory: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     
@@ -94,7 +94,7 @@ class Player(SQLModel, table=True):
     last_fusion: Optional[datetime] = Field(default=None)
     
     # --- Resource Generation Stats ---
-    total_jijies_earned: int = Field(default=0)
+    total_revies_earned: int = Field(default=0)
     total_erythl_earned: int = Field(default=0)
     total_energy_spent: int = Field(default=0)
     total_stamina_spent: int = Field(default=0)

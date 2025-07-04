@@ -15,7 +15,7 @@ class ProgressionService(BaseService):
 
     @classmethod
     async def apply_quest_rewards(
-        cls, player_id: int, jijies: int = 0, erythl: int = 0,
+        cls, player_id: int, revies: int = 0, erythl: int = 0,
         xp: int = 0, items: Optional[Dict[str, int]] = None,
         skill_points: int = 0, tier_fragments: Optional[Dict[str, int]] = None,
         element_fragments: Optional[Dict[str, int]] = None
@@ -24,7 +24,7 @@ class ProgressionService(BaseService):
         async def _operation() -> Dict[str, Any]:
             # Validate all inputs
             cls._validate_player_id(player_id)
-            cls._validate_positive_int(jijies, "jijies")
+            cls._validate_positive_int(revies, "revies")
             cls._validate_positive_int(erythl, "erythl")
             cls._validate_positive_int(xp, "xp")
             cls._validate_positive_int(skill_points, "skill_points")
@@ -35,11 +35,11 @@ class ProgressionService(BaseService):
                 if not player:
                     raise ValueError("Player not found.")
 
-                player.jijies += jijies
+                player.revies += revies
                 player.erythl += erythl
                 player.skill_points += skill_points
-                if jijies > 0:
-                    player.total_jijies_earned += jijies
+                if revies > 0:
+                    player.total_revies_earned += revies
                 if erythl > 0:
                     player.total_erythl_earned += erythl
                 player.experience += xp
@@ -76,13 +76,13 @@ class ProgressionService(BaseService):
                     player_id,
                     TransactionType.QUEST_COMPLETED,
                     details={
-                        "rewards": {"jijies": jijies, "erythl": erythl, "xp": xp, "skill_points": skill_points},
+                        "rewards": {"revies": revies, "erythl": erythl, "xp": xp, "skill_points": skill_points},
                         "levels_gained": levels_gained, "new_level": player.level
                     }
                 )
 
                 return {
-                    "jijies_gained": jijies, "erythl_gained": erythl, "xp_gained": xp,
+                    "revies_gained": revies, "erythl_gained": erythl, "xp_gained": xp,
                     "levels_gained": levels_gained, "new_level": player.level,
                     "items_received": items or {}
                 }

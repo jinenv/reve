@@ -21,9 +21,9 @@ class Elements(Enum):
     VERDANT = ("Verdant", "🌿", 0x355E3B, {
         "base_def_bonus": 0.08,          # 8% base DEF bonus
         "tier_def_scaling": 0.01,        # +1% DEF per tier above 1  
-        "base_jijies_bonus": 0.05,       # 5% base jijies bonus
-        "tier_jijies_scaling": 0.005,    # +0.5% jijies per tier above 1
-        "description": "DEF and jijies bonuses scale with tier"
+        "base_revies_bonus": 0.05,       # 5% base revies bonus
+        "tier_revies_scaling": 0.005,    # +0.5% revies per tier above 1
+        "description": "DEF and revies bonuses scale with tier"
     })
     ABYSSAL = ("Abyssal", "🌊", 0x191970, {
         "base_hp_bonus": 0.05,           # 5% base HP bonus
@@ -112,7 +112,7 @@ class TierData:
     stat_range: Tuple[int, int]  # (min_total, max_total) stats for this tier
     base_attack: int             # Representative attack for scaling calculations
     combine_success_rate: float
-    combine_cost_jijies: int
+    combine_cost_revies: int
     fragment_cost: int
     fragments_on_fail: Tuple[int, int]
     color: int
@@ -132,18 +132,18 @@ class Tiers:
     """Tier management system with stat ranges for design variety"""
     
     _TIER_DATA = {
-    1: TierData(1, "Common", "I", (30, 60), 45, 0.80, 500, 10, (1, 3), 0x808080),
-    2: TierData(2, "Uncommon", "II", (80, 140), 110, 0.75, 1000, 10, (1, 3), 0x808080),
-    3: TierData(3, "Rare", "III", (200, 400), 300, 0.70, 2500, 10, (1, 3), 0x00ff00),
-    4: TierData(4, "Epic", "IV", (600, 1200), 900, 0.65, 6000, 25, (2, 5), 0x0099ff),
-    5: TierData(5, "Mythic", "V", (2000, 4000), 3000, 0.60, 15000, 25, (2, 5), 0x9932cc),
-    6: TierData(6, "Divine", "VI", (7000, 15000), 11000, 0.55, 40000, 25, (2, 5), 0xffd700),     # Was Celestial
-    7: TierData(7, "Legendary", "VII", (25000, 50000), 37500, 0.50, 100000, 50, (3, 8), 0xff4500),  # Was Divine, using Legendary stats
-    8: TierData(8, "Ethereal", "VIII", (80000, 180000), 130000, 0.45, 250000, 50, (3, 8), 0x9370db),  # Was Primal, using Ethereal stats  
-    9: TierData(9, "Genesis", "IX", (300000, 650000), 475000, 0.40, 800000, 50, (3, 8), 0x00ced1),    # Was Sovereign, using Genesis stats
-    10: TierData(10, "Empyrean", "X", (1000000, 2200000), 1600000, 0.35, 3000000, 100, (5, 12), 0xff1493),  # Was Astral, using Empyrean stats
-    11: TierData(11, "Void", "XI", (3500000, 7500000), 5500000, 0.30, 10000000, 100, (5, 12), 0x000000),      # Was Ethereal, using Void stats
-    12: TierData(12, "Singularity", "XII", (12000000, 27000000), 19500000, 0.28, 50000000, 100, (5, 12), 0xffffff)  # Was Transcendent, using Singularity stats
+        1: TierData(1, "Common", "I", (30, 60), 45, 0.10, 1, 3, (1, 3), 0x808080),
+        2: TierData(2, "Uncommon", "II", (80, 140), 110, 0.10, 1, 3, (1, 3), 0x808080),
+        3: TierData(3, "Rare", "III", (200, 400), 300, 0.10, 1, 3, (1, 3), 0x00ff00),
+        4: TierData(4, "Epic", "IV", (600, 1200), 900, 0.25, 2, 5, (2, 5), 0x0099ff),
+        5: TierData(5, "Mythic", "V", (2000, 4000), 3000, 0.25, 2, 5, (2, 5), 0x9932cc),
+        6: TierData(6, "Divine", "VI", (7000, 15000), 11000, 0.25, 2, 5, (2, 5), 0xffd700),
+        7: TierData(7, "Legendary", "VII", (25000, 50000), 37500, 0.50, 3, 8, (3, 8), 0xff4500),
+        8: TierData(8, "Ethereal", "VIII", (80000, 180000), 130000, 0.50, 3, 8, (3, 8), 0x9370db),
+        9: TierData(9, "Genesis", "IX", (300000, 650000), 475000, 0.50, 3, 8, (3, 8), 0x00ced1),
+        10: TierData(10, "Empyrean", "X", (1000000, 2200000), 1600000, 1.00, 5, 12, (5, 12), 0xff1493),
+        11: TierData(11, "Void", "XI", (3500000, 7500000), 5500000, 1.00, 5, 12, (5, 12), 0x000000),
+        12: TierData(12, "Singularity", "XII", (12000000, 27000000), 19500000, 1.00, 5, 12, (5, 12), 0xffffff)
     }
     
     @classmethod
@@ -188,7 +188,7 @@ class Tiers:
 
 
 class EmbedColors:
-    """Dynamic embed color system for Jiji bot - now integrated with game constants"""
+    """Dynamic embed color system for Reve bot - now integrated with game constants"""
     
     # Base colors
     DEFAULT = 0x2c2d31  # Default dark theme

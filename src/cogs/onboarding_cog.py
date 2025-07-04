@@ -42,7 +42,7 @@ class Onboarding(commands.Cog):
                             f"Welcome back, **{existing_player.username}**!\n\n"
                             f"You're already registered as an Esprit Master.\n"
                             f"**Level**: {existing_player.level}\n"
-                            f"**Jijies**: {existing_player.jijies:,}\n"
+                            f"**Revies**: {existing_player.revies:,}\n"
                             f"**Erythl**: {existing_player.erythl}\n\n"
                             f"Use `/profile` to view your stats or `/quest` to continue your adventure!"
                         ),
@@ -62,7 +62,7 @@ class Onboarding(commands.Cog):
                 # Fallback values if not in config
                 if not starter_bonuses:
                     starter_bonuses = {
-                        "jijies": 5000,
+                        "revies": 5000,
                         "erythl": 10,
                         "energy": 100,
                         "stamina": 50
@@ -79,10 +79,10 @@ class Onboarding(commands.Cog):
                     max_energy=100,
                     stamina=starter_bonuses.get("stamina", 50),
                     max_stamina=50,
-                    jijies=starter_bonuses.get("jijies", 5000),
+                    revies=starter_bonuses.get("revies", 5000),
                     erythl=starter_bonuses.get("erythl", 10),
                     skill_points=0,
-                    total_jijies_earned=starter_bonuses.get("jijies", 5000),
+                    total_revies_earned=starter_bonuses.get("revies", 5000),
                     total_erythl_earned=starter_bonuses.get("erythl", 10),
                     last_energy_update=datetime.utcnow(),
                     last_stamina_update=datetime.utcnow(),
@@ -165,7 +165,7 @@ class Onboarding(commands.Cog):
                 
                 # Create welcome embed
                 embed = disnake.Embed(
-                    title="🎉 Welcome to Jiji!",
+                    title="🎉 Welcome to Reve!",
                     description=(
                         f"Welcome, **{inter.author.name}**! Your journey as an Esprit Master begins now!\n\n"
                         f"You've received your starter kit:"
@@ -174,7 +174,7 @@ class Onboarding(commands.Cog):
                 )
                 
                 # Add starter rewards field
-                rewards_text = f"💰 **{starter_bonuses.get('jijies', 5000):,}** Jijies\n"
+                rewards_text = f"💰 **{starter_bonuses.get('revies', 5000):,}** Revies\n"
                 rewards_text += f"💎 **{starter_bonuses.get('erythl', 10)}** Erythl\n"
                 rewards_text += f"⚡ **{starter_bonuses.get('energy', 100)}** Energy\n"
                 

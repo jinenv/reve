@@ -130,7 +130,7 @@ async def verify_clean_state():
         return False
 
 async def main():
-    print("🐱 Jiji Migration Reset Tool")
+    print("🐱 Reve Migration Reset Tool")
     print("=" * 50)
     print("This will:")
     print("  1. Drop ALL tables from the database")

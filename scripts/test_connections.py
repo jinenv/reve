@@ -49,7 +49,7 @@ async def test_postgres():
         print("\n💡 Possible fixes:")
         print("   1. Make sure PostgreSQL is running")
         print("   2. Check your DATABASE_URL in .env")
-        print("   3. Verify database 'jiji' exists")
+        print("   3. Verify database 'reve' exists")
         print("   4. Check username/password")
         return False
 
@@ -88,30 +88,30 @@ async def test_redis():
         return False
 
 async def check_database_exists():
-    """Check if the 'jiji' database exists"""
+    """Check if the 'reve' database exists"""
     load_dotenv()
     db_url = os.getenv("DATABASE_URL")
     
     if not db_url:
         return False
     
-    # Connect to postgres database to check if jiji exists
-    admin_url = db_url.replace("/jiji", "/postgres")
+    # Connect to postgres database to check if reve exists
+    admin_url = db_url.replace("/reve", "/postgres")
     admin_url = admin_url.replace("postgresql+asyncpg://", "postgresql://")
     
     try:
         conn = await asyncpg.connect(admin_url)
         exists = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = 'jiji')"
+            "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = 'reve')"
         )
         
         if not exists:
-            print("\n⚠️  Database 'jiji' does not exist!")
+            print("\n⚠️  Database 'reve' does not exist!")
             print("Creating database...")
-            await conn.execute('CREATE DATABASE jiji')
-            print("✅ Database 'jiji' created successfully!")
+            await conn.execute('CREATE DATABASE reve')
+            print("✅ Database 'reve' created successfully!")
         else:
-            print("\n✅ Database 'jiji' exists")
+            print("\n✅ Database 'reve' exists")
             
         await conn.close()
         return True
@@ -120,7 +120,7 @@ async def check_database_exists():
         return False
 
 async def main():
-    print("🐱 Jiji Database Connection Test")
+    print("🐱 Reve Database Connection Test")
     print("=" * 40)
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 40)

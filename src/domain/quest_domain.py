@@ -26,7 +26,7 @@ class CombatResult:
 @dataclass
 class VictoryReward:
     """Boss victory rewards"""
-    jijies: int
+    revies: int
     xp: int
     items: Dict[str, int]
     captured_esprit: Optional[Esprit]
@@ -108,7 +108,7 @@ class BossEncounter:
         "current_hp": boss_max_hp,
         "max_hp": boss_max_hp,
         "base_def": esprit_data.get("base_def", 25),
-        "bonus_jijies_multiplier": boss_config.get("bonus_jijies_multiplier", 2.0),
+        "bonus_revies_multiplier": boss_config.get("bonus_revies_multiplier", 2.0),
         "bonus_xp_multiplier": boss_config.get("bonus_xp_multiplier", 3.0),
         "image_url": esprit_data.get("image_url"),
         "sprite_path": esprit_data.get("image_url"),
@@ -244,28 +244,28 @@ class BossEncounter:
     async def process_victory(self, session: AsyncSession, player: Player) -> VictoryReward:
         """Process boss victory and rewards with CORRECT quest reward structure"""
         # Get rewards from quest data (using ACTUAL structure from quests.json)
-        jijies_range = self.quest_data.get("jijies_reward", [100, 300])
+        revies_range = self.quest_data.get("revies_reward", [100, 300])
         base_xp = self.quest_data.get("xp_reward", 50)
         
         # Calculate base rewards
-        if isinstance(jijies_range, list) and len(jijies_range) == 2:
-            base_jijies = random.randint(jijies_range[0], jijies_range[1])
+        if isinstance(revies_range, list) and len(revies_range) == 2:
+            base_revies = random.randint(revies_range[0], revies_range[1])
         else:
-            base_jijies = int(jijies_range) if isinstance(jijies_range, (int, float)) else 100
+            base_revies = int(revies_range) if isinstance(revies_range, (int, float)) else 100
         
         # Apply boss bonuses
-        jijies_bonus = self.boss_data.get("bonus_jijies_multiplier", 2.0)
+        revies_bonus = self.boss_data.get("bonus_revies_multiplier", 2.0)
         xp_bonus = self.boss_data.get("bonus_xp_multiplier", 3.0)
         
-        final_jijies = int(base_jijies * jijies_bonus)
+        final_revies = int(base_revies * revies_bonus)
         final_xp = int(base_xp * xp_bonus)
         
         # Store old values for logging
-        old_jijies = player.jijies
+        old_revies = player.revies
         old_level = player.level
         
         # Apply rewards to player
-        player.jijies += final_jijies
+        player.revies += final_revies
         
         # Add experience AND check for level up in one call
         leveled_up = await player.add_experience(session, final_xp)
@@ -279,20 +279,20 @@ class BossEncounter:
                 player_id=player.id,
                 transaction_type=TransactionType.CURRENCY_GAIN,
                 details={
-                    "amount": final_jijies,
+                    "amount": final_revies,
                     "reason": f"boss_victory_{self.quest_data['id']}",
-                    "old_balance": old_jijies,
-                    "new_balance": player.jijies,
+                    "old_balance": old_revies,
+                    "new_balance": player.revies,
                     "boss_name": self.name,
                     "attacks_taken": self.attack_count,
                     "total_damage": self.total_damage_dealt
                 }
             )
         
-        logger.info(f"🏆 Boss victory: {self.name} defeated in {self.attack_count} attacks for {final_jijies:,} jijies")
+        logger.info(f"🏆 Boss victory: {self.name} defeated in {self.attack_count} attacks for {final_revies:,} revies")
         
         return VictoryReward(
-            jijies=final_jijies,
+            revies=final_revies,
             xp=final_xp,
             items={},  # TODO: Add items system later
             captured_esprit=captured_esprit,
@@ -482,12 +482,12 @@ class QuestRewardCalculator:
         """Calculate rewards for normal quest completion"""
         rewards = {}
         
-        # Calculate jijies reward
-        jijies_range = quest_data.get("jijies_reward", [50, 150])
-        if isinstance(jijies_range, list) and len(jijies_range) == 2:
-            rewards["jijies"] = random.randint(jijies_range[0], jijies_range[1])
+        # Calculate revies reward
+        revies_range = quest_data.get("revies_reward", [50, 150])
+        if isinstance(revies_range, list) and len(revies_range) == 2:
+            rewards["revies"] = random.randint(revies_range[0], revies_range[1])
         else:
-            rewards["jijies"] = int(jijies_range) if isinstance(jijies_range, (int, float)) else 50
+            rewards["revies"] = int(revies_range) if isinstance(revies_range, (int, float)) else 50
         
         # Calculate XP reward
         rewards["xp"] = quest_data.get("xp_reward", 10)
@@ -502,8 +502,8 @@ class QuestRewardCalculator:
         # Small level bonus (1% per level up to 50%)
         level_bonus = min(0.5, player_level * 0.01)
         
-        if "jijies" in rewards:
-            rewards["jijies"] = int(rewards["jijies"] * (1 + level_bonus))
+        if "revies" in rewards:
+            rewards["revies"] = int(rewards["revies"] * (1 + level_bonus))
         
         if "xp" in rewards:
             rewards["xp"] = int(rewards["xp"] * (1 + level_bonus))

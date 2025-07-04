@@ -67,7 +67,7 @@ class PlayerService(BaseService):
                 player = Player(
                     discord_id=discord_id,
                     username=username,
-                    jijies=starter_config.get("starting_jijies", 1000),
+                    revies=starter_config.get("starting_revies", 1000),
                     erythl=starter_config.get("starting_erythl", 0),
                     level=1,
                     experience=0,
@@ -474,7 +474,7 @@ class PlayerService(BaseService):
         
         # Every 10 levels: bonus rewards
         if level % 10 == 0:
-            bonuses.append(f"🎉 Level {level} milestone: +50 jijies!")
+            bonuses.append(f"🎉 Level {level} milestone: +50 revies!")
             
         # Special milestones
         milestone_rewards = {
@@ -575,7 +575,7 @@ class PlayerService(BaseService):
                     "login_bonus": None,
                     "streak_bonus": None,
                     "activity_bonus": None,
-                    "total_jijies": 0,
+                    "total_revies": 0,
                     "total_erythl": 0,
                     "can_claim": False
                 }
@@ -591,24 +591,24 @@ class PlayerService(BaseService):
                         player.daily_streak = 1
                     
                     # Base login bonus
-                    base_jijies = 100 + (player.level * 5)
+                    base_revies = 100 + (player.level * 5)
                     bonuses["login_bonus"] = {
-                        "jijies": base_jijies,
+                        "revies": base_revies,
                         "description": f"Daily login bonus (Level {player.level})"
                     }
-                    bonuses["total_jijies"] += base_jijies
+                    bonuses["total_revies"] += base_revies
                     
                     # Streak bonus
                     if player.daily_streak >= 7:
                         streak_multiplier = min(1.0 + (player.daily_streak // 7) * 0.1, 2.0)  # Cap at 2x
-                        streak_bonus_jijies = int(base_jijies * (streak_multiplier - 1))
+                        streak_bonus_revies = int(base_revies * (streak_multiplier - 1))
                         bonuses["streak_bonus"] = {
-                            "jijies": streak_bonus_jijies,
+                            "revies": streak_bonus_revies,
                             "streak": player.daily_streak,
                             "multiplier": streak_multiplier,
                             "description": f"{player.daily_streak} day streak bonus"
                         }
-                        bonuses["total_jijies"] += streak_bonus_jijies
+                        bonuses["total_revies"] += streak_bonus_revies
                     
                     # Special milestone rewards
                     if player.daily_streak in [7, 30, 100]:

@@ -35,7 +35,7 @@ if sys.platform == "win32":
         # Fallback for older Python versions
         pass
 
-logger = logging.getLogger("jiji")
+logger = logging.getLogger("reve")
 
 # Import our stuff AFTER path is set
 from src.utils.database_service import DatabaseService
@@ -132,7 +132,7 @@ def main():
     os.makedirs("logs", exist_ok=True)
     
     # Initialize services
-    logger.info("Starting Jiji...")
+    logger.info("Starting Reve...")
     initialize_services()
     
     # Load cogs

@@ -104,8 +104,8 @@ class ResourceService(BaseService):
                     "stamina": {"current": player.stamina, "max": player.max_stamina,
                                "percentage": round((player.stamina / player.max_stamina) * 100, 1),
                                "time_to_full": str(player.get_time_until_full_stamina())},
-                    "currency": {"jijies": player.jijies, "erythl": player.erythl},
+                    "currency": {"revies": player.revies, "erythl": player.erythl},
                     "totals": {"energy_spent": player.total_energy_spent, "stamina_spent": player.total_stamina_spent,
-                              "jijies_earned": player.total_jijies_earned, "erythl_earned": player.total_erythl_earned}
+                              "revies_earned": player.total_revies_earned, "erythl_earned": player.total_erythl_earned}
                 }
         return await cls._safe_execute(_operation, "get resource status")
