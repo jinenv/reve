@@ -23,7 +23,8 @@ class PlayerClassService(BaseService):
         """Select or change a player's class."""
         async def _operation():
             cls._validate_player_id(player_id)
-            cls._validate_positive_int(cost, "cost")
+            if cost < 0:
+                raise ValueError("Cost cannot be negative")
             
             async with DatabaseService.get_transaction() as session:
                 # Get player and existing class info with separate queries

@@ -302,7 +302,7 @@ class CacheService(BaseService):
             return ServiceResult.error_result("Tag deletion failed")
     
     @classmethod
-    async def invalidate_player_caches(cls, player_id: int) -> ServiceResult[int]:
+    async def invalidate_player_cache(cls, player_id: int) -> ServiceResult[int]:
         """Invalidate all caches for a specific player"""
         tags_to_invalidate = [
             cls.PLAYER_TAG.format(player_id=player_id),
