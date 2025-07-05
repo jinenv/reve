@@ -465,7 +465,7 @@ class CollectionService(BaseService):
             for milestone in milestones:
                 if unique_count == milestone["target"]:
                     # Award milestone rewards
-                    from src.services.revies_service import ReviesService
+                    from services.currency_service import ReviesService
                     
                     rewards = milestone.get("rewards", {})
                     if rewards.get("revies", 0) > 0:

@@ -1,4 +1,4 @@
-# src/services/revies_service.py
+# src/services/currency_service.py
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, func
@@ -34,7 +34,7 @@ class CurrencyBalance:
     total_erythl_earned: int
     last_updated: datetime
 
-class ReviesService(BaseService):
+class CurrencyService(BaseService):
     """Currency management service for the Reve domain economy"""
     
     # Supported currencies (ready for future "revies" transition)
