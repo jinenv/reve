@@ -25,6 +25,15 @@ logging.basicConfig(
     ]
 )
 
+logging.getLogger("disnake.gateway").setLevel(logging.WARNING)
+logging.getLogger("disnake.client").setLevel(logging.WARNING)
+logging.getLogger("disnake.http").setLevel(logging.WARNING)
+logging.getLogger("src.utils.database_service").setLevel(logging.WARNING)
+logging.getLogger("src.utils.redis_service").setLevel(logging.WARNING) 
+logging.getLogger("src.utils.emoji_manager").setLevel(logging.WARNING)
+logging.getLogger("disnake.voice").setLevel(logging.ERROR)
+
+
 # Set console encoding to UTF-8 for Windows
 if sys.platform == "win32":
     try:
@@ -65,7 +74,7 @@ async def on_ready():
     
     # Initialize emoji manager with ABSOLUTE PATH
     try:
-        from src.utils.emoji_manager import setup_emoji_manager
+        from src.utils.emoji_manager import EmojiStorageManager
         
         # Get the ACTUAL config path
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "config", "emoji_mapping.json")
@@ -73,14 +82,11 @@ async def on_ready():
         logger.info(f"Looking for emoji config at: {config_path}")
         
         if os.path.exists(config_path):
-            emoji_manager = setup_emoji_manager(bot)
-            # Override the path in emoji manager
-            emoji_manager.config_path = config_path
-            emoji_manager.load_config()  # Reload with correct path
+            emoji_manager = EmojiStorageManager(bot, config_path)
             
-            await emoji_manager.setup_emoji_servers([
-                1369489835860955329,  # Your server
-            ])
+            # Use the sync method instead - no await needed
+            emoji_manager.set_emoji_servers([1369489835860955329])
+            
             logger.info("Emoji manager initialized!")
         else:
             logger.warning(f"Emoji config not found at {config_path}")

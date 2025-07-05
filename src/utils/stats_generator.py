@@ -1,4 +1,4 @@
-# src/utils/image_generator.py
+# src/utils/stats_generator.py
 from __future__ import annotations
 
 import asyncio
@@ -35,10 +35,10 @@ class ImageConfig:
     def get(cls, key: str, default: Any = None) -> Any:
         """Get config value WITHOUT the nested key disaster"""
         try:
-            config = ConfigManager.get("image_generation")
+            config = ConfigManager.get("stats_display")
             
             if config is None:
-                logger.error(f"[CONFIG] image_generation config is None! Using default for '{key}': {default}")
+                logger.error(f"[CONFIG] stats_display config is None! Using default for '{key}': {default}")
                 return default
             
             if not isinstance(config, dict):
@@ -62,7 +62,7 @@ class ImageConfig:
     def get_nested(cls, *keys: str, default: Any = None) -> Any:
         """Get nested config value like get_nested('tier_effects', 'thresholds')"""
         try:
-            config = ConfigManager.get("image_generation")
+            config = ConfigManager.get("stats_display")
             if config is None:
                 return default
             

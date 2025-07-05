@@ -305,7 +305,7 @@ class Admin(commands.Cog):
        quantity: int = commands.Param(default=1, min_value=1, max_value=1000, description="How many of EACH"),
        awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level")
    ):
-       """Give one of every esprit because testing"""
+       """Give one of every esprit for testing purposes"""
 
        try:
            async with DatabaseService.get_transaction() as session:
@@ -693,7 +693,7 @@ class Admin(commands.Cog):
        inter: disnake.ApplicationCommandInteraction,
        specific_config: str = commands.Param(default="ALL", description="Specific config to reload or 'ALL'")
    ):
-       """UNIVERSAL CONFIG RELOADER because apparently we're doing live config editing at 2 AM"""
+       """UNIVERSAL CONFIG RELOADER for live config editing"""
        
        # Check if interaction was already responded to by rate limiter
        if not inter.response.is_done():
@@ -706,14 +706,14 @@ class Admin(commands.Cog):
                # NUCLEAR OPTION: Reload EVERYTHING
                old_count = len(ConfigManager._configs) if hasattr(ConfigManager, '_configs') else 0
                
-               # Use the actual reload method because apparently it exists and I was being dramatic
+               # Use the actual reload method
                ConfigManager.reload()
                
                new_count = len(ConfigManager._configs)
                reloaded_configs = list(ConfigManager._configs.keys())
                
                # Force ImageGenerator to reinitialize 
-               from src.utils.image_generator import _generator
+               from utils.stats_generator import _generator
                _generator.__init__()
                
                embed = disnake.Embed(
@@ -752,9 +752,9 @@ class Admin(commands.Cog):
                        
                        reloaded_configs = [specific_config]
                        
-                       # If it's image_generation, reload ImageGenerator
-                       if specific_config == "image_generation":
-                           from src.utils.image_generator import _generator
+                       # If it's stats_generation, reload StatsGenerator
+                       if specific_config == "stats_generation":
+                           from utils.stats_generator import _generator
                            _generator.__init__()
                        
                        embed = disnake.Embed(
@@ -763,7 +763,7 @@ class Admin(commands.Cog):
                            color=EmbedColors.SUCCESS
                        )
                        
-                       if specific_config == "image_generation":
+                       if specific_config == "stats_generation":
                            embed.add_field(
                                name="🎯 ImageGenerator",
                                value="Forced reinitialization with new config",
@@ -800,16 +800,16 @@ class Admin(commands.Cog):
     
    @admin.sub_command(name="debug_image_config", description="🔥 Debug image generation configuration")
    async def debug_image_config(self, inter: disnake.ApplicationCommandInteraction):
-       """Debug command to verify image config is working (Ember's diagnostic tool)"""
+       """Debug command to verify image config is working"""
        
        await inter.response.defer()
        
        try:
            # Test 1: Raw ConfigManager access
-           raw_config = ConfigManager.get("image_generation")
+           raw_config = ConfigManager.get("stats_generation")
            
            # Test 2: ImageConfig methods
-           from src.utils.image_generator import ImageConfig
+           from utils.stats_generator import ImageConfig
            
            # Test basic values
            bg_color = ImageConfig.get_background_color()
@@ -838,7 +838,7 @@ class Admin(commands.Cog):
            
            embed = disnake.Embed(
                title="🔥 Image Config Debug Results",
-               description="**Ember's Config Diagnostic Report**",
+               description="**Config Diagnostic Report**",
                color=0xFF4500
            )
            
@@ -892,7 +892,7 @@ class Admin(commands.Cog):
        except Exception as e:
            error_embed = disnake.Embed(
                title="💀 Config Debug Failed",
-               description=f"**Error:** {str(e)}\n\n*Ember has died and needs to be reborn...*",
+               description=f"**Error:** {str(e)}\n\n*Configuration system has encountered critical errors...*",
                color=0xFF0000
            )
            await inter.edit_original_response(embed=error_embed)

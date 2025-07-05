@@ -1,4 +1,4 @@
-# src/utils/boss_image_generator.py - ULTIMATE UNIFIED VERSION
+# src/utils/boss_generator.py - ULTIMATE UNIFIED VERSION
 from __future__ import annotations
 
 import asyncio
@@ -11,7 +11,7 @@ import disnake
 from PIL import Image, ImageDraw, ImageFont
 
 from src.utils.logger import get_logger
-from src.utils.image_generator import ImageConfig, ImageGenerator  # ✨ Use existing sophisticated system
+from utils.stats_generator import ImageConfig, ImageGenerator  # ✨ Use existing sophisticated system
 
 logger = get_logger(__name__)
 

@@ -9,8 +9,8 @@ from src.utils.config_manager import ConfigManager
 from src.utils.redis_service import ratelimit
 from src.database.models import Player
 from src.domain.quest_domain import BossEncounter, PendingCapture, CaptureSystem
-from src.utils.boss_image_generator import generate_boss_card
-from src.utils.image_generator import generate_esprit_card
+from utils.boss_generator import generate_boss_card
+from utils.stats_generator import generate_esprit_card
 from src.utils.game_constants import Elements as GameElements, Tiers, GameConstants as GameConsts
 from sqlalchemy import select
 
