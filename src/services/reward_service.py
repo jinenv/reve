@@ -27,16 +27,16 @@ class RewardService(BaseService):
                 yesterday = today - timedelta(days=1)
                 if (isinstance(player.last_daily_reward, datetime) and 
                     player.last_daily_reward.date() == yesterday):
-                    player.daily_streak += 1
+                    player.daily_quest_streak += 1
                 else:
-                    player.daily_streak = 1
+                    player.daily_quest_streak = 1
                 
                 daily_config = ConfigManager.get("daily_rewards") or {}
                 base_revies = daily_config.get("base_revies", 1000)
                 bonus_per_day = daily_config.get("bonus_per_day", 100)
                 max_bonus = daily_config.get("max_bonus", 1000)
                 
-                bonus = min(player.daily_streak * bonus_per_day, max_bonus)
+                bonus = min(player.daily_quest_streak * bonus_per_day, max_bonus)
                 total_revies = base_revies + bonus
                 
                 player.revies += total_revies
@@ -46,12 +46,12 @@ class RewardService(BaseService):
                 await session.commit()
                 
                 transaction_logger.log_transaction(player_id, TransactionType.DAILY_REWARD, {
-                    "streak": player.daily_streak, "revies": total_revies,
+                    "streak": player.daily_quest_streak, "revies": total_revies,
                     "base": base_revies, "bonus": bonus
                 })
                 
                 return {
-                    "streak": player.daily_streak, "revies": total_revies,
+                    "streak": player.daily_quest_streak, "revies": total_revies,
                     "base_reward": base_revies, "streak_bonus": bonus,
                     "next_claim": today + timedelta(days=1)
                 }

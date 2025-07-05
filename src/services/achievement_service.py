@@ -304,7 +304,7 @@ class AchievementService(BaseService):
                 return False
             elif req_type == "total_echoes_opened" and getattr(player, 'total_echoes_opened', 0) < req_value:
                 return False
-            elif req_type == "daily_streak" and getattr(player, 'daily_streak', 0) < req_value:
+            elif req_type == "daily_quest_streak" and getattr(player, 'daily_quest_streak', 0) < req_value:
                 return False
             elif req_type == "revies_earned" and getattr(player, 'total_revies_earned', 0) < req_value:
                 return False
@@ -337,8 +337,8 @@ class AchievementService(BaseService):
                 current_value = getattr(player, 'total_quests_completed', 0)
             elif req_type == "total_echoes_opened":
                 current_value = getattr(player, 'total_echoes_opened', 0)
-            elif req_type == "daily_streak":
-                current_value = getattr(player, 'daily_streak', 0)
+            elif req_type == "daily_quest_streak":
+                current_value = getattr(player, 'daily_quest_streak', 0)
             elif req_type == "revies_earned":
                 current_value = getattr(player, 'total_revies_earned', 0)
             elif req_type == "erythl_earned":

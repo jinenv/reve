@@ -618,9 +618,9 @@ class PlayerService(BaseService):
                     
                     # Calculate streak
                     if player.last_daily_reward == today - timedelta(days=1):
-                        player.daily_streak += 1
+                        player.daily_quest_streak += 1
                     else:
-                        player.daily_streak = 1
+                        player.daily_quest_streak = 1
                     
                     # Base login bonus
                     base_revies = 100 + (player.level * 5)
@@ -631,24 +631,24 @@ class PlayerService(BaseService):
                     bonuses["total_revies"] += base_revies
                     
                     # Streak bonus
-                    if player.daily_streak >= 7:
-                        streak_multiplier = min(1.0 + (player.daily_streak // 7) * 0.1, 2.0)  # Cap at 2x
+                    if player.daily_quest_streak >= 7:
+                        streak_multiplier = min(1.0 + (player.daily_quest_streak // 7) * 0.1, 2.0)  # Cap at 2x
                         streak_bonus_revies = int(base_revies * (streak_multiplier - 1))
                         bonuses["streak_bonus"] = {
                             "revies": streak_bonus_revies,
-                            "streak": player.daily_streak,
+                            "streak": player.daily_quest_streak,
                             "multiplier": streak_multiplier,
-                            "description": f"{player.daily_streak} day streak bonus"
+                            "description": f"{player.daily_quest_streak} day streak bonus"
                         }
                         bonuses["total_revies"] += streak_bonus_revies
                     
                     # Special milestone rewards
-                    if player.daily_streak in [7, 30, 100]:
-                        milestone_erythl = {7: 5, 30: 25, 100: 100}[player.daily_streak]
+                    if player.daily_quest_streak in [7, 30, 100]:
+                        milestone_erythl = {7: 5, 30: 25, 100: 100}[player.daily_quest_streak]
                         bonuses["total_erythl"] += milestone_erythl
                         bonuses["milestone_reward"] = {
                             "erythl": milestone_erythl,
-                            "description": f"{player.daily_streak} day milestone!"
+                            "description": f"{player.daily_quest_streak} day milestone!"
                         }
                 
                 return bonuses
