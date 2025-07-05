@@ -83,3 +83,13 @@ class DatabaseService:
         async with cls._engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
         logger.info("All tables created.")
+
+    @classmethod
+    def verify_model_integrity(cls):
+        """Verify all models and relationships are properly configured."""
+        try:
+            from src.database.models import verify_model_relationships
+            return verify_model_relationships()
+        except Exception as e:
+            logger.error(f"Model integrity check failed: {e}")
+            return False

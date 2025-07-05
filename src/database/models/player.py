@@ -1,7 +1,6 @@
-
 # src/database/models/player.py
-from typing import List, Optional, Dict, Any
-from sqlmodel import BigInteger, SQLModel, Field, Column
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
+from sqlmodel import BigInteger, Relationship, SQLModel, Field, Column
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime, timedelta, date
@@ -9,8 +8,11 @@ from sqlalchemy import Column, BigInteger, Index
 from src.utils.game_constants import Elements, Tiers, GameConstants
 from src.utils.config_manager import ConfigManager
 
+if TYPE_CHECKING:
+    from src.database.models.player_class import PlayerClass
+
 class Player(SQLModel, table=True):
-    __tablename__: str = "player"  # type: ignore
+    __tablename__: str = "player" 
     __table_args__ = (
         Index("ix_player_level", "level"),
         Index("ix_player_total_attack_power", "total_attack_power"),
@@ -123,6 +125,40 @@ class Player(SQLModel, table=True):
     achievements_earned: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     achievement_points: int = Field(default=0)
 
+    # --- Player Classes ---
+    player_class_info: Optional["PlayerClass"] = Relationship(
+        back_populates="player",
+        sa_relationship_kwargs={"lazy": "select", "cascade": "all, delete-orphan"}
+    )
+
+    # ✅ ASYNC-COMPATIBLE HELPER METHOD
+    def get_class_bonuses_sync(self) -> Dict[str, float]:
+        """
+        Synchronous version for basic bonus info.
+        For full functionality, use PlayerClassService.get_class_info()
+        """
+        # Default bonuses when no class or relationship not loaded
+        return {
+            "stamina_regen_multiplier": 1.0,
+            "energy_regen_multiplier": 1.0,
+            "revie_income_multiplier": 1.0,
+            "bonus_percentage": 0.0
+        }
+    
+    # ✅ ASYNC HELPER METHOD (RECOMMENDED)
+    async def get_class_bonuses_async(self) -> Dict[str, float]:
+        """
+        Async version that properly loads relationship data.
+        Use this in services for accurate bonus calculation.
+        """
+        # Import here to avoid circular imports
+        from src.services.player_class_service import PlayerClassService
+        
+        result = await PlayerClassService.get_player_class_bonuses(self.id, self.level) # type: ignore
+        if result.success and result.data is not None:
+            return result.data
+        return self.get_class_bonuses_sync()
+    
     # --- XP PROGRESSION HELPERS ---
     
     def xp_for_next_level(self) -> int:
@@ -234,7 +270,7 @@ class Player(SQLModel, table=True):
             "total_available": 0,     # To be implemented in CollectionService
             "completion_percent": 0.0
         }
-    
+        
     # === BUSINESS LOGIC MOVED TO SERVICES ===
     
     # Leadership management moved to LeadershipService:

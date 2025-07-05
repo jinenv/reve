@@ -61,6 +61,8 @@ class TransactionType(Enum):
     NOTIFICATION_UPDATED = "notification_updated"
     DISPLAY_SYNC = "display_sync"
     REWARD_DISTRIBUTED = "reward_distributed"
+    CLASS_SELECTED = "class_selected"
+    CLASS_BONUS_APPLIED = "class_bonus_applied"
 
 class TransactionLogger:
     """Handles structured logging of all game state changes"""

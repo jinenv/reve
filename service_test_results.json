@@ -1,0 +1,458 @@
+{
+  "timestamp": "2025-07-04T21:17:14.624573",
+  "summary": {
+    "total_services": 26,
+    "total_tests": 44,
+    "passed_tests": 40,
+    "failed_tests": 4,
+    "success_rate": 90.9090909090909
+  },
+  "results": {
+    "AbilityService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported AbilityService",
+          "timestamp": "2025-07-04T21:17:14.412634"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported AbilityService",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        },
+        {
+          "name": "resolve_abilities",
+          "success": true,
+          "details": "Resolved abilities: True",
+          "timestamp": "2025-07-04T21:17:14.621573"
+        },
+        {
+          "name": "get_summary",
+          "success": true,
+          "details": "Got summary: No abilities defined",
+          "timestamp": "2025-07-04T21:17:14.621573"
+        }
+      ],
+      "total_tests": 4,
+      "passed_tests": 4,
+      "failed_tests": 0
+    },
+    "AchievementService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported AchievementService",
+          "timestamp": "2025-07-04T21:17:14.596594"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "AwakeningService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported AwakeningService",
+          "timestamp": "2025-07-04T21:17:14.596594"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "BaseService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported BaseService",
+          "timestamp": "2025-07-04T21:17:14.596594"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "BuildingService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported BuildingService",
+          "timestamp": "2025-07-04T21:17:14.597599"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "CacheService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported CacheService",
+          "timestamp": "2025-07-04T21:17:14.597599"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported CacheService",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        },
+        {
+          "name": "cache_set",
+          "success": true,
+          "details": "Cache set: True",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        },
+        {
+          "name": "cache_get",
+          "success": true,
+          "details": "Cache get: True",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        },
+        {
+          "name": "cache_delete",
+          "success": true,
+          "details": "Cache delete: True",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        }
+      ],
+      "total_tests": 5,
+      "passed_tests": 5,
+      "failed_tests": 0
+    },
+    "CollectionService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported CollectionService",
+          "timestamp": "2025-07-04T21:17:14.598601"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported CollectionService",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        },
+        {
+          "name": "no_test_data",
+          "success": false,
+          "details": "No test player available",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        }
+      ],
+      "total_tests": 3,
+      "passed_tests": 2,
+      "failed_tests": 1
+    },
+    "DisplayService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported DisplayService",
+          "timestamp": "2025-07-04T21:17:14.600598"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "EchoService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported EchoService",
+          "timestamp": "2025-07-04T21:17:14.600598"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "EspritService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported EspritService",
+          "timestamp": "2025-07-04T21:17:14.601598"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported EspritService",
+          "timestamp": "2025-07-04T21:17:14.615063"
+        },
+        {
+          "name": "no_test_data",
+          "success": false,
+          "details": "No test player available",
+          "timestamp": "2025-07-04T21:17:14.615063"
+        }
+      ],
+      "total_tests": 3,
+      "passed_tests": 2,
+      "failed_tests": 1
+    },
+    "ExperienceService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported ExperienceService",
+          "timestamp": "2025-07-04T21:17:14.601598"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "FragmentService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported FragmentService",
+          "timestamp": "2025-07-04T21:17:14.602600"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "FusionService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported FusionService",
+          "timestamp": "2025-07-04T21:17:14.603600"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "InventoryService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported InventoryService",
+          "timestamp": "2025-07-04T21:17:14.604598"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "LeadershipService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported LeadershipService",
+          "timestamp": "2025-07-04T21:17:14.605055"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "NotificationService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported NotificationService",
+          "timestamp": "2025-07-04T21:17:14.605055"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "PlayerService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported PlayerService",
+          "timestamp": "2025-07-04T21:17:14.607063"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported PlayerService",
+          "timestamp": "2025-07-04T21:17:14.615063"
+        },
+        {
+          "name": "no_test_data",
+          "success": false,
+          "details": "No test player available",
+          "timestamp": "2025-07-04T21:17:14.615063"
+        }
+      ],
+      "total_tests": 3,
+      "passed_tests": 2,
+      "failed_tests": 1
+    },
+    "PowerService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported PowerService",
+          "timestamp": "2025-07-04T21:17:14.607063"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "ProgressionService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported ProgressionService",
+          "timestamp": "2025-07-04T21:17:14.608064"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "QuestService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported QuestService",
+          "timestamp": "2025-07-04T21:17:14.609064"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "RelicService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported RelicService",
+          "timestamp": "2025-07-04T21:17:14.612064"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "ResourceService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported ResourceService",
+          "timestamp": "2025-07-04T21:17:14.612064"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "RewardService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported RewardService",
+          "timestamp": "2025-07-04T21:17:14.613065"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "SearchService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported SearchService",
+          "timestamp": "2025-07-04T21:17:14.613065"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported SearchService",
+          "timestamp": "2025-07-04T21:17:14.615063"
+        },
+        {
+          "name": "search_esprits",
+          "success": true,
+          "details": "Search completed: True",
+          "timestamp": "2025-07-04T21:17:14.619572"
+        },
+        {
+          "name": "get_by_name",
+          "success": true,
+          "details": "Get by name: True",
+          "timestamp": "2025-07-04T21:17:14.620573"
+        }
+      ],
+      "total_tests": 4,
+      "passed_tests": 4,
+      "failed_tests": 0
+    },
+    "StatisticsService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported StatisticsService",
+          "timestamp": "2025-07-04T21:17:14.614065"
+        }
+      ],
+      "total_tests": 1,
+      "passed_tests": 1,
+      "failed_tests": 0
+    },
+    "PlayerClassService": {
+      "tests": [
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported PlayerClassService",
+          "timestamp": "2025-07-04T21:17:14.615063"
+        },
+        {
+          "name": "import",
+          "success": true,
+          "details": "Successfully imported PlayerClassService",
+          "timestamp": "2025-07-04T21:17:14.621573"
+        },
+        {
+          "name": "no_test_data",
+          "success": false,
+          "details": "No test player available",
+          "timestamp": "2025-07-04T21:17:14.621573"
+        }
+      ],
+      "total_tests": 3,
+      "passed_tests": 2,
+      "failed_tests": 1
+    }
+  }
+}

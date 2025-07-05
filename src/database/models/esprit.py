@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from src.database.models import EspritBase
 
 class Esprit(SQLModel, table=True):
-    __tablename__: str = "esprit"  # type: ignore
+    __tablename__: str = "esprit"  
     """Universal Stack System - Each row represents ALL copies of an Esprit type a player owns"""
     
     id: Optional[int] = Field(default=None, primary_key=True)
