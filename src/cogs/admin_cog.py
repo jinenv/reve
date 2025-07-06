@@ -14,7 +14,7 @@ from src.utils.embed_colors import EmbedColors
 from src.utils.redis_service import ratelimit
 from src.utils.config_manager import ConfigManager
 from src.utils.emoji_manager import EmojiStorageManager
-from utils.database_service import DatabaseService
+from src.utils.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class AdminCog(commands.Cog):
         confirm: bool = commands.Param(default=False, description="Type True to confirm deletion")
     ):
         """Reset a player's data completely"""
-        await inter.response.defer()
+        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
         
         target_user = user or inter.author
         
@@ -185,7 +185,7 @@ class AdminCog(commands.Cog):
         user: disnake.User = commands.Param(description="User to inspect")
     ):
         """Get comprehensive player information"""
-        await inter.response.defer()
+        await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         try:
             player_result = await PlayerService.get_or_create_player(user.id, user.display_name)
@@ -288,7 +288,7 @@ class AdminCog(commands.Cog):
         reason: str = commands.Param(default="admin_gift", description="Reason for giving")
     ):
         """Give currency to a player"""
-        await inter.response.defer()
+        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
         
         try:
             # Get player first
@@ -369,7 +369,7 @@ class AdminCog(commands.Cog):
         awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level")
     ):
         """Give an Esprit to a player (placeholder)"""
-        await inter.response.defer()
+        await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         embed = disnake.Embed(
             title="⚠️ Feature Not Available",
@@ -398,7 +398,7 @@ class AdminCog(commands.Cog):
     @ratelimit(uses=1, per_seconds=30, command_name="admin_system_sync")
     async def sync_commands(self, inter: disnake.ApplicationCommandInteraction):
         """Force sync slash commands with Discord"""
-        await inter.response.defer()
+        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
         
         try:
             synced = await self.bot.sync_application_commands()
@@ -432,7 +432,7 @@ class AdminCog(commands.Cog):
         )
     ):
         """Reload configuration files"""
-        await inter.response.defer()
+        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
         
         try:
             if config.upper() == "ALL":
@@ -510,7 +510,7 @@ class AdminCog(commands.Cog):
         )
     ):
         """Manage Redis cache system"""
-        await inter.response.defer()
+        await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         try:
             if action == "stats":
@@ -648,7 +648,7 @@ class AdminCog(commands.Cog):
     @ratelimit(uses=1, per_seconds=30, command_name="admin_system_emoji")
     async def sync_emojis(self, inter: disnake.ApplicationCommandInteraction):
         """Sync emojis from configured Discord servers"""
-        await inter.response.defer()
+        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
         
         try:
             # Initialize emoji manager if not already done
@@ -748,7 +748,7 @@ class AdminCog(commands.Cog):
     @debug_group.sub_command(name="emoji", description="😀 Test emoji manager functionality")
     async def debug_emoji(self, inter: disnake.ApplicationCommandInteraction):
         """Test and debug emoji manager"""
-        await inter.response.defer()
+        await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         try:
             # Initialize emoji manager if needed
@@ -820,7 +820,7 @@ class AdminCog(commands.Cog):
     @debug_group.sub_command(name="services", description="🔧 Test all services functionality")
     async def debug_services(self, inter: disnake.ApplicationCommandInteraction):
         """Test all core services"""
-        await inter.response.defer()
+        await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         try:
             embed = disnake.Embed(
@@ -879,6 +879,322 @@ class AdminCog(commands.Cog):
             embed = disnake.Embed(
                 title="❌ Service Check Failed",
                 description="Service health check encountered an error.",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
+
+    # =====================================
+    # IMAGE GENERATION TESTING
+    # =====================================
+    
+    @admin.sub_command_group(name="view", description="🎨 Test image generation systems")
+    async def view_group(self, inter: disnake.ApplicationCommandInteraction):
+        """Image generation test commands"""
+        pass
+    
+    @view_group.sub_command(name="boss", description="🦹 Test boss card generation")
+    async def view_boss(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        boss_name: str = commands.Param(default="Blazeblob", description="Boss esprit name to generate"),
+        background: str = commands.Param(
+            default="forest_nebula.png",
+            choices=["forest_nebula.png", "space_forest.png", "crystal_cave.png", "volcanic_ridge.png"],
+            description="Background theme"
+        )
+    ):
+        """Generate a test boss card image"""
+        await inter.response.defer()
+        
+        try:
+            # Search for the esprit in database
+            from src.database.models.esprit_base import EspritBase
+            
+            async with DatabaseService.get_session() as session:
+                stmt = select(EspritBase).where(EspritBase.name.ilike(f"%{boss_name}%"))
+                esprit_base = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not esprit_base:
+                    embed = disnake.Embed(
+                        title="❌ Boss Not Found",
+                        description=f"No esprit found matching '{boss_name}'. Try 'Blazeblob', 'Droozle', or 'Muddroot'.",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
+                
+                # Create boss card data
+                boss_max_hp = esprit_base.base_hp * 3  # Boss HP multiplier
+                boss_current_hp = int(boss_max_hp * 0.75)  # 75% HP for dramatic effect
+                
+                boss_card_data = {
+                    "name": esprit_base.name,
+                    "element": esprit_base.element,
+                    "current_hp": boss_current_hp,
+                    "max_hp": boss_max_hp,
+                    "background": background,
+                    "image_url": esprit_base.image_url,
+                    "sprite_path": esprit_base.image_url
+                }
+                
+                # Generate boss card
+                try:
+                    from src.utils.boss_generator import generate_boss_card
+                    boss_file = await generate_boss_card(boss_card_data, f"admin_boss_test_{esprit_base.name}.png")
+                    
+                    if boss_file:
+                        embed = disnake.Embed(
+                            title="🦹 Boss Card Generated!",
+                            description=(
+                                f"**Boss:** {esprit_base.name}\n"
+                                f"**Element:** {esprit_base.element}\n"
+                                f"**HP:** {boss_current_hp:,} / {boss_max_hp:,}\n"
+                                f"**Background:** {background}\n"
+                                f"**Base Stats:** ATK {esprit_base.base_atk}, DEF {esprit_base.base_def}"
+                            ),
+                            color=EmbedColors.SUCCESS
+                        )
+                        embed.set_image(url=f"attachment://{boss_file.filename}")
+                        
+                        await inter.edit_original_response(embed=embed, files=[boss_file])
+                    else:
+                        embed = disnake.Embed(
+                            title="❌ Image Generation Failed",
+                            description="Boss card generation returned None. Check image generation service.",
+                            color=EmbedColors.ERROR
+                        )
+                        await inter.edit_original_response(embed=embed)
+                        
+                except ImportError:
+                    embed = disnake.Embed(
+                        title="❌ Boss Generator Not Available",
+                        description="Boss generation module not found. Ensure `src.utils.boss_generator` exists.",
+                        color=EmbedColors.ERROR
+                    )
+                    await inter.edit_original_response(embed=embed)
+                except Exception as img_error:
+                    logger.error(f"Boss card generation error: {img_error}", exc_info=True)
+                    embed = disnake.Embed(
+                        title="❌ Image Generation Error",
+                        description=f"Failed to generate boss card: {str(img_error)[:100]}",
+                        color=EmbedColors.ERROR
+                    )
+                    await inter.edit_original_response(embed=embed)
+                
+        except Exception as e:
+            logger.error(f"View boss error: {e}", exc_info=True)
+            embed = disnake.Embed(
+                title="❌ Command Failed",
+                description="Failed to process boss view command.",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
+    
+    @view_group.sub_command(name="esprit", description="👹 Test esprit card generation")
+    async def view_esprit(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        esprit_name: str = commands.Param(default="Blazeblob", description="Esprit name to generate"),
+        awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level (stars)"),
+        quantity: int = commands.Param(default=1, min_value=1, max_value=999, description="Stack quantity")
+    ):
+        """Generate a test esprit card image"""
+        await inter.response.defer()
+        
+        try:
+            # Search for the esprit in database
+            from src.database.models.esprit_base import EspritBase
+            
+            async with DatabaseService.get_session() as session:
+                stmt = select(EspritBase).where(EspritBase.name.ilike(f"%{esprit_name}%"))
+                esprit_base = (await session.execute(stmt)).scalar_one_or_none()
+                
+                if not esprit_base:
+                    embed = disnake.Embed(
+                        title="❌ Esprit Not Found",
+                        description=f"No esprit found matching '{esprit_name}'. Try 'Blazeblob', 'Droozle', or 'Muddroot'.",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
+                
+                # Create esprit card data
+                esprit_card_data = {
+                    "name": esprit_base.name,
+                    "element": esprit_base.element,
+                    "tier": esprit_base.base_tier,
+                    "awakening": awakening,
+                    "quantity": quantity,
+                    "image_url": esprit_base.image_url,
+                    "sprite_path": esprit_base.image_url,
+                    "attack": esprit_base.base_atk,
+                    "defense": esprit_base.base_def,
+                    "hp": esprit_base.base_hp
+                }
+                
+                # Generate esprit card
+                try:
+                    from src.utils.esprit_generator import generate_esprit_card
+                    esprit_file = await generate_esprit_card(esprit_card_data, f"admin_esprit_test_{esprit_base.name}.png")
+                    
+                    if esprit_file:
+                        embed = disnake.Embed(
+                            title="👹 Esprit Card Generated!",
+                            description=(
+                                f"**Name:** {esprit_base.name}\n"
+                                f"**Element:** {esprit_base.element}\n"
+                                f"**Tier:** {esprit_base.base_tier}\n"
+                                f"**Awakening:** {'⭐' * awakening if awakening > 0 else 'None'}\n"
+                                f"**Quantity:** {quantity:,}\n"
+                                f"**Stats:** ATK {esprit_base.base_atk}, DEF {esprit_base.base_def}, HP {esprit_base.base_hp}"
+                            ),
+                            color=EmbedColors.SUCCESS
+                        )
+                        embed.set_image(url=f"attachment://{esprit_file.filename}")
+                        
+                        await inter.edit_original_response(embed=embed, files=[esprit_file])
+                    else:
+                        embed = disnake.Embed(
+                            title="❌ Image Generation Failed",
+                            description="Esprit card generation returned None. Check image generation service.",
+                            color=EmbedColors.ERROR
+                        )
+                        await inter.edit_original_response(embed=embed)
+                        
+                except ImportError:
+                    embed = disnake.Embed(
+                        title="❌ Esprit Generator Not Available",
+                        description="Esprit generation module not found. Ensure `src.utils.esprit_generator` exists.",
+                        color=EmbedColors.ERROR
+                    )
+                    await inter.edit_original_response(embed=embed)
+                except Exception as img_error:
+                    logger.error(f"Esprit card generation error: {img_error}", exc_info=True)
+                    embed = disnake.Embed(
+                        title="❌ Image Generation Error",
+                        description=f"Failed to generate esprit card: {str(img_error)[:100]}",
+                        color=EmbedColors.ERROR
+                    )
+                    await inter.edit_original_response(embed=embed)
+                
+        except Exception as e:
+            logger.error(f"View esprit error: {e}", exc_info=True)
+            embed = disnake.Embed(
+                title="❌ Command Failed",
+                description="Failed to process esprit view command.",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
+    
+    @view_group.sub_command(name="stats", description="📊 Test stats/profile card generation")
+    async def view_stats(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        user: disnake.User = commands.Param(default=None, description="User to generate stats for (defaults to you)")
+    ):
+        """Generate a test player stats card image"""
+        await inter.response.defer()
+        
+        target_user = user or inter.author
+        
+        try:
+            # Get player data
+            player_result = await PlayerService.get_or_create_player(target_user.id, target_user.display_name)
+            
+            if not player_result.success:
+                embed = disnake.Embed(
+                    title="❌ Player Error",
+                    description=player_result.error,
+                    color=EmbedColors.WARNING
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            player = player_result.data
+            if not player:
+                embed = disnake.Embed(
+                    title="❌ Invalid Player",
+                    description="Failed to get valid player data.",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            # Create stats card data
+            stats_card_data = {
+                "username": player.username,
+                "level": player.level,
+                "experience": player.experience,
+                "revies": player.revies,
+                "erythl": player.erythl,
+                "total_attack": player.total_attack_power,
+                "total_defense": player.total_defense_power,
+                "total_hp": player.total_hp,
+                "energy": player.energy,
+                "max_energy": player.max_energy,
+                "stamina": player.stamina,
+                "max_stamina": player.max_stamina,
+                "discord_avatar": str(target_user.display_avatar.url),
+                "class_type": "Unknown",  # Will be filled if class service exists
+                "achievements_count": len(player.achievements_earned),
+                "quests_completed": player.total_quests_completed
+            }
+            
+            # Try to get class info
+            try:
+                from src.services.player_class_service import PlayerClassService
+                class_result = await PlayerClassService.get_class_info(player.id) # type: ignore
+                if class_result.success and class_result.data:
+                    stats_card_data["class_type"] = class_result.data.get("class_type", "Unknown")
+            except ImportError:
+                pass
+            
+            # Generate stats card
+            try:
+                from src.utils.stats_generator import generate_stats_card
+                stats_file = await generate_stats_card(stats_card_data, f"admin_stats_test_{player.username}.png")
+                
+                if stats_file:
+                    embed = disnake.Embed(
+                        title="📊 Stats Card Generated!",
+                        description=(
+                            f"**Player:** {player.username}\n"
+                            f"**Level:** {player.level}\n"
+                            f"**Class:** {stats_card_data['class_type']}\n"
+                            f"**Power:** ATK {player.total_attack_power:,}, DEF {player.total_defense_power:,}, HP {player.total_hp:,}\n"
+                            f"**Resources:** {player.revies:,} revies, {player.erythl:,} erythl\n"
+                            f"**Progress:** {player.total_quests_completed} quests, {len(player.achievements_earned)} achievements"
+                        ),
+                        color=EmbedColors.SUCCESS
+                    )
+                    embed.set_image(url=f"attachment://{stats_file.filename}")
+                    
+                    await inter.edit_original_response(embed=embed, files=[stats_file])
+                else:
+                    embed = disnake.Embed(
+                        title="❌ Image Generation Failed",
+                        description="Stats card generation returned None. Check image generation service.",
+                        color=EmbedColors.ERROR
+                    )
+                    await inter.edit_original_response(embed=embed)
+                    
+            except ImportError:
+                embed = disnake.Embed(
+                    title="❌ Stats Generator Not Available",
+                    description="Stats generation module not found. Ensure `src.utils.stats_generator` exists.",
+                    color=EmbedColors.ERROR
+                )
+                await inter.edit_original_response(embed=embed)
+            except Exception as img_error:
+                logger.error(f"Stats card generation error: {img_error}", exc_info=True)
+                embed = disnake.Embed(
+                    title="❌ Image Generation Error",
+                    description=f"Failed to generate stats card: {str(img_error)[:100]}",
+                    color=EmbedColors.ERROR
+                )
+                await inter.edit_original_response(embed=embed)
+                
+        except Exception as e:
+            logger.error(f"View stats error: {e}", exc_info=True)
+            embed = disnake.Embed(
+                title="❌ Command Failed",
+                description="Failed to process stats view command.",
                 color=EmbedColors.ERROR
             )
             await inter.edit_original_response(embed=embed)

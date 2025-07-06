@@ -22,7 +22,7 @@ class Player(SQLModel, table=True):
     # --- Core Identity & Progression ---
     id: Optional[int] = Field(default=None, primary_key=True)
     discord_id: int = Field(sa_column=Column(BigInteger, unique=True, index=True))
-    username: str
+    username: str = Field(default="Unknown Player")
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     level: int = Field(default=1)
     experience: int = Field(default=0)
