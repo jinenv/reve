@@ -9,6 +9,9 @@ from src.services.base_service import BaseService, ServiceResult
 from src.services.cache_service import CacheService
 from src.utils.database_service import DatabaseService
 from src.utils.transaction_logger import transaction_logger, TransactionType
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 class PlayerClassService(BaseService):
     """Service for managing player class selection and bonuses."""
@@ -22,79 +25,123 @@ class PlayerClassService(BaseService):
     ) -> ServiceResult[Dict[str, Any]]:
         """Select or change a player's class."""
         async def _operation():
-            cls._validate_player_id(player_id)
-            if cost < 0:
-                raise ValueError("Cost cannot be negative")
-            
-            async with DatabaseService.get_transaction() as session:
-                # Get player and existing class info with separate queries
-                player_stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
-                player = (await session.execute(player_stmt)).scalar_one()
+            try:
+                cls._validate_player_id(player_id)
+                if cost < 0:
+                    raise ValueError("Cost cannot be negative")
                 
-                class_stmt = select(PlayerClass).where(PlayerClass.player_id == player_id) # type: ignore
-                existing_class = (await session.execute(class_stmt)).scalar_one_or_none()
+                # ✅ ADD: Enhanced logging
+                logger.info(f"🎯 Class selection START: player_id={player_id}, class={class_type.value}, cost={cost}")
                 
-                # Check if first time selection (free)
-                is_first_selection = existing_class is None
-                old_class = None
-                
-                if not is_first_selection and existing_class is not None:
-                    old_class = existing_class.class_type
+                async with DatabaseService.get_transaction() as session:
+                    # ✅ ADD: Check if player exists first
+                    player_check_stmt = select(Player).where(Player.id == player_id) # type: ignore
+                    player_check_result = await session.execute(player_check_stmt)
+                    player_exists = player_check_result.scalar_one_or_none()
                     
-                    # Calculate change cost
-                    change_count = existing_class.class_change_count
-                    required_cost = 100 * (1 + change_count)
+                    if not player_exists:
+                        logger.error(f"❌ Player {player_id} not found in database!")
+                        raise ValueError(f"Player {player_id} not found")
                     
-                    if cost < required_cost:
-                        raise ValueError(f"Class change costs {required_cost} erythl")
+                    logger.info(f"✅ Player found: {player_exists.username} (Level {player_exists.level})")
                     
-                    if player.erythl < required_cost:
-                        raise ValueError(f"Insufficient erythl. Need {required_cost}, have {player.erythl}")
+                    # Get player and existing class info with separate queries
+                    player_stmt = select(Player).where(Player.id == player_id).with_for_update() # type: ignore
+                    player = (await session.execute(player_stmt)).scalar_one()
                     
-                    # Pay the cost
-                    player.erythl -= required_cost
+                    class_stmt = select(PlayerClass).where(PlayerClass.player_id == player_id) # type: ignore
+                    existing_class = (await session.execute(class_stmt)).scalar_one_or_none()
                     
-                    # Update existing class record
-                    existing_class.class_type = class_type
-                    existing_class.class_change_count += 1
-                    existing_class.total_cost_paid += required_cost
-                    existing_class.update_activity()
-                else:
-                    # Create new class record
-                    new_class = PlayerClass(
-                        player_id=player_id,
-                        class_type=class_type,
-                        selected_at=datetime.utcnow()
-                    )
-                    session.add(new_class)
-                    existing_class = new_class
-                
-                player.update_activity()
-                await session.commit()
-                
-                # Safe access to class_change_count
-                change_count = existing_class.class_change_count if existing_class else 0
-                
-                transaction_logger.log_transaction(player_id, TransactionType.CLASS_SELECTED, {
-                    "old_class": old_class.value if old_class else None,
-                    "new_class": class_type.value,
-                    "cost": cost if not is_first_selection else 0,
-                    "is_first_selection": is_first_selection,
-                    "change_count": change_count
-                })
-                
-                await CacheService.invalidate_player_cache(player_id)
-                
-                return {
-                    "old_class": old_class.value if old_class else None,
-                    "new_class": class_type.value,
-                    "cost_paid": cost if not is_first_selection else 0,
-                    "is_first_selection": is_first_selection,
-                    "change_count": change_count,
-                    "remaining_erythl": player.erythl
-                }
+                    # Check if first time selection (free)
+                    is_first_selection = existing_class is None
+                    old_class = None
+                    
+                    logger.info(f"📊 Class selection state: is_first={is_first_selection}, existing_class={existing_class}")
+                    
+                    if not is_first_selection and existing_class is not None:
+                        old_class = existing_class.class_type
+                        
+                        # Calculate change cost
+                        change_count = existing_class.class_change_count
+                        required_cost = 100 * (1 + change_count)
+                        
+                        if cost < required_cost:
+                            raise ValueError(f"Class change costs {required_cost} erythl")
+                        
+                        if player.erythl < required_cost:
+                            raise ValueError(f"Insufficient erythl. Need {required_cost}, have {player.erythl}")
+                        
+                        # Pay the cost
+                        player.erythl -= required_cost
+                        
+                        # Update existing class record
+                        existing_class.class_type = class_type.value
+                        existing_class.class_change_count += 1
+                        existing_class.total_cost_paid += required_cost
+                        existing_class.update_activity()
+                        logger.info(f"✅ Updated existing class to {class_type.value}")
+                    else:
+                        # Create new class record
+                        new_class = PlayerClass(
+                            player_id=player_id,
+                            class_type=class_type.value, # type: ignore
+                            selected_at=datetime.utcnow()
+                        )
+                        session.add(new_class)
+                        existing_class = new_class
+                        logger.info(f"✅ Created new class record: {class_type.value}")
+                    
+                    player.update_activity()
+                    
+                    # ✅ ADD: Try commit with detailed error handling
+                    try:
+                        await session.commit()
+                        logger.info(f"✅ Transaction committed successfully for player {player_id}")
+                    except Exception as commit_error:
+                        logger.error(f"❌ COMMIT FAILED for player {player_id}: {commit_error}", exc_info=True)
+                        raise
+                    
+                    # Safe access to class_change_count
+                    change_count = existing_class.class_change_count if existing_class else 0
+                    
+                    transaction_logger.log_transaction(player_id, TransactionType.CLASS_SELECTED, {
+                        "old_class": old_class.value if old_class else None,
+                        "new_class": class_type.value,
+                        "cost": cost if not is_first_selection else 0,
+                        "is_first_selection": is_first_selection,
+                        "change_count": change_count
+                    })
+                    
+                    # ✅ ADD: Cache invalidation with detailed logging
+                    try:
+                        cache_result = await CacheService.invalidate_player_cache(player_id)
+                        logger.info(f"✅ Cache invalidation: success={cache_result.success}")
+                        if not cache_result.success:
+                            logger.warning(f"⚠️ Cache invalidation warning: {cache_result.error}")
+                    except Exception as cache_error:
+                        logger.error(f"❌ Cache invalidation error: {cache_error}")
+                        # Don't fail the operation for cache issues
+                    
+                    result_data = {
+                        "old_class": old_class.value if old_class else None,
+                        "new_class": class_type.value,
+                        "cost_paid": cost if not is_first_selection else 0,
+                        "is_first_selection": is_first_selection,
+                        "change_count": change_count,
+                        "remaining_erythl": player.erythl
+                    }
+                    
+                    logger.info(f"🎉 Class selection SUCCESS: {result_data}")
+                    return result_data
+                    
+            except Exception as e:
+                logger.error(f"💥 Class selection FAILED for player {player_id}: {str(e)}", exc_info=True)
+                raise
         
-        return await cls._safe_execute(_operation, "select player class")
+        # ✅ ADD: Service result logging
+        result = await cls._safe_execute(_operation, "select player class")
+        logger.info(f"🏁 Service result: success={result.success}, error={result.error}")
+        return result
     
     @classmethod
     async def get_class_info(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:

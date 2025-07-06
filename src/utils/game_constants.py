@@ -111,10 +111,6 @@ class TierData:
     roman: str
     stat_range: Tuple[int, int]  # (min_total, max_total) stats for this tier
     base_attack: int             # Representative attack for scaling calculations
-    combine_success_rate: float
-    combine_cost_revies: int
-    fragment_cost: int
-    fragments_on_fail: Tuple[int, int]
     color: int
     
     @property
@@ -132,18 +128,18 @@ class Tiers:
     """Tier management system with stat ranges for design variety"""
     
     _TIER_DATA = {
-        1: TierData(1, "Common", "I", (30, 60), 45, 0.10, 1, 3, (1, 3), 0x808080),
-        2: TierData(2, "Uncommon", "II", (80, 140), 110, 0.10, 1, 3, (1, 3), 0x808080),
-        3: TierData(3, "Rare", "III", (200, 400), 300, 0.10, 1, 3, (1, 3), 0x00ff00),
-        4: TierData(4, "Epic", "IV", (600, 1200), 900, 0.25, 2, 5, (2, 5), 0x0099ff),
-        5: TierData(5, "Mythic", "V", (2000, 4000), 3000, 0.25, 2, 5, (2, 5), 0x9932cc),
-        6: TierData(6, "Divine", "VI", (7000, 15000), 11000, 0.25, 2, 5, (2, 5), 0xffd700),
-        7: TierData(7, "Legendary", "VII", (25000, 50000), 37500, 0.50, 3, 8, (3, 8), 0xff4500),
-        8: TierData(8, "Ethereal", "VIII", (80000, 180000), 130000, 0.50, 3, 8, (3, 8), 0x9370db),
-        9: TierData(9, "Genesis", "IX", (300000, 650000), 475000, 0.50, 3, 8, (3, 8), 0x00ced1),
-        10: TierData(10, "Empyrean", "X", (1000000, 2200000), 1600000, 1.00, 5, 12, (5, 12), 0xff1493),
-        11: TierData(11, "Void", "XI", (3500000, 7500000), 5500000, 1.00, 5, 12, (5, 12), 0x000000),
-        12: TierData(12, "Singularity", "XII", (12000000, 27000000), 19500000, 1.00, 5, 12, (5, 12), 0xffffff)
+        1: TierData(1, "Common", "I", (30, 60), 45, 0x808080),
+        2: TierData(2, "Uncommon", "II", (80, 140), 110, 0x808080),
+        3: TierData(3, "Rare", "III", (200, 400), 300, 0x00ff00),
+        4: TierData(4, "Epic", "IV", (600, 1200), 900, 0x0099ff),
+        5: TierData(5, "Mythic", "V", (2000, 4000), 3000, 0x9932cc),
+        6: TierData(6, "Divine", "VI", (7000, 15000), 11000, 0xffd700),
+        7: TierData(7, "Legendary", "VII", (25000, 50000), 37500, 0xff4500),
+        8: TierData(8, "Ethereal", "VIII", (80000, 180000), 130000, 0x9370db),
+        9: TierData(9, "Genesis", "IX", (300000, 650000), 475000, 0x00ced1),
+        10: TierData(10, "Empyrean", "X", (1000000, 2200000), 1600000, 0xff1493),
+        11: TierData(11, "Void", "XI", (3500000, 7500000), 5500000, 0x000000),
+        12: TierData(12, "Singularity", "XII", (12000000, 27000000), 19500000, 0xffffff)
     }
     
     @classmethod
@@ -174,18 +170,6 @@ class Tiers:
         if not stat_range:
             return False
         return stat_range[0] <= total_stats <= stat_range[1]
-    
-    @classmethod
-    def get_fusion_success_rate(cls, tier: int, same_element: bool) -> float:
-        """Get fusion success rate for a tier"""
-        base_rate = cls._TIER_DATA.get(tier, TierData(0, "", "", (0, 0), 0, 0.5, 0, 0, (0, 0), 0)).combine_success_rate
-        
-        # Apply element penalty if different elements
-        if not same_element:
-            return base_rate * 0.75  # 25% penalty for different elements
-        
-        return base_rate
-
 
 class EmbedColors:
     """Dynamic embed color system for Reve bot - now integrated with game constants"""

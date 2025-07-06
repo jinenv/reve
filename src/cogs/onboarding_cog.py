@@ -20,7 +20,7 @@ from src.utils.embed_colors import EmbedColors
 from src.utils.redis_service import ratelimit
 from src.utils.config_manager import ConfigManager
 from src.utils.database_service import DatabaseService
-from src.database.models.player_class import PlayerClassType
+from src.database.models.player_class import PlayerClass, PlayerClassType
 from src.database.models.player import Player
 from src.database.models.esprit_base import EspritBase
 
@@ -440,23 +440,52 @@ class AwakeningView(disnake.ui.View):
             
             # Phase 3: Set player class with detailed error logging
             try:
-                logger.info(f"Attempting to set class {origin_type} for player {self.player.id}")
+                logger.info(f"🎯 ONBOARDING: Starting class selection for player {self.player.id}")
+                logger.info(f"🎯 ONBOARDING: Player details - ID={self.player.id}, Username={self.player.username}")
+                logger.info(f"🎯 ONBOARDING: Requesting class: {origin_type}")
+                
                 class_result = await PlayerClassService.select_class(
                     player_id=self.player.id,
                     class_type=origin_type,
-                    cost=100  # Bypass validation - first selection logic will make it free
+                    cost=0  # First selection should be free
                 )
-                logger.info(f"Class selection result: {class_result.success}")
+                
+                logger.info(f"🎯 ONBOARDING: Class service returned - success={class_result.success}")
+                
                 if not class_result.success:
-                    logger.error(f"Class selection failed with error: {class_result.error}")
+                    logger.error(f"❌ ONBOARDING: Class selection failed - {class_result.error}")
+                    
+                    # Try to get player state for debugging
+                    try:
+                        async with DatabaseService.get_session() as debug_session:
+                            debug_stmt = select(Player).where(Player.id == self.player.id) # type: ignore
+                            debug_player = (await debug_session.execute(debug_stmt)).scalar_one_or_none()
+                            
+                            if debug_player:
+                                logger.info(f"🔍 DEBUG: Player exists - Username={debug_player.username}, Level={debug_player.level}")
+                                
+                                # Check if class already exists
+                                class_debug_stmt = select(PlayerClass).where(PlayerClass.player_id == self.player.id) # type: ignore
+                                existing_class = (await debug_session.execute(class_debug_stmt)).scalar_one_or_none()
+                                
+                                if existing_class:
+                                    logger.info(f"🔍 DEBUG: Class already exists - {existing_class.class_type.value}")
+                                else:
+                                    logger.info(f"🔍 DEBUG: No existing class found")
+                                    
+                            else:
+                                logger.error(f"💥 DEBUG: Player {self.player.id} not found in database!")
+                                
+                    except Exception as debug_error:
+                        logger.error(f"💥 DEBUG: Debug query failed - {debug_error}")
+                else:
+                    logger.info(f"✅ ONBOARDING: Class selection successful - {class_result.data}")
+
             except Exception as class_error:
-                logger.error(f"Exception in class selection: {class_error}", exc_info=True)
-                class_result = ServiceResult(success=False, error=str(class_error))
-            
-            # TEMPORARY: Skip class selection if it fails, continue with awakening
-            if not class_result.success:
-                logger.warning(f"Skipping class selection due to error, continuing awakening process")
-                # Don't return - continue with the rest of the awakening
+                logger.error(f"💥 ONBOARDING: Exception in class selection - {class_error}", exc_info=True)
+
+            # Continue with awakening regardless of class selection result
+            logger.info(f"🎯 ONBOARDING: Continuing to starter Esprits phase")
             
             # Phase 4: Get starter Esprits
             starter_esprits = await self._get_starter_esprits(origin_type)

@@ -1,0 +1,17 @@
+{
+  "base_fusion_cost": 100,
+  "tier_cost_multiplier": 2186,
+  "tier_cost_exponent": 2.187,
+  "use_exponential_scaling": true,
+  "base_success_rate": 75,
+  "tier_penalty_per_level": 3,
+  "min_success_rate": 15,
+  "max_success_rate": 85,
+  "element_penalty": 0.75,
+  "fragment_bonus_per_fragment": 5,
+  "success_rates_by_tier": {
+    "1": 75, "2": 72, "3": 69, "4": 66, "5": 63,
+    "6": 60, "7": 57, "8": 54, "9": 51, "10": 48,
+    "11": 45, "12": 42
+  }
+}

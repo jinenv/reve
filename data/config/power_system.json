@@ -1,0 +1,16 @@
+{
+  "combat_power_weights": {
+    "attack": 1.0,
+    "defense": 1.0,
+    "hp": 0.1
+  },
+  "leader_bonus_scaling": {
+    "base_bonus": 0.05,
+    "tier_scaling": 0.01,
+    "awakening_scaling": 0.02
+  },
+  "stat_caps": {
+    "max_total_power": 100000000,
+    "individual_stat_cap": 50000000
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "energy": {
+    "base_max": 100,
+    "regen_rate_minutes": 5,
+    "bonus_per_level": 2
+  },
+  "stamina": {
+    "base_max": 50,
+    "regen_rate_minutes": 10,
+    "bonus_per_level": 1
+  },
+  "class_bonuses": {
+    "vigorous": {"stamina_regen_bonus": 0.25},
+    "focused": {"energy_regen_bonus": 0.25},
+    "enlightened": {"revies_income_bonus": 0.15}
+  }
+}

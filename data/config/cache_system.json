@@ -1,0 +1,16 @@
+{
+  "ttl_seconds": {
+    "player_power": 900,
+    "leader_bonuses": 1800,
+    "collection_stats": 1800,
+    "fusion_rates": 3600,
+    "config_data": 1800
+  },
+  "redis_keys": {
+    "player_power": "player_power:{player_id}",
+    "leader_bonuses": "leader_bonuses:{player_id}",
+    "collection_stats": "collection_stats:{player_id}",
+    "fusion_rates": "fusion_rates:{tier}",
+    "config_data": "config:{config_name}"
+  }
+}

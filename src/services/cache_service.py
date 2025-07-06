@@ -184,10 +184,12 @@ class CacheService(BaseService):
             
             # Store tags for grouped operations
             if tags:
+                pipe = client.pipeline()
                 for tag in tags:
                     tag_key = f"tag:{tag}"
-                    client.sadd(tag_key, key)
-                    await client.expire(tag_key, ttl + 300)  # Tag expires after cache
+                    pipe.sadd(tag_key, key)
+                    pipe.expire(tag_key, ttl + 300)
+                await pipe.execute()
             
             if track_metrics:
                 cls._metrics.sets += 1
@@ -216,9 +218,12 @@ class CacheService(BaseService):
                     entry = json.loads(cache_data)
                     if isinstance(entry, dict) and "tags" in entry:
                         # Remove key from tag sets
-                        for tag in entry["tags"]:
-                            tag_key = f"tag:{tag}"
-                            client.srem(tag_key, key)
+                        if entry.get("tags"):
+                            pipe = client.pipeline()
+                            for tag in entry["tags"]:
+                                tag_key = f"tag:{tag}"
+                                pipe.srem(tag_key, key)
+                            await pipe.execute()
                 except json.JSONDecodeError:
                     pass  # Simple cache entry, no tags to clean
             

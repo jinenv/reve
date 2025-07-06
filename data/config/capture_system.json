@@ -1,0 +1,8 @@
+{
+  "base_capture_chance": 0.12,
+  "boss_capture_bonus": 0.08,
+  "area_element_bias": 0.70,
+  "charm_bonus": 0.15,
+  "tier_penalty_factor": 0.02,
+  "max_capture_chance": 0.80
+}

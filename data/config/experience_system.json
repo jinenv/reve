@@ -1,0 +1,14 @@
+{
+  "base_xp_required": 100,
+  "xp_scaling_factor": 1.5,
+  "max_level": 200,
+  "level_rewards": {
+    "every_5_levels": {"revies": 1000},
+    "every_10_levels": {"erythl": 2},
+    "milestones": {
+      "25": {"erythl": 10, "revies": 5000},
+      "50": {"erythl": 25, "revies": 15000},
+      "100": {"erythl": 50, "revies": 50000}
+    }
+  }
+}

@@ -1,73 +1,32 @@
 {
-  "fusion_rules": {
-    "fragments_guarantee_tier_monster": true,
-    "element_fusion_penalty": 0.75,
-    "fragment_drops": {
-      "tier_1_3": [2, 5],
-      "tier_4_6": [3, 8], 
-      "tier_7_9": [5, 12],
-      "tier_10_12": [8, 20]
-    },
-    "fragments_needed": {
-      "tier_1_3": 8,
-      "tier_4_6": 20,
-      "tier_7_9": 45,
-      "tier_10_12": 100
-    },
-    "max_tier": 12
+  "game_version": "1.0.0",
+  "config_schema_version": "2.0",
+  
+  "system_toggles": {
+    "fusion_system_enabled": true,
+    "awakening_system_enabled": true,
+    "building_system_enabled": true,
+    "pvp_system_enabled": false,
+    "achievement_system_enabled": true,
+    "notification_system_enabled": true
   },
 
-  "economy": {
-    "revies_multipliers": {
-      "quest_base": 1.0,
-      "verdant_leader_bonus": 0.15,
-      "daily_login_base": 2500,
-      "weekly_login_base": 25000,
-      "boss_victory_bonus": 2.0,
-      "tier_scaling_multiplier": 1.5
-    },
-    "erythl_sources": {
-      "level_milestone_10": 5,
-      "level_milestone_25": 15,
-      "level_milestone_50": 30,
-      "level_milestone_75": 50,
-      "level_milestone_100": 100,
-      "level_milestone_125": 200,
-      "achievement_completion": 3,
-      "weekly_rank_1": 75,
-      "weekly_rank_2_10": 40,
-      "weekly_rank_11_50": 20,
-      "weekly_rank_51_100": 8,
-      "daily_quest_completion": 1,
-      "tier_10_plus_fusion": 5
-    },
-    "building_upkeep": {
-      "payment_interval_hours": 24,
-      "bankruptcy_penalty": "buildings_inactive",
-      "grace_period_hours": 8
-    }
+  "global_limits": {
+    "max_tier": 12,
+    "max_level": 200,
+    "max_awakening_level": 5,
+    "max_energy": 500,
+    "max_stamina": 300,
+    "max_revies": 2147483647,
+    "max_erythl": 2147483647
   },
 
-  "building_system": {
-    "enabled": true,
-    "starting_slots": 3,
-    "max_slots": 10,
-    "slot_costs": [
-      {"slot": 4, "cost": {"erythl": 25}},
-      {"slot": 5, "cost": {"erythl": 50}},
-      {"slot": 6, "cost": {"erythl": 100}},
-      {"slot": 7, "cost": {"erythl": 200}},
-      {"slot": 8, "cost": {"erythl": 400}},
-      {"slot": 9, "cost": {"erythl": 800}},
-      {"slot": 10, "cost": {"erythl": 1500}}
-    ],
-    "production_rates": {
-      "revies": "per_hour",
-      "xp_orbs": "per_hour", 
-      "erythl": "per_hour",
-      "echo_keys": "per_hour",
-      "random_fragments": "per_hour"
-    }
+  "cross_system_multipliers": {
+    "leader_bonus_global_multiplier": 1.0,
+    "xp_gain_global_multiplier": 1.0,
+    "currency_gain_global_multiplier": 1.0,
+    "energy_regen_global_multiplier": 1.0,
+    "capture_chance_global_multiplier": 1.0
   },
 
   "daily_rewards": {
@@ -122,19 +81,23 @@
     }
   },
 
-  "quest_system": {
-    "capture_chance": 0.12,
-    "energy_refill_on_levelup": true,
-    "auto_quest_limit": 15,
-    "boss_capture_bonus": 0.08,
-    "area_element_bias": 0.70,
-    "always_auto_victory": true,
-    "tier_unlock_requirements": {
-      "tier_4": {"player_level": 10},
-      "tier_6": {"player_level": 25}, 
-      "tier_8": {"player_level": 50},
-      "tier_10": {"player_level": 75},
-      "tier_12": {"player_level": 100}
+  "building_system": {
+    "enabled": true,
+    "starting_slots": 3,
+    "max_slots": 10,
+    "slot_costs": [
+      {"slot": 4, "cost": {"erythl": 25}},
+      {"slot": 5, "cost": {"erythl": 50}},
+      {"slot": 6, "cost": {"erythl": 100}},
+      {"slot": 7, "cost": {"erythl": 200}},
+      {"slot": 8, "cost": {"erythl": 400}},
+      {"slot": 9, "cost": {"erythl": 800}},
+      {"slot": 10, "cost": {"erythl": 1500}}
+    ],
+    "upkeep": {
+      "payment_interval_hours": 24,
+      "bankruptcy_penalty": "buildings_inactive",
+      "grace_period_hours": 8
     }
   },
 
@@ -144,5 +107,25 @@
     "echo": {"uses": 15, "per_seconds": 60},
     "shop": {"uses": 50, "per_seconds": 600},
     "awakening": {"uses": 25, "per_seconds": 300}
+  },
+
+  "economy_base_rates": {
+    "quest_base_revies_multiplier": 1.0,
+    "boss_victory_multiplier": 2.0,
+    "daily_login_base": 2500,
+    "weekly_login_base": 25000
+  },
+
+  "meta_config": {
+    "config_reload_enabled": true,
+    "hot_reload_systems": [
+      "fusion_system",
+      "awakening_system", 
+      "experience_system",
+      "resource_system",
+      "capture_system"
+    ],
+    "admin_override_enabled": true,
+    "debug_mode": false
   }
 }
