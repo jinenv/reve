@@ -8,17 +8,20 @@
     "building_system_enabled": true,
     "pvp_system_enabled": false,
     "achievement_system_enabled": true,
-    "notification_system_enabled": true
+    "notification_system_enabled": true,
+    "favor_ranking_enabled": false,
+    "arena_leagues_enabled": false,
+    "reve_system_enabled": true
   },
 
   "global_limits": {
     "max_tier": 12,
     "max_level": 200,
     "max_awakening_level": 5,
-    "max_energy": 500,
-    "max_stamina": 300,
-    "max_revies": 2147483647,
-    "max_erythl": 2147483647
+    "max_energy": 2000,
+    "max_stamina": 1000,
+    "max_revies": 9223372036854775807,
+    "max_erythl": 9223372036854775807
   },
 
   "cross_system_multipliers": {
@@ -26,94 +29,61 @@
     "xp_gain_global_multiplier": 1.0,
     "currency_gain_global_multiplier": 1.0,
     "energy_regen_global_multiplier": 1.0,
-    "capture_chance_global_multiplier": 1.0
+    "capture_chance_global_multiplier": 1.0,
+    "fusion_success_global_multiplier": 1.0,
+    "awakening_fragment_global_multiplier": 1.0
   },
 
   "daily_rewards": {
     "enabled": true,
     "reset_time_utc": "00:00",
     "rewards": [
-      {"day": 1, "revies": 2500, "items": {"energy_potion": 2}},
-      {"day": 2, "revies": 5000, "items": {"xp_orb": 8}},
-      {"day": 3, "revies": 7500, "items": {"stamina_elixir": 2}},
-      {"day": 4, "revies": 10000, "items": {"capture_charm": 2}},
-      {"day": 5, "revies": 15000, "items": {"fragment_bundle_small": 2}},
-      {"day": 6, "revies": 20000, "items": {"echo_key": 2}},
-      {"day": 7, "erythl": 15, "items": {"fusion_catalyst": 2}}
+      {"day": 1, "revies": 5000, "items": {"energy_potion": 3}},
+      {"day": 2, "revies": 7500, "items": {"xp_orb": 10}},
+      {"day": 3, "revies": 10000, "items": {"stamina_elixir": 3}},
+      {"day": 4, "revies": 15000, "items": {"capture_charm": 3}},
+      {"day": 5, "revies": 20000, "items": {"awakening_fragments": 25}},
+      {"day": 6, "revies": 30000, "items": {"echo_key": 3}},
+      {"day": 7, "erythl": 25, "items": {"fusion_catalyst": 3}}
     ],
     "streak_bonuses": {
-      "7": {"erythl": 8, "revies": 25000},
-      "14": {"erythl": 20, "items": {"skill_reset_token": 1}},
-      "21": {"erythl": 35, "items": {"fragment_bundle_large": 1}},
-      "28": {"erythl": 50, "items": {"building_slot": 1}}
+      "7": {"erythl": 15, "revies": 50000, "items": {"vivid_echo": 1}},
+      "14": {"erythl": 35, "revies": 100000, "items": {"skill_reset_token": 1}},
+      "21": {"erythl": 60, "revies": 200000, "items": {"awakening_fragments": 100}},
+      "28": {"erythl": 100, "revies": 500000, "items": {"building_slot": 1, "brilliant_echo": 1}}
     }
   },
 
   "starter_bonuses": {
-    "description": "Additional items/currency for new players",
-    "revies": 10000,
-    "erythl": 15,
-    "energy": 150,
-    "stamina": 75,
+    "description": "Enhanced starter package for better early progression",
+    "revies": 2500,
+    "erythl": 30,
+    "energy": 200,
+    "stamina": 100,
     "items": {
-      "energy_potion": 8,
-      "xp_orb": 15,
-      "faded_echo": 2,
-      "capture_charm": 3
+      "energy_potion": 15,
+      "xp_orb": 25,
+      "faded_echo": 5,
+      "vivid_echo": 1,
+      "capture_charm": 10,
+      "fusion_catalyst": 5
     },
     "tier_fragments": {
-      "1": 10,
-      "2": 5
-    }
-  },
-
-  "echo_rates": {
-    "daily_echo_type": "faded_echo",
-    "quest_echo_chances": {
-      "faded_echo": 0.08,
-      "vivid_echo": 0.015,
-      "brilliant_echo": 0.002
-    },
-    "boss_echo_multiplier": 2.5,
-    "echo_key_usage": {
-      "preserves_echo": true,
-      "works_on_all_types": true
-    }
-  },
-
-  "building_system": {
-    "enabled": true,
-    "starting_slots": 3,
-    "max_slots": 10,
-    "slot_costs": [
-      {"slot": 4, "cost": {"erythl": 25}},
-      {"slot": 5, "cost": {"erythl": 50}},
-      {"slot": 6, "cost": {"erythl": 100}},
-      {"slot": 7, "cost": {"erythl": 200}},
-      {"slot": 8, "cost": {"erythl": 400}},
-      {"slot": 9, "cost": {"erythl": 800}},
-      {"slot": 10, "cost": {"erythl": 1500}}
-    ],
-    "upkeep": {
-      "payment_interval_hours": 24,
-      "bankruptcy_penalty": "buildings_inactive",
-      "grace_period_hours": 8
+      "1": 25,
+      "2": 15,
+      "3": 10
     }
   },
 
   "rate_limits": {
-    "quest": {"uses": 75, "per_seconds": 3600},
-    "fusion": {"uses": 30, "per_seconds": 300},
-    "echo": {"uses": 15, "per_seconds": 60},
-    "shop": {"uses": 50, "per_seconds": 600},
-    "awakening": {"uses": 25, "per_seconds": 300}
-  },
-
-  "economy_base_rates": {
-    "quest_base_revies_multiplier": 1.0,
-    "boss_victory_multiplier": 2.0,
-    "daily_login_base": 2500,
-    "weekly_login_base": 25000
+    "quest": {"uses": 150, "per_seconds": 3600},
+    "fusion": {"uses": 50, "per_seconds": 300},
+    "echo": {"uses": 25, "per_seconds": 60},
+    "shop": {"uses": 100, "per_seconds": 600},
+    "awakening": {"uses": 40, "per_seconds": 300},
+    "pvp_battle": {"uses": 20, "per_seconds": 300},
+    "boss_attack": {"uses": 100, "per_seconds": 3600},
+    "reve": {"uses": 1, "per_seconds": 1500}
   },
 
   "meta_config": {
@@ -123,9 +93,12 @@
       "awakening_system", 
       "experience_system",
       "resource_system",
-      "capture_system"
+      "capture_system",
+      "pvp_system",
+      "economy_system"
     ],
     "admin_override_enabled": true,
-    "debug_mode": false
+    "debug_mode": false,
+    "analytics_enabled": true
   }
 }

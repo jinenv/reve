@@ -130,6 +130,8 @@ class Player(SQLModel, table=True):
         back_populates="player",
         sa_relationship_kwargs={"lazy": "select", "cascade": "all, delete-orphan"}
     )
+    # --- Gacha System ---
+    reve_cooldown_expires: Optional[datetime] = Field(default=None)
 
     # ✅ ASYNC-COMPATIBLE HELPER METHOD
     def get_class_bonuses_sync(self) -> Dict[str, float]:
@@ -270,7 +272,26 @@ class Player(SQLModel, table=True):
             "total_available": 0,     # To be implemented in CollectionService
             "completion_percent": 0.0
         }
+    
+    # --- SIMPLE GACHA LOGIC ---
+    def is_reve_ready(self) -> bool:
+        """Check if player can use /reve"""
+        if self.reve_cooldown_expires is None:
+            return True
+        return datetime.utcnow() >= self.reve_cooldown_expires
+    
+    def get_reve_cooldown_remaining(self) -> Optional[timedelta]:
+        """Get remaining cooldown time, None if ready"""
+        if self.reve_cooldown_expires is None:
+            return None
         
+        remaining = self.reve_cooldown_expires - datetime.utcnow()
+        return remaining if remaining.total_seconds() > 0 else None
+    
+    def set_reve_cooldown(self, cooldown_minutes: int = 25) -> None:
+        """Set reve cooldown from now"""
+        self.reve_cooldown_expires = datetime.utcnow() + timedelta(minutes=cooldown_minutes)
+
     # === BUSINESS LOGIC MOVED TO SERVICES ===
     
     # Leadership management moved to LeadershipService:

@@ -1,20 +1,14 @@
-# src/cogs/admin_cog.py
+# src/cogs/admin_cog.py - FULLY REFACTORED WITH TYPE SAFETY
 import disnake
 from disnake.ext import commands
 from typing import Optional
 import logging
 
-from sqlalchemy import func, select, delete, update
-
+from src.services.admin_service import AdminService
 from src.services.player_service import PlayerService
-from src.services.currency_service import CurrencyService
-from src.services.cache_service import CacheService
-from src.services.base_service import ServiceResult
 from src.utils.embed_colors import EmbedColors
 from src.utils.redis_service import ratelimit
-from src.utils.config_manager import ConfigManager
 from src.utils.emoji_manager import EmojiStorageManager
-from src.utils.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +48,7 @@ class AdminCog(commands.Cog):
         confirm: bool = commands.Param(default=False, description="Type True to confirm deletion")
     ):
         """Reset a player's data completely"""
-        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
+        # ✅ @ratelimit decorator handles defer() automatically
         
         target_user = user or inter.author
         
@@ -77,97 +71,52 @@ class AdminCog(commands.Cog):
             return await inter.edit_original_response(embed=embed)
         
         try:
-            # Import what we need
-            from src.database.models.player import Player
-            from src.database.models.esprit import Esprit
-            from src.database.models.player_class import PlayerClass
-            from src.utils.transaction_logger import transaction_logger, TransactionType
+            # ✅ Use AdminService with proper type checking
+            reset_result = await AdminService.reset_player_data(
+                discord_id=target_user.id,
+                admin_id=inter.author.id,
+                admin_name=inter.author.display_name,
+                reason="admin_command_reset"
+            )
             
-            async with DatabaseService.get_transaction() as session:
-                # Get the player
-                stmt = select(Player).where(Player.discord_id == target_user.id)  # type: ignore
-                player = (await session.execute(stmt)).scalar_one_or_none()
-                
-                if not player:
-                    embed = disnake.Embed(
-                        title="❌ Player Not Found",
-                        description=f"{target_user.mention} isn't registered yet!",
-                        color=EmbedColors.WARNING
-                    )
-                    await inter.edit_original_response(embed=embed)
-                    return
-                
-                player_id = player.id
-                
-                # Log the reset before deletion
-                if player_id:
-                    transaction_logger.log_transaction(
-                        player_id=player_id,
-                        transaction_type=TransactionType.ADMIN_DELETION,
-                        details={
-                            "action": "full_player_reset",
-                            "discord_id": target_user.id,
-                            "username": target_user.display_name,
-                            "old_level": player.level,
-                            "old_revies": player.revies,
-                            "old_erythl": player.erythl
-                        },
-                        metadata={
-                            "admin_command": "reset_player",
-                            "admin_id": inter.author.id,
-                            "admin_name": inter.author.display_name
-                        }
-                    )
-                
-                # Count what we're deleting for reporting
-                esprit_count_stmt = select(func.count(Esprit.id)).where(Esprit.owner_id == player_id)  # type: ignore
-                esprit_count = (await session.execute(esprit_count_stmt)).scalar() or 0
-                
-                # Step 1: Clear player's leader reference
-                player.leader_esprit_stack_id = None
-                
-                # Step 2: Clear any other players' leader references to this player's Esprits
-                # ✅ FIX: Use proper subquery construction
-                player_esprit_ids = select(Esprit.id).where(Esprit.owner_id == player_id)  # type: ignore
-                clear_leader_refs = update(Player).where(
-                    Player.leader_esprit_stack_id.in_(player_esprit_ids)  # type: ignore
-                ).values(leader_esprit_stack_id=None)
-                await session.execute(clear_leader_refs)
-                
-                # Step 3: Delete player class record
-                class_delete_stmt = delete(PlayerClass).where(PlayerClass.player_id == player_id)  # type: ignore
-                await session.execute(class_delete_stmt)
-                
-                # Step 4: Delete all Esprits
-                esprit_delete_stmt = delete(Esprit).where(Esprit.owner_id == player_id)  # type: ignore
-                await session.execute(esprit_delete_stmt)
-                
-                # Step 5: Delete the player
-                await session.delete(player)
-                
-                # Step 6: Clear cache - Only if player_id is not None
-                if player_id is not None:
-                    await CacheService.invalidate_player_cache(player_id)
-                
-                await session.commit()
-                
+            if not reset_result.success:
                 embed = disnake.Embed(
-                    title="✅ Reset Complete",
-                    description=(
-                        f"Successfully wiped all data for {target_user.mention}\n\n"
-                        f"**Deleted:**\n"
-                        f"• Player profile (Level {player.level})\n"
-                        f"• Player class record\n"
-                        f"• {esprit_count} Esprit stacks\n"
-                        f"• {player.revies:,} revies, {player.erythl:,} erythl\n"
-                        f"• All leader references cleared\n"
-                        f"• Cache data cleared\n\n"
-                        f"They can use `/awaken` to begin fresh!"
-                    ),
-                    color=EmbedColors.SUCCESS
+                    title="❌ Reset Failed",
+                    description=reset_result.error or "Unknown error occurred",
+                    color=EmbedColors.ERROR
                 )
-                
-                await inter.edit_original_response(embed=embed)
+                return await inter.edit_original_response(embed=embed)
+            
+            # ✅ Safe access to result data with null checking
+            operation_result = reset_result.data
+            if not operation_result:
+                embed = disnake.Embed(
+                    title="❌ Reset Failed",
+                    description="No result data returned from reset operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            details = operation_result.details
+            
+            embed = disnake.Embed(
+                title="✅ Reset Complete",
+                description=(
+                    f"Successfully wiped all data for {target_user.mention}\n\n"
+                    f"**Deleted:**\n"
+                    f"• Player profile (Level {details.get('old_level', 'Unknown')})\n"
+                    f"• Player class record\n"
+                    f"• {details.get('deleted_esprits', 0)} Esprit stacks\n"
+                    f"• {details.get('old_revies', 0):,} revies, {details.get('old_erythl', 0):,} erythl\n"
+                    f"• All leader references cleared\n"
+                    f"• Cache data cleared\n\n"
+                    f"**Execution Time:** {operation_result.execution_time:.2f}s\n"
+                    f"They can use `/awaken` to begin fresh!"
+                ),
+                color=EmbedColors.SUCCESS
+            )
+            
+            await inter.edit_original_response(embed=embed)
                 
         except Exception as e:
             logger.error(f"Admin reset error: {e}", exc_info=True)
@@ -193,12 +142,12 @@ class AdminCog(commands.Cog):
             if not player_result.success:
                 embed = disnake.Embed(
                     title="❌ Player Error",
-                    description=player_result.error,
+                    description=player_result.error or "Failed to get player data",
                     color=EmbedColors.WARNING
                 )
                 return await inter.edit_original_response(embed=embed)
             
-            # Get player object
+            # Get player object with null checking
             player = player_result.data
             if not player or not hasattr(player, 'id'):
                 embed = disnake.Embed(
@@ -288,65 +237,51 @@ class AdminCog(commands.Cog):
         reason: str = commands.Param(default="admin_gift", description="Reason for giving")
     ):
         """Give currency to a player"""
-        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
+        # ✅ @ratelimit decorator handles defer() automatically
         
         try:
-            # Get player first
-            player_result = await PlayerService.get_or_create_player(user.id, user.display_name)
-            
-            if not player_result.success:
-                embed = disnake.Embed(
-                    title="❌ Player Error",
-                    description=player_result.error,
-                    color=EmbedColors.WARNING
-                )
-                return await inter.edit_original_response(embed=embed)
-            
-            # Get player ID from result (Player object)
-            player = player_result.data
-            if not player or not hasattr(player, 'id') or player.id is None:
-                embed = disnake.Embed(
-                    title="❌ Invalid Player",
-                    description="Failed to get valid player data.",
-                    color=EmbedColors.ERROR
-                )
-                return await inter.edit_original_response(embed=embed)
-            
-            # ✅ FIX: Only call add_currency if player.id is not None
-            currency_result = await CurrencyService.add_currency(
-                player_id=player.id,
-                currency=currency,
+            # ✅ Use AdminService with proper type checking
+            give_result = await AdminService.give_currency(
+                admin_id=inter.author.id,
+                admin_name=inter.author.display_name,
+                target_discord_id=user.id,
+                currency_type=currency,
                 amount=amount,
-                reason=f"admin_gift: {reason}"
+                reason=reason
             )
             
-            if not currency_result.success:
+            if not give_result.success:
                 embed = disnake.Embed(
                     title="❌ Gift Failed",
-                    description=currency_result.error,
+                    description=give_result.error or "Unknown error occurred",
                     color=EmbedColors.ERROR
                 )
                 return await inter.edit_original_response(embed=embed)
             
-            # Format currency display  
-            currency_emoji = "💰" if currency == "revies" else "💎"
+            # ✅ Safe access to result data with null checking
+            result = give_result.data
+            if not result:
+                embed = disnake.Embed(
+                    title="❌ Gift Failed",
+                    description="No result data returned from give operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
             
-            # CurrencyResult.data is a CurrencyTransaction object
-            transaction = currency_result.data
-            new_balance = transaction.new_balance if transaction else 0
+            currency_emoji = "💰" if currency == "revies" else "💎"
             
             embed = disnake.Embed(
                 title="✅ Currency Given!",
                 description=(
                     f"Gave {user.mention}:\n\n"
-                    f"{currency_emoji} **{amount:,} {currency.title()}**\n\n"
-                    f"**New Balance:** {new_balance:,}\n"
+                    f"{currency_emoji} **{result.amount_given:,} {result.resource_name.title()}**\n\n"
+                    f"**New Balance:** {result.new_balance or 0:,}\n"
                     f"**Reason:** {reason}"
                 ),
                 color=EmbedColors.SUCCESS
             )
             
-            embed.set_footer(text=f"Given by {inter.author.display_name}")
+            embed.set_footer(text=f"Given by {result.admin_who_gave}")
             
             await inter.edit_original_response(embed=embed)
             
@@ -359,7 +294,7 @@ class AdminCog(commands.Cog):
             )
             await inter.edit_original_response(embed=embed)
     
-    @give_group.sub_command(name="esprit", description="👹 Give an Esprit to a player (Not Yet Implemented)")
+    @give_group.sub_command(name="esprit", description="👹 Give an Esprit to a player")
     async def give_esprit(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -368,22 +303,85 @@ class AdminCog(commands.Cog):
         quantity: int = commands.Param(default=1, min_value=1, max_value=1000, description="Quantity"),
         awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level")
     ):
-        """Give an Esprit to a player (placeholder)"""
+        """Give an Esprit to a player"""
         await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
-        embed = disnake.Embed(
-            title="⚠️ Feature Not Available",
-            description=(
-                f"Esprit giving is not yet implemented.\n\n"
-                f"**Would give {user.mention}:**\n"
-                f"• {quantity}x {esprit_name}\n"
-                f"• Awakening: {'⭐' * awakening if awakening > 0 else 'None'}\n\n"
-                f"*Requires EspritService.add_esprit_by_name() implementation*"
-            ),
-            color=EmbedColors.WARNING
-        )
-        
-        await inter.edit_original_response(embed=embed)
+        try:
+            # ✅ Use AdminService with proper type checking
+            give_result = await AdminService.give_esprit(
+                admin_id=inter.author.id,
+                admin_name=inter.author.display_name,
+                target_discord_id=user.id,
+                esprit_name=esprit_name,
+                quantity=quantity,
+                awakening_level=awakening
+            )
+            
+            if not give_result.success:
+                # ✅ Safe error message handling
+                error_message = give_result.error or "Unknown error occurred"
+                
+                # Handle specific errors from AdminService
+                if "not yet supported" in error_message:
+                    embed = disnake.Embed(
+                        title="⚠️ Feature Limitation",
+                        description=(
+                            f"**Esprit Given:** {quantity}x {esprit_name}\n"
+                            f"**Awakening:** Manual awakening required\n\n"
+                            f"Auto-awakening to level {awakening} is not yet implemented. "
+                            f"The Esprit has been given at base level. Use awakening commands manually."
+                        ),
+                        color=EmbedColors.WARNING
+                    )
+                else:
+                    embed = disnake.Embed(
+                        title="❌ Gift Failed",
+                        description=error_message,
+                        color=EmbedColors.ERROR
+                    )
+                return await inter.edit_original_response(embed=embed)
+            
+            # ✅ Safe access to result data with null checking
+            result = give_result.data
+            if not result:
+                embed = disnake.Embed(
+                    title="❌ Gift Failed",
+                    description="No result data returned from give operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            embed = disnake.Embed(
+                title="✅ Esprit Given!",
+                description=(
+                    f"Gave {user.mention}:\n\n"
+                    f"👹 **{result.amount_given}x {result.resource_name}**\n"
+                    f"**Awakening:** {'⭐' * awakening if awakening > 0 else 'Base Level'}\n\n"
+                    f"*Check collection with `/collection` command*"
+                ),
+                color=EmbedColors.SUCCESS
+            )
+            
+            embed.set_footer(text=f"Given by {result.admin_who_gave}")
+            
+            await inter.edit_original_response(embed=embed)
+            
+        except NotImplementedError as nie:
+            # Handle fail-loud awakening error
+            embed = disnake.Embed(
+                title="⚠️ Feature Not Available", 
+                description=str(nie),
+                color=EmbedColors.WARNING
+            )
+            await inter.edit_original_response(embed=embed)
+        except Exception as e:
+            logger.error(f"Give esprit error: {e}", exc_info=True)
+            embed = disnake.Embed(
+                title="❌ System Error",
+                description="Failed to give esprit. Please try again.",
+                color=EmbedColors.ERROR
+            )
+            await inter.edit_original_response(embed=embed)
 
     # =====================================
     # SYSTEM MANAGEMENT
@@ -398,15 +396,43 @@ class AdminCog(commands.Cog):
     @ratelimit(uses=1, per_seconds=30, command_name="admin_system_sync")
     async def sync_commands(self, inter: disnake.ApplicationCommandInteraction):
         """Force sync slash commands with Discord"""
-        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
+        # ✅ @ratelimit decorator handles defer() automatically
         
         try:
-            synced = await self.bot.sync_application_commands()
+            # ✅ Use AdminService with proper type checking
+            sync_result = await AdminService.sync_discord_commands(
+                bot=self.bot,
+                admin_id=inter.author.id
+            )
+            
+            if not sync_result.success:
+                embed = disnake.Embed(
+                    title="❌ Sync Failed",
+                    description=sync_result.error or "Unknown error occurred",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            # ✅ Safe access to result data with null checking
+            operation_result = sync_result.data
+            if not operation_result:
+                embed = disnake.Embed(
+                    title="❌ Sync Failed",
+                    description="No result data returned from sync operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
             
             embed = disnake.Embed(
                 title="✅ Commands Synced",
-                description=f"Successfully synced {len(synced)} slash commands with Discord.",
+                description=f"Successfully synced {operation_result.affected_count} slash commands with Discord.",
                 color=EmbedColors.SUCCESS
+            )
+            
+            embed.add_field(
+                name="📊 Details",
+                value=f"**Execution Time:** {operation_result.execution_time:.2f}s",
+                inline=False
             )
             
             embed.set_footer(text="Commands may take a few minutes to appear globally")
@@ -432,55 +458,66 @@ class AdminCog(commands.Cog):
         )
     ):
         """Reload configuration files"""
-        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
+        # ✅ @ratelimit decorator handles defer() automatically
         
         try:
+            # ✅ Use AdminService with proper type checking and fixed parameter order
+            reload_result = await AdminService.reload_configuration(
+                admin_id=inter.author.id,
+                config_name=config
+            )
+            
+            if not reload_result.success:
+                embed = disnake.Embed(
+                    title="❌ Reload Failed",
+                    description=reload_result.error or "Unknown error occurred",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            # ✅ Safe access to result data with null checking
+            operation_result = reload_result.data
+            if not operation_result:
+                embed = disnake.Embed(
+                    title="❌ Reload Failed",
+                    description="No result data returned from reload operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            details = operation_result.details
+            
             if config.upper() == "ALL":
-                old_count = len(ConfigManager._configs) if hasattr(ConfigManager, '_configs') else 0
-                ConfigManager.reload()
-                new_count = len(ConfigManager._configs)
-                
                 embed = disnake.Embed(
                     title="🔄 All Configs Reloaded",
                     description=(
                         f"Successfully reloaded all configuration files.\n\n"
-                        f"**Before:** {old_count} configs\n"
-                        f"**After:** {new_count} configs\n\n"
-                        f"**Reloaded:** {', '.join(ConfigManager._configs.keys())}"
+                        f"**Before:** {details.get('old_count', 0)} configs\n"
+                        f"**After:** {details.get('new_count', 0)} configs\n"
+                        f"**Execution Time:** {operation_result.execution_time:.2f}s"
                     ),
                     color=EmbedColors.SUCCESS
                 )
-            else:
-                # Reload specific config
-                if config in ConfigManager._configs:
-                    del ConfigManager._configs[config]
-                    
-                    # Attempt to reload
-                    import json
-                    from pathlib import Path
-                    
-                    config_path = Path("data/config") / f"{config}.json"
-                    if config_path.exists():
-                        with open(config_path, 'r', encoding='utf-8') as f:
-                            ConfigManager._configs[config] = json.load(f)
-                        
-                        embed = disnake.Embed(
-                            title="✅ Config Reloaded",
-                            description=f"Successfully reloaded `{config}` configuration.",
-                            color=EmbedColors.SUCCESS
-                        )
-                    else:
-                        embed = disnake.Embed(
-                            title="❌ Config Not Found",
-                            description=f"Config file `{config}.json` doesn't exist.",
-                            color=EmbedColors.ERROR
-                        )
-                else:
-                    embed = disnake.Embed(
-                        title="❌ Config Not Loaded",
-                        description=f"Config `{config}` wasn't found in memory.",
-                        color=EmbedColors.ERROR
+                
+                configs_loaded = details.get('configs_loaded', [])
+                if configs_loaded:
+                    configs_list = ", ".join(configs_loaded[:10])  # Limit display
+                    if len(configs_loaded) > 10:
+                        configs_list += f" (+{len(configs_loaded) - 10} more)"
+                    embed.add_field(
+                        name="📁 Loaded Configs",
+                        value=configs_list,
+                        inline=False
                     )
+            else:
+                embed = disnake.Embed(
+                    title="✅ Config Reloaded",
+                    description=(
+                        f"Successfully reloaded `{details.get('config_name', config)}` configuration.\n\n"
+                        f"**Execution Time:** {operation_result.execution_time:.2f}s"
+                    ),
+                    color=EmbedColors.SUCCESS
+                )
             
             import datetime
             embed.set_footer(text=f"Reloaded at {datetime.datetime.now().strftime('%H:%M:%S')}")
@@ -513,32 +550,69 @@ class AdminCog(commands.Cog):
         await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         try:
-            if action == "stats":
-                # Get cache statistics
-                stats_result = await CacheService.get_cache_metrics()
-                
-                if not stats_result.success or not stats_result.data:
+            # Get target player ID if provided
+            target_player_id = None
+            if player:
+                player_result = await PlayerService.get_or_create_player(player.id, player.display_name)
+                if not player_result.success or not player_result.data:
                     embed = disnake.Embed(
-                        title="❌ Cache Unavailable",
-                        description="Redis cache is not available or returned no data.",
+                        title="❌ Player Error",
+                        description=f"Failed to get player data for {player.mention}",
                         color=EmbedColors.WARNING
                     )
                     return await inter.edit_original_response(embed=embed)
                 
-                stats = stats_result.data
+                player_obj = player_result.data
+                if not hasattr(player_obj, 'id') or not player_obj.id:
+                    embed = disnake.Embed(
+                        title="❌ Invalid Player",
+                        description="Player data is invalid.",
+                        color=EmbedColors.ERROR
+                    )
+                    return await inter.edit_original_response(embed=embed)
                 
+                target_player_id = player_obj.id
+            
+            # ✅ Use AdminService with proper type checking and fixed parameter order
+            cache_result = await AdminService.manage_cache(
+                action=action,
+                admin_id=inter.author.id,
+                target_player_id=target_player_id
+            )
+            
+            if not cache_result.success:
+                embed = disnake.Embed(
+                    title="❌ Cache Operation Failed",
+                    description=cache_result.error or "Unknown error occurred",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            # ✅ Safe access to result data with null checking
+            operation_result = cache_result.data
+            if not operation_result:
+                embed = disnake.Embed(
+                    title="❌ Cache Operation Failed",
+                    description="No result data returned from cache operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            details = operation_result.details
+            
+            if action == "stats":
                 embed = disnake.Embed(
                     title="📊 Cache Statistics",
                     color=EmbedColors.INFO
                 )
                 
                 # Safe access with defaults
-                hit_rate = stats.get('hit_rate', 0.0) if stats else 0.0
-                hits = stats.get('hits', 0) if stats else 0
-                misses = stats.get('misses', 0) if stats else 0
-                sets = stats.get('sets', 0) if stats else 0
-                deletes = stats.get('deletes', 0) if stats else 0
-                invalidations = stats.get('invalidations', 0) if stats else 0
+                hit_rate = details.get('hit_rate', 0.0)
+                hits = details.get('hits', 0)
+                misses = details.get('misses', 0)
+                sets = details.get('sets', 0)
+                deletes = details.get('deletes', 0)
+                invalidations = details.get('invalidations', 0)
                 
                 embed.add_field(
                     name="📈 Performance",
@@ -561,37 +635,14 @@ class AdminCog(commands.Cog):
                 )
                 
             elif action == "clear":
-                if player:
-                    # Clear specific player cache
-                    player_result = await PlayerService.get_or_create_player(player.id, player.display_name)
-                    if not player_result.success or not player_result.data:
-                        embed = disnake.Embed(
-                            title="❌ Player Error",
-                            description=f"Failed to get player data for {player.mention}",
-                            color=EmbedColors.WARNING
-                        )
-                        return await inter.edit_original_response(embed=embed)
-                    
-                    player_obj = player_result.data
-                    if not hasattr(player_obj, 'id') or not player_obj.id:
-                        embed = disnake.Embed(
-                            title="❌ Invalid Player",
-                            description="Player data is invalid.",
-                            color=EmbedColors.ERROR
-                        )
-                        return await inter.edit_original_response(embed=embed)
-                    
-                    clear_result = await CacheService.invalidate_player_cache(player_obj.id)
-                    
+                if target_player_id:
+                    player_display = player.mention if player is not None else f"Player ID {target_player_id}"
                     embed = disnake.Embed(
                         title="✅ Player Cache Cleared",
-                        description=f"Cleared cache for {player.mention}",
+                        description=f"Cleared cache for {player_display}",
                         color=EmbedColors.SUCCESS
                     )
                 else:
-                    # Clear global caches
-                    clear_result = await CacheService.invalidate_global_caches()
-                    
                     embed = disnake.Embed(
                         title="✅ Global Cache Cleared",
                         description="Cleared all global cache entries",
@@ -599,39 +650,19 @@ class AdminCog(commands.Cog):
                     )
             
             elif action == "warm":
-                if player:
-                    player_result = await PlayerService.get_or_create_player(player.id, player.display_name)
-                    if not player_result.success or not player_result.data:
-                        embed = disnake.Embed(
-                            title="❌ Player Error",
-                            description=f"Failed to get player data for {player.mention}",
-                            color=EmbedColors.WARNING
-                        )
-                        return await inter.edit_original_response(embed=embed)
-                    
-                    player_obj = player_result.data
-                    if not hasattr(player_obj, 'id') or not player_obj.id:
-                        embed = disnake.Embed(
-                            title="❌ Invalid Player",
-                            description="Player data is invalid.",
-                            color=EmbedColors.ERROR
-                        )
-                        return await inter.edit_original_response(embed=embed)
-                    
-                    warm_result = await CacheService.warm_player_caches(player_obj.id)
-                    
-                    embed = disnake.Embed(
-                        title="✅ Player Cache Warmed",
-                        description=f"Pre-loaded cache for {player.mention}",
-                        color=EmbedColors.SUCCESS
-                    )
-                else:
-                    embed = disnake.Embed(
-                        title="❌ Invalid Action",
-                        description="Cache warming requires a specific player.",
-                        color=EmbedColors.ERROR
-                    )
-                    return await inter.edit_original_response(embed=embed)
+                player_display = player.mention if player is not None else f"Player ID {target_player_id}"
+                embed = disnake.Embed(
+                    title="✅ Player Cache Warmed",
+                    description=f"Pre-loaded cache for {player_display}",
+                    color=EmbedColors.SUCCESS
+                )
+            
+            # Add execution time for all operations
+            embed.add_field(
+                name="⏱️ Execution Time",
+                value=f"{operation_result.execution_time:.3f}s",
+                inline=True
+            )
             
             await inter.edit_original_response(embed=embed)
             
@@ -648,7 +679,7 @@ class AdminCog(commands.Cog):
     @ratelimit(uses=1, per_seconds=30, command_name="admin_system_emoji")
     async def sync_emojis(self, inter: disnake.ApplicationCommandInteraction):
         """Sync emojis from configured Discord servers"""
-        # ✅ FIX: @ratelimit decorator already handles defer() - don't call it again!
+        # ✅ @ratelimit decorator handles defer() automatically
         
         try:
             # Initialize emoji manager if not already done
@@ -676,50 +707,41 @@ class AdminCog(commands.Cog):
                 )
                 return await inter.edit_original_response(embed=embed)
             
-            synced_count = 0
-            failed_count = 0
+            # ✅ Use AdminService for emoji sync
+            emoji_result = await AdminService.sync_emoji_mappings(
+                bot=self.bot,
+                emoji_servers=self.emoji_manager.emoji_servers,
+                admin_id=inter.author.id
+            )
             
-            for server_id in self.emoji_manager.emoji_servers:
-                guild = self.bot.get_guild(server_id)
-                if not guild:
-                    logger.warning(f"Cannot access guild {server_id}")
-                    failed_count += 1
-                    continue
-                
-                for emoji in guild.emojis:
-                    try:
-                        name = emoji.name.lower()
-                        
-                        # Handle tier-prefixed emojis (t1blazeblob -> blazeblob)
-                        if name.startswith("t") and len(name) > 2 and name[1].isdigit():
-                            # Extract actual name after tier prefix
-                            if len(name) > 3 and name[2].isdigit():  # t10+ handling
-                                actual_name = name[3:]
-                            else:
-                                actual_name = name[2:]
-                            
-                            emoji_string = f"<:{emoji.name}:{emoji.id}>"
-                            self.emoji_manager.add_emoji_to_cache(actual_name, emoji_string)
-                            synced_count += 1
-                        else:
-                            # Regular emoji without tier prefix
-                            emoji_string = f"<:{emoji.name}:{emoji.id}>"
-                            self.emoji_manager.add_emoji_to_cache(name, emoji_string)
-                            synced_count += 1
-                            
-                    except Exception as emoji_error:
-                        logger.error(f"Failed to sync emoji {emoji.name}: {emoji_error}")
-                        failed_count += 1
+            if not emoji_result.success:
+                embed = disnake.Embed(
+                    title="❌ Emoji Sync Failed",
+                    description=emoji_result.error or "Unknown error occurred",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
             
-            # Save the updated config
-            self.emoji_manager.save_config()
+            # ✅ Safe access to result data with null checking
+            operation_result = emoji_result.data
+            if not operation_result:
+                embed = disnake.Embed(
+                    title="❌ Emoji Sync Failed",
+                    description="No result data returned from emoji sync operation",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            details = operation_result.details
             
             embed = disnake.Embed(
                 title="✅ Emoji Sync Complete",
                 description=(
-                    f"**Synced:** {synced_count} emojis\n"
-                    f"**Failed:** {failed_count} emojis\n"
-                    f"**Servers:** {len(self.emoji_manager.emoji_servers)}\n\n"
+                    f"**Synced:** {details.get('synced_count', 0)} emojis\n"
+                    f"**Failed:** {details.get('failed_count', 0)} emojis\n"
+                    f"**Servers:** {details.get('servers_processed', 0)}\n"
+                    f"**Total Cache Size:** {details.get('total_cache_size', 0)}\n\n"
+                    f"**Execution Time:** {operation_result.execution_time:.2f}s\n"
                     f"Emoji mappings saved to configuration."
                 ),
                 color=EmbedColors.SUCCESS
@@ -823,52 +845,68 @@ class AdminCog(commands.Cog):
         await inter.response.defer()  # ✅ Required: no @ratelimit decorator
         
         try:
+            # ✅ Use AdminService for system health check
+            health_result = await AdminService.get_system_health()
+            
+            if not health_result.success:
+                embed = disnake.Embed(
+                    title="❌ Health Check Failed",
+                    description=health_result.error or "Failed to get system health",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            # ✅ Safe access to health data
+            health_data = health_result.data
+            if not health_data:
+                embed = disnake.Embed(
+                    title="❌ Health Check Failed",
+                    description="No health data returned",
+                    color=EmbedColors.ERROR
+                )
+                return await inter.edit_original_response(embed=embed)
+            
+            # Determine overall status color
+            overall_status = health_data.get("overall_status", "unknown")
+            if overall_status == "healthy":
+                color = EmbedColors.SUCCESS
+            elif overall_status == "degraded":
+                color = EmbedColors.WARNING
+            else:
+                color = EmbedColors.ERROR
+            
             embed = disnake.Embed(
                 title="🔧 Service Health Check",
-                color=EmbedColors.INFO
+                color=color
             )
             
-            # Test PlayerService
-            try:
-                test_result = await PlayerService.get_or_create_player(inter.author.id, inter.author.display_name)
-                player_status = "✅ Working" if test_result.success else f"❌ Failed: {test_result.error}"
-            except Exception as e:
-                player_status = f"❌ Error: {str(e)[:50]}"
-            
-            # Test CacheService
-            try:
-                cache_result = await CacheService.get_cache_metrics()
-                cache_status = "✅ Working" if cache_result.success else f"❌ Failed: {cache_result.error}"
-            except Exception as e:
-                cache_status = f"❌ Error: {str(e)[:50]}"
-            
-            # Test CurrencyService
-            try:
-                # Test currency service exists and has basic validation
-                from src.services.currency_service import CurrencyService
-                currency_status = "✅ Available"
-            except ImportError:
-                currency_status = "❌ Not Found"
-            except Exception as e:
-                currency_status = f"❌ Error: {str(e)[:50]}"
-            
-            # Test ConfigManager
-            try:
-                config_count = len(ConfigManager._configs) if hasattr(ConfigManager, '_configs') else 0
-                config_status = f"✅ Working ({config_count} configs)"
-            except Exception as e:
-                config_status = f"❌ Error: {str(e)[:50]}"
-            
+            # Overall health
+            health_score = health_data.get("health_score", 0)
             embed.add_field(
-                name="🔍 Service Status",
+                name="📊 Overall Health",
                 value=(
-                    f"**PlayerService:** {player_status}\n"
-                    f"**CurrencyService:** {currency_status}\n"
-                    f"**CacheService:** {cache_status}\n"
-                    f"**ConfigManager:** {config_status}"
+                    f"**Status:** {overall_status.title()}\n"
+                    f"**Score:** {health_score}%\n"
+                    f"**Database:** {health_data.get('database', 'unknown')}\n"
+                    f"**Cache:** {health_data.get('cache', 'unknown')}\n"
+                    f"**Config:** {health_data.get('config', 'unknown')}"
                 ),
                 inline=False
             )
+            
+            # Service status
+            services = health_data.get("services", {})
+            if services:
+                service_status_lines = []
+                for service_name, status in services.items():
+                    emoji = "✅" if "healthy" in status else "❌"
+                    service_status_lines.append(f"{emoji} **{service_name}:** {status}")
+                
+                embed.add_field(
+                    name="🔍 Service Details",
+                    value="\n".join(service_status_lines[:10]),  # Limit to prevent embed overflow
+                    inline=False
+                )
             
             embed.set_footer(text="All services follow REVE architecture principles")
             
@@ -909,6 +947,8 @@ class AdminCog(commands.Cog):
         try:
             # Search for the esprit in database
             from src.database.models.esprit_base import EspritBase
+            from src.utils.database_service import DatabaseService
+            from sqlalchemy import select
             
             async with DatabaseService.get_session() as session:
                 stmt = select(EspritBase).where(EspritBase.name.ilike(f"%{boss_name}%"))
@@ -1003,6 +1043,8 @@ class AdminCog(commands.Cog):
         try:
             # Search for the esprit in database
             from src.database.models.esprit_base import EspritBase
+            from src.utils.database_service import DatabaseService
+            from sqlalchemy import select
             
             async with DatabaseService.get_session() as session:
                 stmt = select(EspritBase).where(EspritBase.name.ilike(f"%{esprit_name}%"))
@@ -1102,7 +1144,7 @@ class AdminCog(commands.Cog):
             if not player_result.success:
                 embed = disnake.Embed(
                     title="❌ Player Error",
-                    description=player_result.error,
+                    description=player_result.error or "Failed to get player data",
                     color=EmbedColors.WARNING
                 )
                 return await inter.edit_original_response(embed=embed)
@@ -1139,9 +1181,10 @@ class AdminCog(commands.Cog):
             # Try to get class info
             try:
                 from src.services.player_class_service import PlayerClassService
-                class_result = await PlayerClassService.get_class_info(player.id) # type: ignore
-                if class_result.success and class_result.data:
-                    stats_card_data["class_type"] = class_result.data.get("class_type", "Unknown")
+                if player.id:
+                    class_result = await PlayerClassService.get_class_info(player.id)
+                    if class_result.success and class_result.data:
+                        stats_card_data["class_type"] = class_result.data.get("class_type", "Unknown")
             except ImportError:
                 pass
             

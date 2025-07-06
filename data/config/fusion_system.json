@@ -1,17 +1,26 @@
 {
-  "base_fusion_cost": 100,
-  "tier_cost_multiplier": 2186,
-  "tier_cost_exponent": 2.187,
+  "base_fusion_cost": 500,
+  "tier_cost_multiplier": 1500,
+  "tier_cost_exponent": 1.8,
   "use_exponential_scaling": true,
-  "base_success_rate": 75,
-  "tier_penalty_per_level": 3,
-  "min_success_rate": 15,
+  "base_success_rate": 85,
+  "tier_penalty_per_level": 5,
+  "min_success_rate": 25,
   "max_success_rate": 85,
   "element_penalty": 0.75,
   "fragment_bonus_per_fragment": 5,
   "success_rates_by_tier": {
-    "1": 75, "2": 72, "3": 69, "4": 66, "5": 63,
-    "6": 60, "7": 57, "8": 54, "9": 51, "10": 48,
-    "11": 45, "12": 42
+    "1": 85, "2": 80, "3": 75, "4": 70, "5": 65,
+    "6": 60, "7": 55, "8": 50, "9": 45, "10": 40,
+    "11": 35, "12": 25
+  },
+  "fusion_rewards": {
+    "fragments_on_failure": {
+      "1-3": [1, 2],
+      "4-6": [2, 4], 
+      "7-9": [5, 10],
+      "10-12": [10, 20]
+    },
+    "compensation_on_failure": 0.25
   }
 }

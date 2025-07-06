@@ -125,21 +125,26 @@ class TierData:
 
 
 class Tiers:
-    """Tier management system with stat ranges for design variety"""
+    """Tier management system with exponentially rewarding progression"""
     
     _TIER_DATA = {
-        1: TierData(1, "Common", "I", (30, 60), 45, 0x808080),
-        2: TierData(2, "Uncommon", "II", (80, 140), 110, 0x808080),
-        3: TierData(3, "Rare", "III", (200, 400), 300, 0x00ff00),
-        4: TierData(4, "Epic", "IV", (600, 1200), 900, 0x0099ff),
-        5: TierData(5, "Mythic", "V", (2000, 4000), 3000, 0x9932cc),
-        6: TierData(6, "Divine", "VI", (7000, 15000), 11000, 0xffd700),
-        7: TierData(7, "Legendary", "VII", (25000, 50000), 37500, 0xff4500),
-        8: TierData(8, "Ethereal", "VIII", (80000, 180000), 130000, 0x9370db),
-        9: TierData(9, "Genesis", "IX", (300000, 650000), 475000, 0x00ced1),
-        10: TierData(10, "Empyrean", "X", (1000000, 2200000), 1600000, 0xff1493),
-        11: TierData(11, "Void", "XI", (3500000, 7500000), 5500000, 0x000000),
-        12: TierData(12, "Singularity", "XII", (12000000, 27000000), 19500000, 0xffffff)
+        # Early Game - Linear Learning Phase (2.4-3.3x jumps)
+        1: TierData(1, "Common", "I", (31, 62), 45, 0x808080),              # Gray
+        2: TierData(2, "Uncommon", "II", (77, 154), 110, 0x40E0D0),        # Turquoise 
+        3: TierData(3, "Rare", "III", (210, 420), 300, 0x00FF00),          # Green
+        4: TierData(4, "Epic", "IV", (630, 1260), 900, 0x0099FF),          # Blue
+        
+        # Mid Game - Accelerating Growth (3.3-3.7x jumps)
+        5: TierData(5, "Mythic", "V", (2100, 4200), 3000, 0x9932CC),       # Purple
+        6: TierData(6, "Divine", "VI", (7700, 15400), 11000, 0xFFD700),    # Gold
+        7: TierData(7, "Legendary", "VII", (26250, 52500), 37500, 0xFF4500), # Orange Red
+        8: TierData(8, "Ethereal", "VIII", (91000, 182000), 130000, 0x9370DB), # Medium Purple
+        
+        # End Game - Exponential Fantasy (3.4-3.7x jumps)
+        9: TierData(9, "Genesis", "IX", (332500, 665000), 475000, 0x00CED1),   # Dark Turquoise
+        10: TierData(10, "Empyrean", "X", (1120000, 2240000), 1600000, 0xFF1493), # Deep Pink
+        11: TierData(11, "Void", "XI", (3850000, 7700000), 5500000, 0x1C1C1C),    # Almost Black
+        12: TierData(12, "Singularity", "XII", (13650000, 27300000), 19500000, 0xFFFFFF) # Pure White
     }
     
     @classmethod

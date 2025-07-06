@@ -1,0 +1,32 @@
+{
+  "favor_system": {
+    "starting_favor": 100,
+    "leagues": {
+      "bronze": {"min_favor": 0, "max_favor": 299, "tier_cap": 6, "awakening_cap": 3},
+      "silver": {"min_favor": 300, "max_favor": 599, "tier_cap": 8, "awakening_cap": 4},
+      "gold": {"min_favor": 600, "max_favor": 999, "tier_cap": 10, "awakening_cap": 5},
+      "master": {"min_favor": 1000, "max_favor": 9999, "tier_cap": 12, "awakening_cap": 5}
+    },
+    "favor_changes": {
+      "win_vs_higher": [15, 25],
+      "win_vs_equal": [10, 15],
+      "win_vs_lower": [5, 10],
+      "loss_vs_higher": [-5, -10],
+      "loss_vs_equal": [-10, -15],
+      "loss_vs_lower": [-15, -25]
+    },
+    "monthly_decay": 0.05,
+    "season_rewards": {
+      "bronze": {"erythl": 25, "awakening_fragments": 50},
+      "silver": {"erythl": 50, "awakening_fragments": 100},
+      "gold": {"erythl": 100, "awakening_fragments": 200},
+      "master": {"erythl": 200, "title": "Arena Champion"}
+    }
+  },
+  "battle_system": {
+    "team_format": "best_6_elements",
+    "turn_order": "speed_based",
+    "ability_cooldowns": true,
+    "element_advantages": true
+  }
+}

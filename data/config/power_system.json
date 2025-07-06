@@ -8,9 +8,5 @@
     "base_bonus": 0.05,
     "tier_scaling": 0.01,
     "awakening_scaling": 0.02
-  },
-  "stat_caps": {
-    "max_total_power": 100000000,
-    "individual_stat_cap": 50000000
-  }
+    }
 }
