@@ -52,7 +52,7 @@ class ReveService(BaseService):
                 config = ConfigManager.get("reve_system") or {}
                 batch_size = config.get("batch_size", 5)
                 cooldown_minutes = config.get("cooldown_minutes", 25)
-                rates = config.get("rates", {})
+                rates = config.get("rates") or {"T1": 1.0} # fallback: always T1
                 
                 # Perform pulls
                 pulls = []
