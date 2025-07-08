@@ -117,13 +117,17 @@ class Player(SQLModel, table=True):
     upkeep_paid_until: datetime = Field(default_factory=datetime.utcnow)
     total_upkeep_cost: int = Field(default=0)  # Cached daily upkeep
     last_upkeep_calculation: datetime = Field(default_factory=datetime.utcnow)
-    building_slots: int = Field(default=3)
-    total_buildings_owned: int = Field(default=0)
+    building_slots: int = Field(default=2)
     total_passive_income_collected: int = Field(default=0)
     total_upkeep_paid: int = Field(default=0)
     times_went_bankrupt: int = Field(default=0)  # Times they couldn't pay upkeep
     last_income_collection: datetime = Field(default_factory=datetime.utcnow)
-    pending_building_income: int = Field(default=0)  # Income waiting to be collected
+    shrine_count: int = Field(default=0)        # How many shrines built
+    shrine_level: int = Field(default=1)        # Level of shrines (all same level)
+    cluster_count: int = Field(default=0)       # How many clusters built  
+    cluster_level: int = Field(default=1)       # Level of clusters (all same level)
+    pending_revies_income: int = Field(default=0)   # Revies income waiting to be collected
+    pending_erythl_income: int = Field(default=0)   # Erythl income waiting to be collected
 
     # --- Achievement System ---
     achievements_earned: List[str] = Field(default_factory=list, sa_column=Column(JSON))
