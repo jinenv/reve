@@ -1,0 +1,53 @@
+{
+  "background_tasks": {
+    "description": "Configuration for automated background tasks",
+    
+    "energy_regeneration": {
+      "enabled": true,
+      "interval_minutes": 1,
+      "batch_size": 100,
+      "description": "Process energy regeneration every minute"
+    },
+    
+    "stamina_regeneration": {
+      "enabled": true,
+      "interval_minutes": 1,
+      "batch_size": 100,
+      "description": "Process stamina regeneration every minute"
+    },
+    
+    "building_income": {
+      "enabled": true,
+      "interval_minutes": 30,
+      "batch_size": 50,
+      "description": "Process building passive income every 30 minutes"
+    },
+    
+    "daily_reset": {
+      "enabled": true,
+      "hour_utc": 0,
+      "minute": 0,
+      "description": "Daily reset tasks at midnight UTC"
+    },
+    
+    "cache_cleanup": {
+      "enabled": true,
+      "interval_hours": 6,
+      "description": "Clean expired cache entries every 6 hours"
+    },
+    
+    "performance_monitoring": {
+      "enabled": true,
+      "log_task_performance": true,
+      "alert_on_errors": true,
+      "max_consecutive_failures": 3
+    }
+  },
+  
+  "building_system": {
+    "income_interval_minutes": 30,
+    "max_stack_hours": 12,
+    "base_income_per_slot": 100,
+    "description": "Building income processes every 30 minutes, stacks up to 12 hours"
+  }
+}

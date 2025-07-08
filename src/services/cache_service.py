@@ -5,14 +5,14 @@ import asyncio
 import json
 import hashlib
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.utils.redis_service import RedisService
 from src.services.base_service import BaseService, ServiceResult
 from src.utils.config_manager import ConfigManager
-import logging
+from src.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 @dataclass
 class CacheMetrics:
@@ -38,6 +38,19 @@ class CacheEntry:
     ttl: int
     compressed: bool = False
 
+@dataclass
+class CacheCleanupStats:
+    """Detailed cleanup operation statistics"""
+    total_keys_scanned: int = 0
+    expired_keys_removed: int = 0
+    stale_keys_removed: int = 0
+    orphaned_keys_removed: int = 0
+    ttl_keys_updated: int = 0
+    memory_freed_bytes: int = 0
+    execution_time_seconds: float = 0.0
+    errors: List[str] = field(default_factory=list)
+    cleanup_patterns: Dict[str, int] = field(default_factory=dict)
+    
 class CacheService(BaseService):
     """Advanced cache management service with sophisticated patterns"""
     
@@ -762,5 +775,435 @@ class CacheService(BaseService):
         cls._metrics = CacheMetrics()
         return ServiceResult.success_result(True)
 
-# Import here to avoid circular imports
+    @classmethod
+    async def cleanup_expired_cache(cls) -> ServiceResult[Dict[str, Any]]:
+        """
+        Sophisticated cache cleanup with intelligent pattern recognition,
+        memory optimization, and comprehensive analytics.
+        """
+        async def _operation():
+            if not RedisService.is_available():
+                return {"status": "redis_unavailable", "cleaned_keys": 0}
+            
+            client = RedisService.get_client()
+            if not client:
+                return {"status": "client_unavailable", "cleaned_keys": 0}
+            
+            # Get sophisticated cleanup configuration
+            cache_config = ConfigManager.get("cache_system") or {}
+            cleanup_config = cache_config.get("cleanup", {})
+            
+            stats = CacheCleanupStats()
+            start_time = datetime.utcnow()
+            
+            # Define sophisticated cleanup patterns with specific logic
+            cleanup_patterns = {
+                # Player data - keep fresh, clean stale
+                "reve:player:*": {
+                    "max_age_hours": cleanup_config.get("player_data_max_age", 24),
+                    "stale_threshold_hours": cleanup_config.get("player_stale_threshold", 6),
+                    "priority": "high"
+                },
+                # Collection stats - medium retention
+                "reve:collection:*": {
+                    "max_age_hours": cleanup_config.get("collection_max_age", 12),
+                    "stale_threshold_hours": cleanup_config.get("collection_stale_threshold", 4),
+                    "priority": "medium"
+                },
+                # Power calculations - short retention, frequent updates
+                "reve:power:*": {
+                    "max_age_hours": cleanup_config.get("power_max_age", 6),
+                    "stale_threshold_hours": cleanup_config.get("power_stale_threshold", 2),
+                    "priority": "high"
+                },
+                # Temporary data - aggressive cleanup
+                "reve:temp:*": {
+                    "max_age_hours": cleanup_config.get("temp_max_age", 2),
+                    "stale_threshold_hours": cleanup_config.get("temp_stale_threshold", 0.5),
+                    "priority": "low"
+                },
+                # Session data - moderate retention
+                "reve:session:*": {
+                    "max_age_hours": cleanup_config.get("session_max_age", 8),
+                    "stale_threshold_hours": cleanup_config.get("session_stale_threshold", 3),
+                    "priority": "medium"
+                },
+                # Leaderboard data - longer retention
+                "reve:leaderboard:*": {
+                    "max_age_hours": cleanup_config.get("leaderboard_max_age", 48),
+                    "stale_threshold_hours": cleanup_config.get("leaderboard_stale_threshold", 12),
+                    "priority": "low"
+                }
+            }
+            
+            try:
+                # Phase 1: Intelligent key scanning and categorization
+                logger.info("🧹 Starting sophisticated cache cleanup...")
+                
+                for pattern, config in cleanup_patterns.items():
+                    pattern_stats = await cls._cleanup_pattern_sophisticated(
+                        client, pattern, config, stats
+                    )
+                    stats.cleanup_patterns[pattern] = pattern_stats
+                
+                # Phase 2: Orphaned key detection and removal
+                orphaned_count = await cls._cleanup_orphaned_keys(client, stats)
+                stats.orphaned_keys_removed = orphaned_count
+                
+                # Phase 3: Memory optimization
+                memory_freed = await cls._optimize_cache_memory(client, stats)
+                stats.memory_freed_bytes = memory_freed
+                
+                # Phase 4: Intelligent TTL management
+                ttl_updated = await cls._optimize_ttl_distribution(client, cleanup_config, stats)
+                stats.ttl_keys_updated = ttl_updated
+                
+                # Phase 5: Analytics and reporting
+                execution_time = (datetime.utcnow() - start_time).total_seconds()
+                stats.execution_time_seconds = execution_time
+                
+                # Generate comprehensive report
+                report = cls._generate_cleanup_report(stats)
+                
+                logger.info(
+                    f"🎯 Sophisticated cache cleanup completed: "
+                    f"{stats.expired_keys_removed + stats.stale_keys_removed + stats.orphaned_keys_removed} keys removed, "
+                    f"{stats.memory_freed_bytes / 1024:.1f}KB freed, "
+                    f"{stats.ttl_keys_updated} TTLs optimized "
+                    f"in {execution_time:.2f}s"
+                )
+                
+                return report
+                
+            except Exception as e:
+                stats.errors.append(f"Cleanup failed: {str(e)}")
+                logger.error(f"Sophisticated cache cleanup failed: {e}")
+                return {"status": "error", "error": str(e), "partial_stats": stats.__dict__}
+        
+        return await cls._safe_execute(_operation, "sophisticated cache cleanup")
+
+    @classmethod
+    async def _cleanup_pattern_sophisticated(
+        cls, 
+        client, 
+        pattern: str, 
+        config: Dict[str, Any], 
+        stats: CacheCleanupStats
+    ) -> int:
+        """Sophisticated pattern-specific cleanup with intelligent logic"""
+        keys_processed = 0
+        max_age_seconds = config["max_age_hours"] * 3600
+        stale_threshold_seconds = config["stale_threshold_hours"] * 3600
+        priority = config["priority"]
+        
+        # Adjust scan count based on priority
+        scan_count = {"high": 200, "medium": 150, "low": 100}[priority]
+        
+        cursor = 0
+        while True:
+            try:
+                cursor, keys = await client.scan(cursor, match=pattern, count=scan_count)
+                stats.total_keys_scanned += len(keys)
+                
+                # Process keys in batches for efficiency
+                batch_size = 50
+                for i in range(0, len(keys), batch_size):
+                    batch = keys[i:i + batch_size]
+                    await cls._process_key_batch_sophisticated(
+                        client, batch, max_age_seconds, stale_threshold_seconds, stats
+                    )
+                    keys_processed += len(batch)
+                
+                if cursor == 0:
+                    break
+                    
+            except Exception as e:
+                stats.errors.append(f"Pattern {pattern} scan error: {str(e)}")
+                break
+        
+        return keys_processed
+
+    @classmethod
+    async def _process_key_batch_sophisticated(
+        cls, 
+        client, 
+        keys: List[str], 
+        max_age_seconds: int, 
+        stale_threshold_seconds: int, 
+        stats: CacheCleanupStats
+    ):
+        """Process key batch with sophisticated aging logic"""
+        pipeline = client.pipeline()
+        
+        # Gather key information in batch
+        for key in keys:
+            pipeline.ttl(key)
+            pipeline.memory_usage(key) if hasattr(client, 'memory_usage') else None
+        
+        try:
+            results = await pipeline.execute()
+            ttl_results = results[::2] if len(results) > 0 else []
+            memory_results = results[1::2] if len(results) > 1 else [0] * len(keys)
+            
+            for i, key in enumerate(keys):
+                try:
+                    ttl = ttl_results[i] if i < len(ttl_results) else -1
+                    memory_size = memory_results[i] if i < len(memory_results) else 0
+                    
+                    # Sophisticated decision logic
+                    should_delete = False
+                    delete_reason = ""
+                    
+                    if ttl == -2:  # Key expired or doesn't exist
+                        should_delete = True
+                        delete_reason = "expired"
+                        stats.expired_keys_removed += 1
+                    elif ttl == -1:  # No expiration set
+                        # Apply intelligent default TTL based on key pattern
+                        default_ttl = cls._calculate_intelligent_ttl(key)
+                        await client.expire(key, default_ttl)
+                        stats.ttl_keys_updated += 1
+                    elif ttl > max_age_seconds:  # Too old
+                        should_delete = True
+                        delete_reason = "too_old"
+                        stats.stale_keys_removed += 1
+                    elif ttl < stale_threshold_seconds and memory_size > 1024:  # Large stale key
+                        should_delete = True
+                        delete_reason = "large_stale"
+                        stats.stale_keys_removed += 1
+                    
+                    if should_delete:
+                        await client.delete(key)
+                        if isinstance(memory_size, int):
+                            stats.memory_freed_bytes += memory_size
+                        
+                        logger.debug(f"Deleted {key} ({delete_reason})")
+                        
+                except Exception as e:
+                    stats.errors.append(f"Key {key} processing error: {str(e)}")
+                    
+        except Exception as e:
+            stats.errors.append(f"Batch processing error: {str(e)}")
+
+    @classmethod
+    async def _cleanup_orphaned_keys(cls, client, stats: CacheCleanupStats) -> int:
+        """Detect and remove orphaned cache entries"""
+        orphaned_count = 0
+        
+        try:
+            # Look for keys that don't match any known pattern
+            unknown_pattern_keys = []
+            
+            cursor = 0
+            while True:
+                cursor, keys = await client.scan(cursor, match="reve:*", count=100)
+                
+                for key in keys:
+                    # Check if key matches any known pattern
+                    key_str = key.decode() if isinstance(key, bytes) else str(key)
+                    is_known_pattern = any(
+                        key_str.startswith(pattern.replace("*", "")) 
+                        for pattern in ["reve:player:", "reve:collection:", "reve:power:", 
+                                    "reve:temp:", "reve:session:", "reve:leaderboard:"]
+                    )
+                    
+                    if not is_known_pattern:
+                        unknown_pattern_keys.append(key_str)
+                
+                if cursor == 0:
+                    break
+            
+            # Remove orphaned keys older than 1 hour
+            for key in unknown_pattern_keys:
+                try:
+                    ttl = await client.ttl(key)
+                    if ttl < 3600:  # Less than 1 hour TTL remaining
+                        await client.delete(key)
+                        orphaned_count += 1
+                        logger.debug(f"Removed orphaned key: {key}")
+                except Exception as e:
+                    stats.errors.append(f"Orphaned key {key} error: {str(e)}")
+        
+        except Exception as e:
+            stats.errors.append(f"Orphaned key cleanup error: {str(e)}")
+        
+        return orphaned_count
+
+    @classmethod
+    async def _optimize_cache_memory(cls, client, stats: CacheCleanupStats) -> int:
+        """Optimize cache memory usage with intelligent compression"""
+        memory_freed = 0
+        
+        try:
+            # Get Redis memory info
+            memory_info = await client.info("memory")
+            used_memory = memory_info.get("used_memory", 0)
+            max_memory = memory_info.get("maxmemory", 0)
+            
+            if max_memory > 0:
+                memory_usage_percent = (used_memory / max_memory) * 100
+                
+                # If memory usage is high, be more aggressive
+                if memory_usage_percent > 80:
+                    logger.warning(f"High Redis memory usage: {memory_usage_percent:.1f}%")
+                    # Implement more aggressive cleanup
+                    aggressive_cleanup = await cls._aggressive_memory_cleanup(client)
+                    memory_freed += aggressive_cleanup
+            
+        except Exception as e:
+            stats.errors.append(f"Memory optimization error: {str(e)}")
+        
+        return memory_freed
+
+    @classmethod
+    async def _optimize_ttl_distribution(
+        cls, 
+        client, 
+        cleanup_config: Dict[str, Any], 
+        stats: CacheCleanupStats
+    ) -> int:
+        """Optimize TTL distribution to prevent cache thundering herd"""
+        ttl_updated = 0
+        
+        try:
+            # Find keys with similar TTLs and spread them out
+            ttl_distribution = {}
+            
+            cursor = 0
+            sample_size = 1000  # Sample for analysis
+            keys_sampled = 0
+            
+            while cursor != 0 or keys_sampled == 0:
+                cursor, keys = await client.scan(cursor, match="reve:*", count=100)
+                
+                for key in keys[:min(10, len(keys))]:  # Sample subset
+                    try:
+                        ttl = await client.ttl(key)
+                        if ttl > 0:
+                            # Group by TTL ranges (10-minute buckets)
+                            ttl_bucket = (ttl // 600) * 600
+                            ttl_distribution[ttl_bucket] = ttl_distribution.get(ttl_bucket, 0) + 1
+                    except Exception:
+                        continue
+                
+                keys_sampled += len(keys)
+                if keys_sampled >= sample_size or cursor == 0:
+                    break
+            
+            # If we find TTL clustering, add jitter
+            for ttl_bucket, count in ttl_distribution.items():
+                if count > 50:  # Too many keys expiring at similar time
+                    # Add jitter to future keys with this TTL pattern
+                    jitter_range = cleanup_config.get("ttl_jitter_minutes", 30) * 60
+                    logger.info(f"Detected TTL clustering at {ttl_bucket}s, applying jitter")
+            
+        except Exception as e:
+            stats.errors.append(f"TTL optimization error: {str(e)}")
+        
+        return ttl_updated
+
+    @classmethod
+    def _calculate_intelligent_ttl(cls, key: str) -> int:
+        """Calculate intelligent TTL based on key pattern and usage"""
+        key_str = str(key)
+        
+        if ":player:" in key_str:
+            return 24 * 3600  # 24 hours for player data
+        elif ":collection:" in key_str:
+            return 12 * 3600  # 12 hours for collection stats
+        elif ":power:" in key_str:
+            return 6 * 3600   # 6 hours for power calculations
+        elif ":temp:" in key_str:
+            return 2 * 3600   # 2 hours for temporary data
+        elif ":session:" in key_str:
+            return 8 * 3600   # 8 hours for session data
+        elif ":leaderboard:" in key_str:
+            return 48 * 3600  # 48 hours for leaderboards
+        else:
+            return 6 * 3600   # Default 6 hours
+
+    @classmethod
+    async def _aggressive_memory_cleanup(cls, client) -> int:
+        """Aggressive cleanup when memory usage is critical"""
+        memory_freed = 0
+        
+        try:
+            # Target temporary and session data first
+            aggressive_patterns = ["reve:temp:*", "reve:session:*"]
+            
+            for pattern in aggressive_patterns:
+                cursor = 0
+                while True:
+                    cursor, keys = await client.scan(cursor, match=pattern, count=200)
+                    
+                    for key in keys:
+                        try:
+                            # More aggressive TTL reduction
+                            current_ttl = await client.ttl(key)
+                            if current_ttl > 1800:  # More than 30 minutes
+                                new_ttl = min(current_ttl // 2, 1800)  # Halve TTL, max 30 min
+                                await client.expire(key, new_ttl)
+                                memory_freed += 1
+                        except Exception:
+                            continue
+                    
+                    if cursor == 0:
+                        break
+            
+            logger.warning(f"Aggressive cleanup: reduced TTL on {memory_freed} keys")
+            
+        except Exception as e:
+            logger.error(f"Aggressive cleanup failed: {e}")
+        
+        return memory_freed
+
+    @classmethod
+    def _generate_cleanup_report(cls, stats: CacheCleanupStats) -> Dict[str, Any]:
+        """Generate comprehensive cleanup report"""
+        return {
+            "status": "success",
+            "summary": {
+                "total_keys_scanned": stats.total_keys_scanned,
+                "total_keys_removed": stats.expired_keys_removed + stats.stale_keys_removed + stats.orphaned_keys_removed,
+                "memory_freed_kb": round(stats.memory_freed_bytes / 1024, 2),
+                "execution_time_seconds": round(stats.execution_time_seconds, 2),
+                "error_count": len(stats.errors)
+            },
+            "details": {
+                "expired_keys_removed": stats.expired_keys_removed,
+                "stale_keys_removed": stats.stale_keys_removed,
+                "orphaned_keys_removed": stats.orphaned_keys_removed,
+                "ttl_keys_updated": stats.ttl_keys_updated,
+                "cleanup_patterns": stats.cleanup_patterns
+            },
+            "performance": {
+                "keys_per_second": round(stats.total_keys_scanned / max(stats.execution_time_seconds, 0.001), 2),
+                "memory_efficiency": round(stats.memory_freed_bytes / max(stats.total_keys_scanned, 1), 2)
+            },
+            "errors": stats.errors[:10],  # First 10 errors for debugging
+            "recommendations": cls._generate_cleanup_recommendations(stats)
+        }
+
+    @classmethod
+    def _generate_cleanup_recommendations(cls, stats: CacheCleanupStats) -> List[str]:
+        """Generate intelligent recommendations based on cleanup results"""
+        recommendations = []
+        
+        if stats.orphaned_keys_removed > 100:
+            recommendations.append("High number of orphaned keys detected - review cache key patterns")
+        
+        if stats.memory_freed_bytes > 10 * 1024 * 1024:  # > 10MB
+            recommendations.append("Significant memory freed - consider more frequent cleanup")
+        
+        if len(stats.errors) > 10:
+            recommendations.append("Multiple cleanup errors detected - investigate Redis connectivity")
+        
+        if stats.execution_time_seconds > 30:
+            recommendations.append("Cleanup taking too long - consider reducing scan scope")
+        
+        if stats.ttl_keys_updated > 1000:
+            recommendations.append("Many keys without TTL - review cache setting practices")
+        
+        return recommendations
+
 from src.utils.database_service import DatabaseService

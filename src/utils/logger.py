@@ -1,4 +1,4 @@
-# src/utils/logger.py - Enhanced Unicode-Safe Logger
+# src/utils/logger.py
 import logging
 import sys
 from pathlib import Path
@@ -67,6 +67,7 @@ def get_logger(name: str) -> logging.Logger:
     """Get a Unicode-safe logger instance"""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
+    logger.propagate = False  # 🔒 Prevent double logging via root logger
 
     if not logger.handlers:
         # Console handler with Unicode support
@@ -76,7 +77,7 @@ def get_logger(name: str) -> logging.Logger:
             "%Y-%m-%d %H:%M:%S"
         ))
 
-        # File handler with explicit UTF-8 encoding
+        # File handler
         file_handler = logging.FileHandler(
             LOG_DIR / "bot.log", 
             encoding="utf-8",

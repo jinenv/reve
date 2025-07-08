@@ -11,7 +11,7 @@ import disnake
 from PIL import Image, ImageDraw, ImageFont
 
 from src.utils.logger import get_logger
-from utils.stats_generator import ImageConfig, ImageGenerator  # ✨ Use existing sophisticated system
+from src.utils.stats_generator import ImageConfig, ImageGenerator  # ✨ Use existing sophisticated system
 
 logger = get_logger(__name__)
 

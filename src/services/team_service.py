@@ -1,12 +1,14 @@
 # src/services/team_service.py
-from typing import Dict, List, Any, Optional
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
-from src.services.base_service import BaseService, ServiceResult
+import asyncio
+from typing import Dict, List, Any, Optional
+from sqlalchemy import select, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.database.models import Player, Esprit, EspritBase
+from src.services.ability_service import AbilityService
+from src.services.base_service import BaseService, ServiceResult
 from src.utils.database_service import DatabaseService
-from src.utils.ability_system import AbilitySystem
 from src.utils.transaction_logger import transaction_logger, TransactionType
 from src.utils.logger import get_logger
 
@@ -14,20 +16,19 @@ logger = get_logger(__name__)
 
 class TeamService(BaseService):
     """Service for managing 3-Esprit combat teams"""
-    
+
     @classmethod
     async def get_current_team(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
-        """Get player's current team composition with full details"""
+        """Get player's current team composition with abilities"""
         async def _operation():
             async with DatabaseService.get_session() as session:
-                # Get player with team data
-                stmt = select(Player).where(Player.id == player_id)
-                player = (await session.execute(stmt)).scalar_one_or_none()
+                # Get player data
+                player_stmt = select(Player).where(Player.id == player_id)  # type: ignore
+                player = (await session.execute(player_stmt)).scalar_one_or_none()
                 
                 if not player:
                     return {"error": "Player not found"}
-                
-                # Build team data
+
                 team_data = {
                     "leader": None,
                     "support1": None,
@@ -35,172 +36,122 @@ class TeamService(BaseService):
                     "total_team_power": 0,
                     "team_valid": False
                 }
-                
-                # Get leader details
+
+                # Get leader if exists
                 if player.leader_esprit_stack_id:
-                    leader_data = await cls._get_esprit_team_data(session, player.leader_esprit_stack_id, "leader")
+                    leader_data = await cls._get_team_member_data(
+                        session, player.leader_esprit_stack_id, "leader"
+                    )
                     if leader_data:
                         team_data["leader"] = leader_data
-                
-                # Get support details
-                if hasattr(player, 'support1_esprit_stack_id') and player.support1_esprit_stack_id:
-                    support1_data = await cls._get_esprit_team_data(session, player.support1_esprit_stack_id, "support")
+
+                # Get support members if exist
+                if player.support1_esprit_stack_id:
+                    support1_data = await cls._get_team_member_data(
+                        session, player.support1_esprit_stack_id, "support1"
+                    )
                     if support1_data:
                         team_data["support1"] = support1_data
-                
-                if hasattr(player, 'support2_esprit_stack_id') and player.support2_esprit_stack_id:
-                    support2_data = await cls._get_esprit_team_data(session, player.support2_esprit_stack_id, "support")
+
+                if player.support2_esprit_stack_id:
+                    support2_data = await cls._get_team_member_data(
+                        session, player.support2_esprit_stack_id, "support2"
+                    )
                     if support2_data:
                         team_data["support2"] = support2_data
-                
-                # Calculate total team power
+
+                # Calculate team stats
                 total_power = 0
-                team_member_count = 0
-                for role in ["leader", "support1", "support2"]:
-                    member = team_data.get(role)
-                    if member:
-                        total_power += member.get("total_atk", 0) + member.get("total_def", 0)
-                        team_member_count += 1
-                
+                if team_data["leader"]:
+                    total_power += team_data["leader"]["total_atk"] + team_data["leader"]["total_def"]
+                if team_data["support1"]:
+                    total_power += team_data["support1"]["total_atk"] + team_data["support1"]["total_def"]
+                if team_data["support2"]:
+                    total_power += team_data["support2"]["total_atk"] + team_data["support2"]["total_def"]
+
                 team_data["total_team_power"] = total_power
-                team_data["team_valid"] = team_member_count >= 1  # At least leader required
-                team_data["team_member_count"] = team_member_count
-                
+                team_data["team_valid"] = team_data["leader"] is not None
+
                 return team_data
         
         return await cls._safe_execute(_operation, "get current team")
-    
+
     @classmethod
-    async def _get_esprit_team_data(cls, session, esprit_id: int, role: str) -> Optional[Dict[str, Any]]:
-        """Get detailed esprit data for team display"""
+    async def _get_team_member_data(
+        cls, 
+        session: AsyncSession, 
+        esprit_stack_id: int, 
+        role: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get detailed data for a team member"""
         try:
-            # Get esprit with base data
+            # Get esprit with base data using proper SQLAlchemy syntax
             stmt = select(Esprit, EspritBase).where(
-                Esprit.id == esprit_id,
-                Esprit.esprit_base_id == EspritBase.id
+                Esprit.id == esprit_stack_id,  # type: ignore
+                Esprit.esprit_base_id == EspritBase.id  # type: ignore
             )
             result = (await session.execute(stmt)).first()
             
             if not result:
                 return None
-            
+
             esprit, base = result
-            
-            # Calculate individual power
-            individual_power = esprit.get_individual_power(base)
-            
-            # Get abilities based on role
-            if role == "leader":
-                # Leader gets full ability summary
-                ability_summary = base.get_ability_summary()
-                ability_details = base.get_ability_details()
-            else:
-                # Support gets support skill
-                support_skill = cls._get_support_skill(base.element, base.base_tier)
-                ability_summary = f"Support: {support_skill['name']}"
-                ability_details = {"support_skill": support_skill}
-            
-            return {
+
+            # Calculate total stats
+            total_atk = base.base_attack + esprit.bonus_attack
+            total_def = base.base_defense + esprit.bonus_defense
+            total_hp = base.base_health + esprit.bonus_health
+
+            member_data = {
                 "esprit_id": esprit.id,
                 "name": base.name,
-                "element": esprit.element,
-                "tier": esprit.tier,
+                "element": base.element,
                 "base_tier": base.base_tier,
-                "awakening_level": esprit.awakening_level,
-                "quantity": esprit.quantity,
-                "total_atk": individual_power["atk"],
-                "total_def": individual_power["def"],
-                "total_hp": individual_power["hp"],
-                "ability_summary": ability_summary,
-                "ability_details": ability_details,
-                "support_skill": cls._get_support_skill(base.element, base.base_tier) if role == "support" else None
+                "rarity": base.rarity,
+                "total_atk": total_atk,
+                "total_def": total_def,
+                "total_hp": total_hp,
+                "count": esprit.count,
+                "stars": esprit.stars
             }
-            
+
+            # Get abilities for leader
+            if role == "leader":
+                ability_result = await AbilityService.resolve_esprit_abilities(
+                    base.name, base.base_tier, base.element
+                )
+                if ability_result.success and ability_result.data:
+                    abilities = ability_result.data.abilities
+                    member_data["ability_details"] = {
+                        "basic": abilities.basic.to_dict() if abilities.basic else None,
+                        "ultimate": abilities.ultimate.to_dict() if abilities.ultimate else None,
+                        "passive": abilities.passive.to_dict() if abilities.passive else None
+                    }
+                    
+                    # Create ability summary
+                    basic_name = abilities.basic.name if abilities.basic else "Basic Attack"
+                    ultimate_name = abilities.ultimate.name if abilities.ultimate else "Ultimate Attack"
+                    member_data["ability_summary"] = f"{basic_name} | {ultimate_name}"
+                else:
+                    member_data["ability_summary"] = "Loading abilities..."
+
+            # Get support skill for support members
+            elif role.startswith("support"):
+                support_skill = await AbilityService.get_support_skill(base.element, base.base_tier)
+                if support_skill.success and support_skill.data:
+                    member_data["support_skill"] = support_skill.data
+                else:
+                    member_data["support_skill"] = {
+                        "name": "No Skill",
+                        "description": "Support skill not available"
+                    }
+
+            return member_data
+
         except Exception as e:
-            logger.error(f"Error getting esprit team data for {esprit_id}: {e}")
+            logger.error(f"Error getting team member data: {str(e)}")
             return None
-    
-    @classmethod
-    def _get_support_skill(cls, element: str, tier: int) -> Dict[str, Any]:
-        """Get support skill based on element and tier with tier scaling"""
-        # Base power scales with tier
-        base_power = 80 + (tier * 3)  # 83 at tier 1, 116 at tier 12
-        
-        # Support skills are element-based with tier scaling
-        support_skills = {
-            "inferno": {
-                "name": "Flame Boost",
-                "description": f"+{15 + tier}% team attack for 2 turns",
-                "type": "team_buff",
-                "power": base_power,
-                "cooldown": max(2, 4 - (tier // 3)),  # Cooldown reduces with tier
-                "duration": 2,
-                "effects": ["attack_boost"],
-                "tier_bonus": f"+{tier}% attack boost"
-            },
-            "verdant": {
-                "name": "Nature's Blessing", 
-                "description": f"Heal {10 + tier}% HP and +{10 + tier}% defense for 3 turns",
-                "type": "heal_buff",
-                "power": base_power,
-                "cooldown": max(3, 5 - (tier // 3)),
-                "duration": 3,
-                "effects": ["regeneration", "defense_boost"],
-                "tier_bonus": f"+{tier}% healing and defense"
-            },
-            "tempest": {
-                "name": "Lightning Speed",
-                "description": f"Next attack has +{25 + (tier * 2)}% crit chance and +{tier * 5}% damage",
-                "type": "crit_buff",
-                "power": base_power,
-                "cooldown": max(2, 4 - (tier // 4)),
-                "duration": 1,
-                "effects": ["critical_boost"],
-                "tier_bonus": f"+{tier * 2}% crit, +{tier * 5}% damage"
-            },
-            "abyssal": {
-                "name": "Tidal Barrier",
-                "description": f"Reduce incoming damage by {20 + tier}% for {2 + (tier // 3)} turns",
-                "type": "damage_reduction",
-                "power": base_power,
-                "cooldown": max(3, 5 - (tier // 3)),
-                "duration": 2 + (tier // 3),
-                "effects": ["damage_shield"],
-                "tier_bonus": f"+{tier}% damage reduction"
-            },
-            "umbral": {
-                "name": "Shadow Energy",
-                "description": f"Restore {1 + (tier // 4)} stamina and +{10 + tier}% attack for 2 turns",
-                "type": "resource_buff",
-                "power": base_power,
-                "cooldown": max(4, 6 - (tier // 3)),
-                "duration": 2,
-                "effects": ["stamina_restore", "attack_boost"],
-                "tier_bonus": f"+{tier // 4} stamina restore"
-            },
-            "radiant": {
-                "name": "Holy Light",
-                "description": f"Remove all debuffs and heal {15 + tier}% HP",
-                "type": "cleanse_heal",
-                "power": base_power,
-                "cooldown": max(3, 5 - (tier // 4)),
-                "duration": 0,
-                "effects": ["cleanse", "regeneration"],
-                "tier_bonus": f"+{tier}% healing"
-            }
-        }
-        
-        return support_skills.get(element.lower(), {
-            "name": "Basic Support",
-            "description": "Provides minor team assistance",
-            "type": "basic",
-            "power": base_power,
-            "cooldown": 3,
-            "duration": 1,
-            "effects": ["minor_boost"],
-            "tier_bonus": "No special bonus"
-        })
-    
+
     @classmethod
     async def get_eligible_team_members(
         cls, 
@@ -208,56 +159,60 @@ class TeamService(BaseService):
         role: str, 
         exclude_ids: Optional[List[int]] = None
     ) -> ServiceResult[List[Dict[str, Any]]]:
-        """Get list of Esprits eligible for team positions"""
+        """Get eligible Esprits for team role"""
         async def _operation():
-            if exclude_ids is None:
-                exclude_ids = []
-            
+            # Initialize exclude_ids properly
+            exclude_esprit_ids = exclude_ids or []
+                
             async with DatabaseService.get_session() as session:
-                # Get player's collection
-                stmt = select(Esprit, EspritBase).where(
-                    Esprit.owner_id == player_id,
-                    Esprit.quantity > 0,
-                    Esprit.esprit_base_id == EspritBase.id,
-                    ~Esprit.id.in_(exclude_ids) if exclude_ids else True
-                ).order_by(EspritBase.base_tier.desc(), EspritBase.name.asc())
-                
+                # Build the query with proper SQLAlchemy syntax
+                if exclude_esprit_ids:
+                    # Use NOT IN when exclude_ids has values
+                    stmt = select(Esprit, EspritBase).where(
+                        Esprit.player_id == player_id,  # type: ignore
+                        Esprit.count > 0,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id,  # type: ignore
+                        ~Esprit.id.in_(exclude_esprit_ids)  # type: ignore
+                    ).order_by(EspritBase.base_tier.desc(), EspritBase.name)  # type: ignore
+                else:
+                    # No exclusions needed
+                    stmt = select(Esprit, EspritBase).where(
+                        Esprit.player_id == player_id,  # type: ignore
+                        Esprit.count > 0,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
+                    ).order_by(EspritBase.base_tier.desc(), EspritBase.name)  # type: ignore
+
                 results = (await session.execute(stmt)).all()
-                
-                eligible_esprits = []
-                
+
+                eligible_members = []
                 for esprit, base in results:
-                    # Calculate power
-                    individual_power = esprit.get_individual_power(base)
-                    
-                    # Get support skill for preview (all roles show this)
-                    support_skill = cls._get_support_skill(base.element, base.base_tier)
-                    
-                    # Get full ability details if leader role
-                    ability_details = None
-                    if role == "leader":
-                        ability_details = base.get_ability_details()
-                    
-                    eligible_esprits.append({
+                    total_atk = base.base_attack + esprit.bonus_attack
+                    total_def = base.base_defense + esprit.bonus_defense
+
+                    member_data = {
                         "esprit_id": esprit.id,
                         "name": base.name,
-                        "element": esprit.element,
-                        "tier": esprit.tier,
+                        "element": base.element,
                         "base_tier": base.base_tier,
-                        "awakening_level": esprit.awakening_level,
-                        "quantity": esprit.quantity,
-                        "total_atk": individual_power["atk"],
-                        "total_def": individual_power["def"],
-                        "total_hp": individual_power["hp"],
-                        "support_skill": support_skill,
-                        "ability_details": ability_details,
-                        "rarity": base.rarity if hasattr(base, 'rarity') else 'common'
-                    })
-                
-                return eligible_esprits
+                        "rarity": base.rarity,
+                        "total_atk": total_atk,
+                        "total_def": total_def,
+                        "count": esprit.count,
+                        "stars": esprit.stars
+                    }
+
+                    # Add role-specific data
+                    if role.startswith("support"):
+                        support_skill = await AbilityService.get_support_skill(base.element, base.base_tier)
+                        if support_skill.success and support_skill.data:
+                            member_data["support_skill"] = support_skill.data
+
+                    eligible_members.append(member_data)
+
+                return eligible_members
         
         return await cls._safe_execute(_operation, f"get eligible {role} members")
-    
+
     @classmethod
     async def update_team_member(
         cls, 
@@ -265,23 +220,24 @@ class TeamService(BaseService):
         role: str, 
         esprit_id: Optional[int]
     ) -> ServiceResult[Dict[str, Any]]:
-        """Update a team member position"""
+        """Update team member (leader, support1, or support2)"""
         async def _operation():
-            async with DatabaseService.get_transaction() as session:
-                # Get player with lock
-                stmt = select(Player).where(Player.id == player_id).with_for_update()
+            async with DatabaseService.get_session() as session:
+                # Get player with proper where clause
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one_or_none()
                 
                 if not player:
                     return {"error": "Player not found"}
-                
-                # Validate esprit ownership if not None
+
+                # Validate esprit ownership if provided
+                base = None
                 if esprit_id is not None:
                     esprit_stmt = select(Esprit, EspritBase).where(
-                        Esprit.id == esprit_id,
-                        Esprit.owner_id == player_id,
-                        Esprit.quantity > 0,
-                        Esprit.esprit_base_id == EspritBase.id
+                        Esprit.id == esprit_id,  # type: ignore
+                        Esprit.player_id == player_id,  # type: ignore
+                        Esprit.count > 0,  # type: ignore
+                        Esprit.esprit_base_id == EspritBase.id  # type: ignore
                     )
                     esprit_result = (await session.execute(esprit_stmt)).first()
                     
@@ -289,27 +245,26 @@ class TeamService(BaseService):
                         return {"error": "Esprit not found or not owned"}
                     
                     esprit, base = esprit_result
-                
-                # Store old value for logging
+
+                # Get old esprit_id for logging
                 old_esprit_id = None
-                
-                # Update the appropriate team slot
                 if role == "leader":
                     old_esprit_id = player.leader_esprit_stack_id
                     player.leader_esprit_stack_id = esprit_id
                 elif role == "support1":
-                    old_esprit_id = getattr(player, 'support1_esprit_stack_id', None)
+                    old_esprit_id = player.support1_esprit_stack_id
                     player.support1_esprit_stack_id = esprit_id
                 elif role == "support2":
-                    old_esprit_id = getattr(player, 'support2_esprit_stack_id', None)
+                    old_esprit_id = player.support2_esprit_stack_id
                     player.support2_esprit_stack_id = esprit_id
                 else:
-                    return {"error": f"Invalid role: {role}"}
-                
+                    return {"error": "Invalid role"}
+
+                # Update activity and commit
                 player.update_activity()
                 await session.commit()
-                
-                # Log the change
+
+                # Log transaction using correct method signature
                 transaction_logger.log_transaction(
                     player_id=player_id,
                     transaction_type=TransactionType.TEAM_UPDATED,
@@ -317,8 +272,8 @@ class TeamService(BaseService):
                         "role": role,
                         "old_esprit_id": old_esprit_id,
                         "new_esprit_id": esprit_id,
-                        "esprit_name": base.name if esprit_id else None,
-                        "esprit_tier": base.base_tier if esprit_id else None,
+                        "esprit_name": base.name if base else None,
+                        "esprit_tier": base.base_tier if base else None,
                         "timestamp": player.last_active.isoformat()
                     }
                 )
@@ -327,12 +282,12 @@ class TeamService(BaseService):
                     "role": role,
                     "old_esprit_id": old_esprit_id,
                     "new_esprit_id": esprit_id,
-                    "esprit_name": base.name if esprit_id else None,
+                    "esprit_name": base.name if base else None,
                     "success": True
                 }
         
         return await cls._safe_execute(_operation, f"update team {role}")
-    
+
     @classmethod
     async def get_combat_team_abilities(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         """Get team's available abilities for combat (used by CombatService)"""
@@ -342,6 +297,9 @@ class TeamService(BaseService):
                 return {"error": "Failed to load team"}
             
             team_data = team_result.data
+            if not team_data:
+                return {"error": "No team data"}
+                
             combat_abilities = {
                 "leader_abilities": {},
                 "support_abilities": [],
@@ -372,22 +330,22 @@ class TeamService(BaseService):
             return combat_abilities
         
         return await cls._safe_execute(_operation, "get combat team abilities")
-    
+
     @classmethod
     async def get_leader_tier(cls, player_id: int) -> ServiceResult[int]:
         """Get leader Esprit tier for combat effect scaling"""
         async def _operation():
             async with DatabaseService.get_session() as session:
-                stmt = select(Player).where(Player.id == player_id)
+                stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one_or_none()
                 
                 if not player or not player.leader_esprit_stack_id:
                     return 1  # Default tier if no leader
                 
-                # Get leader esprit tier
+                # Get leader esprit tier with proper where clause
                 leader_stmt = select(Esprit, EspritBase).where(
-                    Esprit.id == player.leader_esprit_stack_id,
-                    Esprit.esprit_base_id == EspritBase.id
+                    Esprit.id == player.leader_esprit_stack_id,  # type: ignore
+                    Esprit.esprit_base_id == EspritBase.id  # type: ignore
                 )
                 leader_result = (await session.execute(leader_stmt)).first()
                 
@@ -398,7 +356,7 @@ class TeamService(BaseService):
                 return base.base_tier
         
         return await cls._safe_execute(_operation, "get leader tier")
-    
+
     @classmethod
     async def validate_team_for_combat(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
         """Validate team is ready for combat"""
@@ -412,6 +370,13 @@ class TeamService(BaseService):
                 }
             
             team_data = team_result.data
+            if not team_data:
+                return {
+                    "valid": False,
+                    "errors": ["No team data found"],
+                    "warnings": []
+                }
+                
             errors = []
             warnings = []
             
@@ -419,71 +384,61 @@ class TeamService(BaseService):
             if not team_data.get("leader"):
                 errors.append("No leader selected! Use /team to set a leader.")
             
-            # Warnings for incomplete team
+            # Warnings for missing supports
             if not team_data.get("support1"):
-                warnings.append("No support member 1 - missing support abilities")
+                warnings.append("Support slot 1 is empty. Consider adding a support member for extra abilities.")
             
             if not team_data.get("support2"):
-                warnings.append("No support member 2 - missing support abilities")
-            
-            # Check for duplicate elements (could be tactical advice)
-            elements = []
-            for role in ["leader", "support1", "support2"]:
-                member = team_data.get(role)
-                if member:
-                    elements.append(member.get("element"))
-            
-            if len(set(elements)) != len(elements):
-                warnings.append("Team has duplicate elements - consider element diversity for resonance bonuses")
+                warnings.append("Support slot 2 is empty. Consider adding a support member for extra abilities.")
             
             return {
                 "valid": len(errors) == 0,
                 "errors": errors,
-                "warnings": warnings,
-                "team_member_count": team_data.get("team_member_count", 0),
-                "total_power": team_data.get("total_team_power", 0)
+                "warnings": warnings
             }
         
         return await cls._safe_execute(_operation, "validate team for combat")
-    
+
     @classmethod
     async def get_team_stats_summary(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
-        """Get team statistics summary"""
+        """Get comprehensive team statistics"""
         async def _operation():
             team_result = await cls.get_current_team(player_id)
             if not team_result.success:
                 return {"error": "Failed to load team"}
             
             team_data = team_result.data
+            if not team_data:
+                return {"error": "No team data"}
             
-            # Calculate team statistics
-            total_atk = 0
-            total_def = 0
+            # Calculate comprehensive stats
+            total_attack = 0
+            total_defense = 0
             total_hp = 0
-            elements = []
+            team_size = 0
+            elements = set()
             tiers = []
             
             for role in ["leader", "support1", "support2"]:
                 member = team_data.get(role)
                 if member:
-                    total_atk += member.get("total_atk", 0)
-                    total_def += member.get("total_def", 0)
+                    total_attack += member.get("total_atk", 0)
+                    total_defense += member.get("total_def", 0)
                     total_hp += member.get("total_hp", 0)
-                    elements.append(member.get("element"))
+                    team_size += 1
+                    elements.add(member.get("element", "unknown"))
                     tiers.append(member.get("base_tier", 1))
             
-            unique_elements = len(set(elements))
-            avg_tier = sum(tiers) / len(tiers) if tiers else 0
+            average_tier = sum(tiers) / len(tiers) if tiers else 0
             
             return {
-                "total_attack": total_atk,
-                "total_defense": total_def,
+                "total_attack": total_attack,
+                "total_defense": total_defense,
                 "total_hp": total_hp,
-                "unique_elements": unique_elements,
-                "average_tier": avg_tier,
-                "element_list": elements,
-                "tier_list": tiers,
-                "team_size": len([m for m in [team_data.get("leader"), team_data.get("support1"), team_data.get("support2")] if m])
+                "team_size": team_size,
+                "unique_elements": len(elements),
+                "element_list": list(elements),
+                "average_tier": average_tier
             }
         
         return await cls._safe_execute(_operation, "get team stats summary")

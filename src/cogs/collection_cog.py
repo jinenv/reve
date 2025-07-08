@@ -12,7 +12,7 @@ from src.utils.emoji_manager import get_emoji_manager
 from src.database.models import Player, Esprit, EspritBase
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from utils.stats_generator import ImageGenerator  # JUST THE CLASS
+from src.utils.stats_generator import ImageGenerator  # JUST THE CLASS
 from src.utils.redis_service import ratelimit
 
 logger = get_logger(__name__)

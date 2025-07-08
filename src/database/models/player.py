@@ -67,7 +67,8 @@ class Player(SQLModel, table=True):
     weekly_points: int = Field(default=0)
     last_weekly_reset: date = Field(default_factory=date.today)
     last_daily_echo: Optional[date] = Field(default=None)
-    
+    last_income_collection: datetime = Field(default_factory=datetime.utcnow)
+
     # --- Battle & Achievement Stats ---
     total_battles: int = Field(default=0)
     battles_won: int = Field(default=0)

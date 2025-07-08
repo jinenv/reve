@@ -1,4 +1,4 @@
-# bot.py - PREFIX COMMANDS VERSION - SINGLE PREFIX 'r'
+# bot.py - PREFIX COMMANDS VERSION WITH BACKGROUND TASKS
 import disnake
 from disnake.ext import commands
 import os
@@ -80,6 +80,7 @@ async def on_ready():
     logger.info(f"{bot.user} is online with prefix commands!")
     logger.info(f"Connected to {len(bot.guilds)} guilds")
     logger.info(f"Prefix: r")
+    logger.info("🔄 Background task automation is now active!")
     
     # Status
     await bot.change_presence(
@@ -160,8 +161,12 @@ async def on_message(message):
     await bot.process_commands(message)
 
 def load_cogs():
-    """Load all cogs"""
+    """Load all cogs INCLUDING the new system tasks cog"""
     cogs_dir = Path("src/cogs")
+    
+    if not cogs_dir.exists():
+        logger.error(f"Cogs directory not found: {cogs_dir}")
+        return
     
     for cog_file in cogs_dir.glob("*.py"):
         if cog_file.name.startswith("__"):
@@ -175,54 +180,87 @@ def load_cogs():
             logger.error(f"Failed to load {cog_name}: {e}")
 
 def initialize_services():
-    """Initialize all services"""
+    """Initialize all services - UPDATED TO INCLUDE BACKGROUND CONFIG"""
     try:
-        # Config Manager - ACTUALLY INITIALIZE IT
+        # Config Manager - LOAD BACKGROUND TASKS CONFIG
         from src.utils.config_manager import ConfigManager
-        ConfigManager.load_all()  # ADD THIS
+        ConfigManager.load_all()
         logger.info(f"ConfigManager loaded: {len(ConfigManager._configs)} configs")
+        
+        # Verify background tasks config loaded
+        background_config = ConfigManager.get("background_tasks")
+        if background_config:
+            logger.info("✅ Background tasks configuration loaded successfully")
+            
+            # Log which tasks are enabled
+            tasks_enabled = []
+            for task_name, task_config in background_config.items():
+                if isinstance(task_config, dict) and task_config.get("enabled", False):
+                    tasks_enabled.append(task_name)
+            
+            if tasks_enabled:
+                logger.info(f"🔄 Enabled background tasks: {', '.join(tasks_enabled)}")
+        else:
+            logger.warning("⚠️ Background tasks configuration not found - using defaults")
         
         # Database - ACTUALLY INITIALIZE IT
         from src.utils.database_service import DatabaseService
-        DatabaseService.init()  # ADD THIS
-        logger.info("DatabaseService ready")
+        DatabaseService.init()
+        logger.info("✅ DatabaseService ready")
         
         # Redis - ACTUALLY INITIALIZE IT
         from src.utils.redis_service import RedisService
-        RedisService.init()  # ADD THIS TOO WHY NOT
+        RedisService.init()
         if RedisService.is_available():
-            logger.info("RedisService connected")
+            logger.info("✅ RedisService connected")
         else:
-            logger.warning("Redis not available - running without cache")
+            logger.warning("⚠️ Redis not available - running without cache")
+            
     except Exception as e:
-        logger.error(f"Error initializing services: {e}")
+        logger.error(f"❌ Error initializing services: {e}")
+        raise  # Re-raise to prevent bot from starting with broken services
 
 def main():
-    """Main entry point"""
+    """Main entry point - UPDATED WITH BACKGROUND TASK LOGGING"""
     # Create logs directory
     os.makedirs("logs", exist_ok=True)
     
-    # Initialize services
-    logger.info("Starting Reve with prefix commands...")
-    initialize_services()
+    # Initialize services first
+    logger.info("🚀 Starting REVE with prefix commands + automated background tasks...")
+    try:
+        initialize_services()
+    except Exception as e:
+        logger.critical(f"❌ Failed to initialize services: {e}")
+        sys.exit(1)
     
-    # Load cogs
+    # Load cogs (including system_tasks_cog for background automation)
+    logger.info("📦 Loading cogs...")
     load_cogs()
     
-    # Get token
+    # Get Discord token
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        logger.error("DISCORD_TOKEN not found!")
+        logger.error("❌ DISCORD_TOKEN not found in environment variables!")
         sys.exit(1)
     
-    # Run bot
+    # Run bot with background tasks
     try:
+        logger.info("🎮 Bot starting with prefix 'r' and automated systems...")
+        logger.info("⚡ Energy/Stamina: Regenerates every 1 minute per player")
+        logger.info("🏗️ Building Income: Processes every 30 minutes (stacks up to 12 hours)")
+        logger.info("🧹 Cache Cleanup: Every 6 hours")
+        logger.info("🌅 Daily Reset: Midnight UTC")
+        logger.info("🔧 Admin Commands: r system status, r system trigger")
+        
         bot.run(token)
+        
     except KeyboardInterrupt:
-        logger.info("Shutdown requested")
+        logger.info("⏹️ Shutdown requested - stopping background tasks...")
     except Exception as e:
-        logger.error(f"Fatal error: {e}")
+        logger.error(f"💥 Fatal error: {e}")
         sys.exit(1)
+    finally:
+        logger.info("👋 REVE bot shutdown complete")
 
 if __name__ == "__main__":
     main()
