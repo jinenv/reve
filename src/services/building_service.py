@@ -399,9 +399,9 @@ class BuildingService(BaseService):
         income_interval_minutes: int, 
         max_ticks: int
     ) -> Dict[str, int]:
-        """Process building income for a batch of players"""
+        """Process building income for a batch of players - PENDING COLLECTION VERSION"""
         processed = 0
-        income_granted = 0
+        income_generated = 0
         ticks_processed = 0
         errors = 0
         
@@ -459,12 +459,8 @@ class BuildingService(BaseService):
                         stmt = select(Player).where(Player.id == player.id).with_for_update()  # type: ignore
                         locked_player = (await session.execute(stmt)).scalar_one()
                         
-                        # Apply income
-                        locked_player.revies += total_income
-                        
-                        # Update total earned tracking
-                        if hasattr(locked_player, 'total_revies_earned'):
-                            locked_player.total_revies_earned += total_income
+                        # 🆕 ADD TO PENDING INSTEAD OF DIRECT BALANCE
+                        locked_player.pending_building_income += total_income
                         
                         # Update passive income tracking
                         current_passive_total = getattr(locked_player, 'total_passive_income_collected', 0)
@@ -472,7 +468,6 @@ class BuildingService(BaseService):
                             locked_player.total_passive_income_collected = current_passive_total + total_income
                         
                         # CRITICAL: Advance timestamp by exact tick duration, don't reset to now
-                        # This preserves partial progress toward the next tick
                         time_advancement = timedelta(minutes=ticks_to_process * income_interval_minutes)
                         new_last_collection = last_income_time + time_advancement
                         
@@ -482,21 +477,22 @@ class BuildingService(BaseService):
                         locked_player.update_activity()
                         await session.commit()
                         
-                        income_granted += total_income
+                        income_generated += total_income
                         ticks_processed += ticks_to_process
                         
-                        # Log significant income generation
+                        # 🆕 UPDATED TRANSACTION LOG
                         transaction_logger.log_transaction(
                             player.id,  # type: ignore
                             TransactionType.CURRENCY_GAIN,
                             {
-                                "source": "building_passive_income",
+                                "source": "building_passive_income_pending",
                                 "amount": total_income,
                                 "ticks_processed": ticks_to_process,
                                 "income_per_tick": final_income_per_tick,
                                 "income_multiplier": income_multiplier,
                                 "generating_slots": income_generating_slots,
-                                "time_advancement_minutes": ticks_to_process * income_interval_minutes
+                                "time_advancement_minutes": ticks_to_process * income_interval_minutes,
+                                "pending_total": locked_player.pending_building_income
                             }
                         )
                 
@@ -508,17 +504,66 @@ class BuildingService(BaseService):
         
         return {
             "processed": processed,
-            "income_granted": income_granted,
+            "income_generated": income_generated,  # 🆕 RENAMED FROM income_granted
             "ticks_processed": ticks_processed,
             "errors": errors
         }
 
+    # 🆕 ADD NEW METHOD FOR MANUAL COLLECTION
     @classmethod
-    async def get_passive_income_status(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
-        """
-        Get detailed passive income status for a player.
-        Shows pending income, time until next tick, etc.
-        """
+    async def collect_pending_income(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
+        """Allow player to manually collect their pending building income"""
+        async def _operation():
+            cls._validate_player_id(player_id)
+            
+            async with DatabaseService.get_transaction() as session:
+                stmt = select(Player).where(Player.id == player_id).with_for_update()  # type: ignore
+                player = (await session.execute(stmt)).scalar_one()
+                
+                pending_income = getattr(player, 'pending_building_income', 0)
+                
+                if pending_income <= 0:
+                    return {
+                        "collected": 0,
+                        "message": "No pending income to collect"
+                    }
+                
+                # Transfer pending income to actual balance
+                player.revies += pending_income
+                old_pending = player.pending_building_income
+                player.pending_building_income = 0
+                
+                # Update total earned tracking
+                if hasattr(player, 'total_revies_earned'):
+                    player.total_revies_earned += pending_income
+                
+                player.update_activity()
+                await session.commit()
+                
+                # Log the collection
+                transaction_logger.log_transaction(
+                    player_id,
+                    TransactionType.CURRENCY_GAIN,
+                    {
+                        "source": "building_income_collection",
+                        "amount": pending_income,
+                        "old_pending": old_pending,
+                        "new_balance": player.revies
+                    }
+                )
+                
+                return {
+                    "collected": pending_income,
+                    "new_balance": player.revies,
+                    "message": f"Collected {pending_income:,} revies from buildings!"
+                }
+        
+        return await cls._safe_execute(_operation, f"collect pending income for player {player_id}")
+
+    # 🆕 ADD NEW METHOD FOR CHECKING PENDING STATUS
+    @classmethod
+    async def get_pending_income_status(cls, player_id: int) -> ServiceResult[Dict[str, Any]]:
+        """Get player's pending income status without collecting"""
         async def _operation():
             cls._validate_player_id(player_id)
             
@@ -526,67 +571,28 @@ class BuildingService(BaseService):
                 stmt = select(Player).where(Player.id == player_id)  # type: ignore
                 player = (await session.execute(stmt)).scalar_one()
                 
-                # Get config
+                pending_income = getattr(player, 'pending_building_income', 0)
+                building_slots = getattr(player, 'building_slots', 3)
+                income_generating_slots = max(0, building_slots - 3)
+                
+                # Get config for calculations
                 building_config = ConfigManager.get("building_system") or {}
+                base_income_per_slot = building_config.get("base_income_per_slot", 100)
                 income_interval_minutes = building_config.get("income_interval_minutes", 30)
                 max_stack_hours = building_config.get("max_stack_hours", 12)
                 max_ticks = int((max_stack_hours * 60) / income_interval_minutes)
-                base_income_per_slot = building_config.get("base_income_per_slot", 100)
                 
-                # Calculate income-generating slots
-                income_generating_slots = max(0, player.building_slots - 3)
-                
-                # Check upkeep status
-                now = datetime.utcnow()
-                upkeep_paid_until = getattr(player, 'upkeep_paid_until', now)
-                total_upkeep_cost = getattr(player, 'total_upkeep_cost', 0)
-                buildings_active = now < upkeep_paid_until or total_upkeep_cost == 0
-                
-                if income_generating_slots == 0 or not buildings_active:
-                    return {
-                        "generating_income": False,
-                        "reason": "no_income_slots" if income_generating_slots == 0 else "upkeep_unpaid",
-                        "income_generating_slots": income_generating_slots,
-                        "buildings_active": buildings_active
-                    }
-                
-                # Get passive effects
-                effects_result = await PassiveEffectResolver.get_effects(player_id)
-                if not effects_result.success:
-                    raise ValueError("Failed to get passive effects")
-                
-                effects = effects_result.data
-                if not effects:
-                    raise ValueError("No passive effects data")
-                
-                # Calculate pending income
-                last_income_time = getattr(player, 'last_income_collection', now)
-                minutes_passed = (now - last_income_time).total_seconds() / 60
-                ticks_due = int(minutes_passed // income_interval_minutes)
-                ticks_pending = min(ticks_due, max_ticks)
-                
-                # Calculate time until next tick
-                minutes_until_next = income_interval_minutes - (minutes_passed % income_interval_minutes)
-                time_until_next = timedelta(minutes=minutes_until_next)
-                
-                # Calculate income amounts
-                income_per_tick = income_generating_slots * base_income_per_slot
-                income_multiplier = effects["building_income_multiplier"]
-                final_income_per_tick = int(income_per_tick * income_multiplier)
-                pending_income = final_income_per_tick * ticks_pending
+                # Calculate how close to cap
+                max_possible_income = max_ticks * income_generating_slots * base_income_per_slot
+                storage_percentage = (pending_income / max_possible_income * 100) if max_possible_income > 0 else 0
                 
                 return {
-                    "generating_income": True,
-                    "income_generating_slots": income_generating_slots,
-                    "buildings_active": buildings_active,
-                    "income_per_tick": final_income_per_tick,
-                    "income_multiplier": income_multiplier,
-                    "ticks_pending": ticks_pending,
                     "pending_income": pending_income,
-                    "max_stackable_ticks": max_ticks,
-                    "time_until_next_tick": str(time_until_next),
-                    "last_collection": last_income_time.isoformat(),
-                    "total_lifetime_income": getattr(player, 'total_passive_income_collected', 0)
+                    "income_generating_slots": income_generating_slots,
+                    "max_storage": max_possible_income,
+                    "storage_percentage": min(100, storage_percentage),
+                    "next_tick_minutes": income_interval_minutes,
+                    "income_per_tick": income_generating_slots * base_income_per_slot
                 }
         
-        return await cls._safe_execute(_operation, f"get passive income status for player {player_id}")
+        return await cls._safe_execute(_operation, f"get pending income status for player {player_id}")

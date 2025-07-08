@@ -1,31 +1,5 @@
 {
-  "items": {
-    "echo_key": {
-      "id": "echo_key",
-      "name": "Echo Key",
-      "description": "Opens any echo without consuming it",
-      "category": "consumable",
-      "rarity": "rare",
-      "icon": "🗝️",
-      "effects": {
-        "type": "open_echo",
-        "preserve_echo": true
-      }
-    },
-    
-    "xp_orb": {
-      "id": "xp_orb",
-      "name": "Experience Orb",
-      "description": "Grants 100 experience points",
-      "category": "consumable",
-      "rarity": "common",
-      "icon": "🔮",
-      "effects": {
-        "type": "grant_xp",
-        "amount": 100
-      }
-    },
-    
+  "consumables": {
     "energy_potion": {
       "id": "energy_potion",
       "name": "Energy Potion",
@@ -33,6 +7,9 @@
       "category": "consumable",
       "rarity": "common",
       "icon": "🧪",
+      "stats": {
+        "energy": 50
+      },
       "effects": {
         "type": "restore_energy",
         "amount": 50
@@ -44,37 +21,30 @@
       "name": "Stamina Elixir",
       "description": "Instantly restores 25 stamina",
       "category": "consumable",
-      "rarity": "uncommon",
+      "rarity": "uncommon", 
       "icon": "⚗️",
+      "stats": {
+        "stamina": 25
+      },
       "effects": {
         "type": "restore_stamina",
         "amount": 25
       }
     },
     
-    "fusion_catalyst": {
-      "id": "fusion_catalyst",
-      "name": "Fusion Catalyst",
-      "description": "Guarantees next fusion success",
+    "xp_orb": {
+      "id": "xp_orb",
+      "name": "Experience Orb",
+      "description": "Grants 100 experience points",
       "category": "consumable",
-      "rarity": "epic",
-      "icon": "💎",
+      "rarity": "common",
+      "icon": "🔮",
+      "stats": {
+        "experience": 100
+      },
       "effects": {
-        "type": "fusion_guarantee",
-        "duration": 1
-      }
-    },
-    
-    "awakening_stone": {
-      "id": "awakening_stone",
-      "name": "Awakening Stone",
-      "description": "Reduces awakening cost by 1 copy",
-      "category": "consumable",
-      "rarity": "mythic",
-      "icon": "💠",
-      "effects": {
-        "type": "awakening_discount",
-        "reduction": 1
+        "type": "grant_xp",
+        "amount": 100
       }
     },
     
@@ -90,53 +60,70 @@
         "multiplier": 1.5,
         "duration": 10
       }
+    }
+  },
+
+  "advanced_items": {
+    "fusion_catalyst": {
+      "id": "fusion_catalyst",
+      "name": "Fusion Catalyst",
+      "description": "Guarantees next fusion success",
+      "category": "advanced",
+      "rarity": "epic",
+      "icon": "💎",
+      "effects": {
+        "type": "fusion_guarantee",
+        "duration": 1
+      }
+    },
+    
+    "awakening_stone": {
+      "id": "awakening_stone",
+      "name": "Awakening Stone",
+      "description": "Reduces awakening cost by 1 copy",
+      "category": "advanced",
+      "rarity": "mythic",
+      "icon": "💠",
+      "effects": {
+        "type": "awakening_discount",
+        "reduction": 1
+      }
     },
     
     "building_boost": {
       "id": "building_boost",
       "name": "Construction Boost",
       "description": "Instantly complete a building upgrade",
-      "category": "consumable",
+      "category": "advanced",
       "rarity": "legendary",
       "icon": "🏗️",
       "effects": {
         "type": "instant_build"
       }
-    },
-    
-    "fragment_bundle_small": {
-      "id": "fragment_bundle_small",
-      "name": "Small Fragment Bundle",
-      "description": "Contains 50 random fragments",
-      "category": "consumable",
-      "rarity": "uncommon",
-      "icon": "📦",
+    }
+  },
+
+  "keys": {
+    "echo_key": {
+      "id": "echo_key",
+      "name": "Echo Key",
+      "description": "Opens any echo without consuming it",
+      "category": "key",
+      "rarity": "rare",
+      "icon": "🗝️",
       "effects": {
-        "type": "grant_fragments",
-        "amount": 50,
-        "tier_range": [1, 6]
+        "type": "open_echo",
+        "preserve_echo": true
       }
-    },
-    
-    "fragment_bundle_large": {
-      "id": "fragment_bundle_large",
-      "name": "Large Fragment Bundle",
-      "description": "Contains 200 random fragments",
-      "category": "consumable",
-      "rarity": "epic",
-      "icon": "📦",
-      "effects": {
-        "type": "grant_fragments",
-        "amount": 200,
-        "tier_range": [4, 12]
-      }
-    },
-    
+    }
+  },
+
+  "unlocks": {
     "skill_reset_token": {
       "id": "skill_reset_token",
       "name": "Skill Reset Token",
       "description": "Reset skill points for free",
-      "category": "consumable",
+      "category": "unlock",
       "rarity": "mythic",
       "icon": "🔄",
       "effects": {
@@ -149,7 +136,7 @@
       "id": "building_slot",
       "name": "Building Permit",
       "description": "Unlock an additional building slot",
-      "category": "permanent",
+      "category": "unlock",
       "rarity": "legendary",
       "icon": "📜",
       "effects": {
@@ -158,133 +145,230 @@
       }
     }
   },
-  
-  "shop": {
-    "daily_deals": {
-      "refresh_hours": 24,
-      "slots": 6,
-      "possible_items": [
-        {
-          "item_id": "energy_potion",
-          "cost": {"revies": 1000},
-          "weight": 30,
-          "stock": 5
-        },
-        {
-          "item_id": "stamina_elixir",
-          "cost": {"revies": 2500},
-          "weight": 20,
-          "stock": 3
-        },
-        {
-          "item_id": "xp_orb",
-          "cost": {"revies": 500},
-          "weight": 25,
-          "stock": 10
-        },
-        {
-          "item_id": "echo_key",
-          "cost": {"revies": 10000},
-          "weight": 10,
-          "stock": 1
-        },
-        {
-          "item_id": "capture_charm",
-          "cost": {"revies": 15000},
-          "weight": 10,
-          "stock": 2
-        },
-        {
-          "item_id": "fragment_bundle_small",
-          "cost": {"revies": 5000},
-          "weight": 5,
-          "stock": 3
-        }
-      ]
-    },
-    
-    "premium_shop": {
-      "always_available": [
-        {
-          "item_id": "building_boost",
-          "cost": {"erythl": 50},
-          "limit_per_week": 3
-        },
-        {
-          "item_id": "fusion_catalyst",
-          "cost": {"erythl": 30},
-          "limit_per_week": 5
-        },
-        {
-          "item_id": "awakening_stone",
-          "cost": {"erythl": 100},
-          "limit_per_week": 1
-        },
-        {
-          "item_id": "skill_reset_token",
-          "cost": {"erythl": 75},
-          "limit_per_month": 2
-        },
-        {
-          "item_id": "building_slot",
-          "cost": {"erythl": 200},
-          "limit_per_account": 7
-        },
-        {
-          "item_id": "fragment_bundle_large",
-          "cost": {"erythl": 40},
-          "limit_per_week": 10
-        }
-      ]
-    },
-    
-    "bundles": {
-      "starter_pack": {
-        "name": "Starter Bundle",
-        "description": "Great value for new summoners!",
-        "cost": {"erythl": 100},
-        "contents": {
-          "revies": 50000,
-          "items": {
-            "energy_potion": 10,
-            "stamina_elixir": 5,
-            "fusion_catalyst": 2,
-            "echo_key": 3
-          }
-        },
-        "limit": 1,
-        "requirement": "account_age_days < 7"
-      },
-      
-      "builder_pack": {
-        "name": "Builder's Bundle",
-        "description": "Everything you need for a strong economy",
-        "cost": {"erythl": 250},
-        "contents": {
-          "items": {
-            "building_boost": 5,
-            "building_slot": 1
-          },
-          "revies": 100000
-        },
-        "limit": 3
-      },
-      
-      "fusion_master_pack": {
-        "name": "Fusion Master Bundle",
-        "description": "Dominate the fusion game",
-        "cost": {"erythl": 150},
-        "contents": {
-          "items": {
-            "fusion_catalyst": 10,
-            "fragment_bundle_large": 3
-          },
-          "element_fragments": {
-            "all": 100
-          }
-        },
-        "limit": 5
+
+  "echoes": {
+    "faded_echo": {
+      "id": "faded_echo",
+      "name": "Faded Echo",
+      "description": "Contains basic rewards - tier 1-7 Esprits possible",
+      "category": "echo",
+      "rarity": "common",
+      "icon": "📦",
+      "loot_table": "faded_echo",
+      "effects": {
+        "type": "loot_container",
+        "loot_table": "faded_echo"
       }
+    },
+    
+    "vivid_echo": {
+      "id": "vivid_echo",
+      "name": "Vivid Echo",
+      "description": "Contains good rewards - tier 3-10 Esprits possible",
+      "category": "echo",
+      "rarity": "uncommon",
+      "icon": "📫",
+      "loot_table": "vivid_echo",
+      "effects": {
+        "type": "loot_container",
+        "loot_table": "vivid_echo"
+      }
+    },
+    
+    "brilliant_echo": {
+      "id": "brilliant_echo",
+      "name": "Brilliant Echo",
+      "description": "Contains excellent rewards - tier 5-12 Esprits possible",
+      "category": "echo",
+      "rarity": "epic",
+      "icon": "💌",
+      "loot_table": "brilliant_echo",
+      "effects": {
+        "type": "loot_container",
+        "loot_table": "brilliant_echo"
+      }
+    },
+    
+    "elemental_echo": {
+      "id": "elemental_echo",
+      "name": "Elemental Echo",
+      "description": "Contains element-specific rewards - tier 1-9 Esprits",
+      "category": "echo",
+      "rarity": "rare",
+      "icon": "🔥",
+      "loot_table": "elemental_echo",
+      "effects": {
+        "type": "loot_container",
+        "loot_table": "elemental_echo"
+      }
+    },
+    
+    "cosmic_echo": {
+      "id": "cosmic_echo",
+      "name": "Cosmic Echo",
+      "description": "Contains legendary rewards - tier 8-12 Esprits guaranteed",
+      "category": "echo",
+      "rarity": "mythic",
+      "icon": "🎁",
+      "loot_table": "cosmic_echo",
+      "effects": {
+        "type": "loot_container",
+        "loot_table": "cosmic_echo"
+      }
+    }
+  },
+
+  "fragments": {
+    "awakening_fragments": {
+      "id": "awakening_fragments",
+      "name": "Awakening Fragments",
+      "description": "Universal currency for awakening Esprits",
+      "category": "fragment",
+      "rarity": "common",
+      "icon": "✨",
+      "fragment_type": "awakening",
+      "stackable": true,
+      "effects": {
+        "type": "awakening_currency"
+      }
+    },
+    
+    "element_fragments": {
+      "id": "element_fragments",
+      "name": "Element Fragments",
+      "description": "Used for elemental fusion and crafting",
+      "category": "fragment",
+      "rarity": "uncommon",
+      "icon": "🔥",
+      "fragment_type": "element",
+      "stackable": true,
+      "distribution_format": "element_map",
+      "effects": {
+        "type": "elemental_currency"
+      }
+    },
+    
+    "tier_fragments": {
+      "id": "tier_fragments", 
+      "name": "Tier Fragments",
+      "description": "Used to craft specific tier Esprits",
+      "category": "fragment",
+      "rarity": "rare",
+      "icon": "🔶",
+      "fragment_type": "tier",
+      "stackable": true,
+      "distribution_format": "tier_map",
+      "effects": {
+        "type": "tier_currency"
+      }
+    },
+    
+    "fragment_bundle_small": {
+      "id": "fragment_bundle_small",
+      "name": "Small Fragment Bundle",
+      "description": "Contains 50 random fragments",
+      "category": "fragment",
+      "rarity": "uncommon",
+      "icon": "📦",
+      "effects": {
+        "type": "grant_fragments",
+        "amount": 50,
+        "tier_range": [1, 6]
+      }
+    },
+    
+    "fragment_bundle_large": {
+      "id": "fragment_bundle_large",
+      "name": "Large Fragment Bundle", 
+      "description": "Contains 200 random fragments",
+      "category": "fragment",
+      "rarity": "epic",
+      "icon": "📦",
+      "effects": {
+        "type": "grant_fragments",
+        "amount": 200,
+        "tier_range": [4, 12]
+      }
+    }
+  },
+
+  "metadata": {
+    "categories": {
+      "consumable": {
+        "name": "Consumables",
+        "description": "Items that restore resources or provide temporary effects",
+        "icon": "🧪",
+        "inventory_section": "consumables"
+      },
+      "advanced": {
+        "name": "Advanced Items",
+        "description": "Powerful items that affect game systems",
+        "icon": "💎", 
+        "inventory_section": "other"
+      },
+      "key": {
+        "name": "Keys",
+        "description": "Items that unlock or preserve other items",
+        "icon": "🗝️",
+        "inventory_section": "keys"
+      },
+      "unlock": {
+        "name": "Unlocks",
+        "description": "Permanent progression items",
+        "icon": "🔓",
+        "inventory_section": "other"
+      },
+      "echo": {
+        "name": "Echoes",
+        "description": "Containers with random rewards",
+        "icon": "📦",
+        "inventory_section": "echoes"
+      },
+      "fragment": {
+        "name": "Fragments",
+        "description": "Crafting and awakening materials",
+        "icon": "✨",
+        "inventory_section": "other"
+      }
+    },
+    
+    "rarities": {
+      "common": {
+        "name": "Common",
+        "color": "#808080",
+        "icon": "⚪"
+      },
+      "uncommon": {
+        "name": "Uncommon", 
+        "color": "#00ff00",
+        "icon": "🟢"
+      },
+      "rare": {
+        "name": "Rare",
+        "color": "#0099ff",
+        "icon": "🔵"
+      },
+      "epic": {
+        "name": "Epic",
+        "color": "#9932cc",
+        "icon": "🟣"
+      },
+      "legendary": {
+        "name": "Legendary",
+        "color": "#ff8c00",
+        "icon": "🟠"
+      },
+      "mythic": {
+        "name": "Mythic",
+        "color": "#ff0066",
+        "icon": "🔴"
+      }
+    },
+    
+    "consumable_extraction": {
+      "energy_potion": {"energy": 50},
+      "stamina_elixir": {"stamina": 25},
+      "xp_orb": {"experience": 100}
     }
   }
 }

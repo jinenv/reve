@@ -1,4 +1,4 @@
-# src/cogs/team_cog.py
+# src/cogs/team_cog.py - example
 import disnake
 from typing import Dict, List, Any, Optional
 from sqlalchemy import select

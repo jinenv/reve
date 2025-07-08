@@ -67,7 +67,6 @@ class Player(SQLModel, table=True):
     weekly_points: int = Field(default=0)
     last_weekly_reset: date = Field(default_factory=date.today)
     last_daily_echo: Optional[date] = Field(default=None)
-    last_income_collection: datetime = Field(default_factory=datetime.utcnow)
 
     # --- Battle & Achievement Stats ---
     total_battles: int = Field(default=0)
@@ -123,6 +122,8 @@ class Player(SQLModel, table=True):
     total_passive_income_collected: int = Field(default=0)
     total_upkeep_paid: int = Field(default=0)
     times_went_bankrupt: int = Field(default=0)  # Times they couldn't pay upkeep
+    last_income_collection: datetime = Field(default_factory=datetime.utcnow)
+    pending_building_income: int = Field(default=0)  # Income waiting to be collected
 
     # --- Achievement System ---
     achievements_earned: List[str] = Field(default_factory=list, sa_column=Column(JSON))

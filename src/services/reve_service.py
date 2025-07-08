@@ -6,11 +6,14 @@ from dataclasses import dataclass
 import random
 
 from src.services.base_service import BaseService, ServiceResult
+from src.services.esprit_service import EspritService
+from src.services.cache_service import CacheService
 from src.database.models.player import Player
 from src.database.models.esprit_base import EspritBase
 from src.utils.database_service import DatabaseService
 from src.utils.config_manager import ConfigManager
 from src.utils.transaction_logger import transaction_logger, TransactionType
+from src.utils.redis_service import RedisService
 from sqlalchemy import select
 
 @dataclass
@@ -37,9 +40,13 @@ class ReveService(BaseService):
         async def _operation():
             cls._validate_player_id(player_id)
             
+            # Check rate limit
+            if not await cls._check_rate_limit(player_id):
+                raise ValueError("Rate limit exceeded. Please wait before pulling again.")
+            
             async with DatabaseService.get_session() as session:
-                # Get player
-                player_stmt = select(Player).where(Player.id == player_id) # type: ignore
+                # Lock player for update
+                player_stmt = select(Player).where(Player.id == player_id).with_for_update()
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 # Check cooldown
@@ -52,12 +59,18 @@ class ReveService(BaseService):
                 config = ConfigManager.get("reve_system") or {}
                 batch_size = config.get("batch_size", 5)
                 cooldown_minutes = config.get("cooldown_minutes", 25)
-                rates = config.get("rates") or {"T1": 1.0} # fallback: always T1
+                rates = config.get("rates") or {"1": 1.0}  # Fixed: use tier numbers not "T1"
                 
                 # Perform pulls
                 pulls = []
                 for _ in range(batch_size):
                     result = await cls._single_reve_pull(session, rates)
+                    
+                    # Award esprit to player
+                    await EspritService.award_esprit_to_player(
+                        player_id, result.esprit_base_id, session
+                    )
+                    
                     pulls.append(result)
                 
                 # Set cooldown
@@ -69,16 +82,19 @@ class ReveService(BaseService):
                     TransactionType.REVE_BATCH_PULL,
                     {
                         "batch_size": batch_size,
-                        "pulls": [{"tier": p.tier, "element": p.element} for p in pulls],
+                        "pulls": [{"tier": p.tier, "element": p.element, "name": p.esprit_name} for p in pulls],
                         "cooldown_minutes": cooldown_minutes
                     }
                 )
+                
+                # Invalidate cache
+                await CacheService.invalidate_player_cache(player_id)
                 
                 await session.commit()
                 
                 return ReveBatchResult(
                     pulls=pulls,
-                    new_cooldown_expires=player.reve_cooldown_expires, # type: ignore
+                    new_cooldown_expires=player.reve_cooldown_expires,
                     total_pulls=batch_size
                 )
         
@@ -91,7 +107,7 @@ class ReveService(BaseService):
             cls._validate_player_id(player_id)
             
             async with DatabaseService.get_session() as session:
-                player_stmt = select(Player).where(Player.id == player_id) # type: ignore
+                player_stmt = select(Player).where(Player.id == player_id)
                 player = (await session.execute(player_stmt)).scalar_one()
                 
                 is_ready = player.is_reve_ready()
@@ -109,35 +125,58 @@ class ReveService(BaseService):
     @classmethod
     async def _single_reve_pull(cls, session, rates: Dict[str, float]) -> ReveResult:
         """Perform a single weighted reve pull"""
-        # Generate random number
-        roll = random.random()
-        
-        # Find which tier was rolled
-        cumulative = 0.0
-        selected_tier = 1  # Default fallback
-        
-        for tier_str, rate in rates.items():
-            if tier_str.startswith('T'):
-                tier_num = int(tier_str[1:])
-                cumulative += rate
-                if roll <= cumulative:
-                    selected_tier = tier_num
-                    break
+        # Select tier by probability
+        tier = cls._select_tier_by_probability(rates)
         
         # Get random esprit of selected tier
-        esprit_stmt = select(EspritBase).where(EspritBase.base_tier == selected_tier) # type: ignore
-        available_esprits = (await session.execute(esprit_stmt)).scalars().all()
+        esprit_stmt = select(EspritBase).where(EspritBase.base_tier == tier)
+        available_esprits = list((await session.execute(esprit_stmt)).scalars().all())
         
         if not available_esprits:
-            # Fallback to T1 if no esprits found
-            esprit_stmt = select(EspritBase).where(EspritBase.base_tier == 1) # type: ignore
-            available_esprits = (await session.execute(esprit_stmt)).scalars().all()
+            # Fallback to tier 1 if no esprits found
+            esprit_stmt = select(EspritBase).where(EspritBase.base_tier == 1)
+            available_esprits = list((await session.execute(esprit_stmt)).scalars().all())
+            tier = 1
         
         selected_esprit = random.choice(available_esprits)
         
         return ReveResult(
             esprit_base_id=selected_esprit.id,
             esprit_name=selected_esprit.name,
-            tier=selected_esprit.base_tier,
+            tier=tier,
             element=selected_esprit.element
         )
+    
+    @classmethod
+    def _select_tier_by_probability(cls, rates: Dict[str, float]) -> int:
+        """Select tier based on probability rates"""
+        roll = random.random()
+        cumulative = 0.0
+        
+        # Sort by tier (lowest first)
+        sorted_tiers = sorted(rates.keys(), key=int)
+        
+        for tier_str in sorted_tiers:
+            cumulative += rates[tier_str]
+            if roll <= cumulative:
+                return int(tier_str)
+        
+        # Fallback to highest tier
+        return int(sorted_tiers[-1])
+    
+    @classmethod
+    async def _check_rate_limit(cls, player_id: int) -> bool:
+        """Check if player can perform reve pull (rate limiting)"""
+        config = ConfigManager.get("global_config") or {}
+        rate_limits = config.get("rate_limits", {})
+        reve_limit = rate_limits.get("reve", {"uses": 1, "per_seconds": 1500})
+        
+        cache_key = f"reve:rate_limit:{player_id}"
+        current_count = await RedisService.get_int(cache_key)
+        
+        if current_count and current_count >= reve_limit["uses"]:
+            return False
+        
+        # Increment counter
+        await RedisService.incr(cache_key, expire_seconds=reve_limit["per_seconds"])
+        return True

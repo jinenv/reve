@@ -324,7 +324,7 @@ class SystemTasksCog(commands.Cog):
 
     @system_admin.command(name="trigger")
     async def trigger_task(self, ctx, task: str = None): # type: ignore
-        """Manually trigger a background task - PRETTY VERSION"""
+        """Manually trigger a background task - UPDATED FOR PENDING INCOME"""
         if not task:
             embed = disnake.Embed(
                 title="🔧 Manual Task Trigger",
@@ -338,7 +338,7 @@ class SystemTasksCog(commands.Cog):
             )
             embed.add_field(
                 name="⚡ Available Tasks",
-                value="**`energy`** - Process energy regeneration for all players\n**`stamina`** - Process stamina regeneration for all players\n**`income`** - Process building income collection\n**`cache`** - Clean expired cache entries",
+                value="**`energy`** - Process energy regeneration for all players\n**`stamina`** - Process stamina regeneration for all players\n**`income`** - Process building income generation\n**`cache`** - Clean expired cache entries",
                 inline=False
             )
             embed.set_footer(text="⚠️ These tasks normally run automatically")
@@ -395,7 +395,7 @@ class SystemTasksCog(commands.Cog):
                 pretty_titles = {
                     "energy_regen": "⚡ Energy Regeneration",
                     "stamina_regen": "💪 Stamina Regeneration", 
-                    "building_income": "🏗️ Building Income",
+                    "building_income": "🏗️ Building Income Generation",
                     "cache_cleanup": "🧹 Cache Cleanup"
                 }
                 
@@ -406,12 +406,12 @@ class SystemTasksCog(commands.Cog):
                 )
                 
                 if result.data:
-                    # PRETTY STAT NAMES WITH EMOJIS
+                    # 🆕 UPDATED STAT NAMES FOR PENDING INCOME
                     pretty_stats = {
                         "players_processed": "👥 Players Processed",
                         "total_energy_granted": "⚡ Energy Granted", 
                         "total_stamina_granted": "💪 Stamina Granted",
-                        "total_income_granted": "💰 Revies Granted",
+                        "income_generated": "💰 Income Generated",  # 🆕 CHANGED FROM income_granted
                         "total_ticks_processed": "🔄 Income Ticks",
                         "errors": "❌ Errors"
                     }
@@ -424,13 +424,16 @@ class SystemTasksCog(commands.Cog):
                     if stats_text:
                         embed.add_field(name="📊 Results", value=stats_text, inline=False)
                     
-                    # Add helpful context
+                    # 🆕 UPDATED HELPFUL CONTEXT FOR BUILDING INCOME
                     if task == "energy" or task == "stamina":
                         if result.data.get(f'total_{task}_granted', 0) == 0:
                             embed.add_field(name="💡 Note", value="No resources granted - players may already be at maximum", inline=False)
                     elif task == "income":
-                        if result.data.get('total_income_granted', 0) == 0:
+                        income_generated = result.data.get('income_generated', 0)
+                        if income_generated == 0:
                             embed.add_field(name="💡 Note", value="No income generated - players may not have income-generating buildings or next tick isn't due yet", inline=False)
+                        else:
+                            embed.add_field(name="💡 Note", value=f"Income added to pending storage - players can collect with `r collect`", inline=False)
                         
             else:
                 embed = disnake.Embed(
