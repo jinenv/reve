@@ -42,12 +42,5 @@
       "alert_on_errors": true,
       "max_consecutive_failures": 3
     }
-  },
-  
-  "building_system": {
-    "income_interval_minutes": 30,
-    "max_stack_hours": 12,
-    "base_income_per_slot": 100,
-    "description": "Building income processes every 30 minutes, stacks up to 12 hours"
   }
 }
