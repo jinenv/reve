@@ -36,9 +36,11 @@ class Player(SQLModel, table=True):
     last_stamina_update: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     last_active: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     
-    # --- Monster Warlord Style Leader System ---
+    # --- Battle System ---
     leader_esprit_stack_id: Optional[int] = Field(default=None, foreign_key="esprit.id")
-    
+    support1_esprit_stack_id: Optional[int] = Field(default=None, foreign_key="esprit.id")
+    support2_esprit_stack_id: Optional[int] = Field(default=None, foreign_key="esprit.id")
+
     # --- Combat Power (Sigil) ---
     total_attack_power: int = Field(sa_column=Column(BigInteger), default=0)
     total_defense_power: int = Field(sa_column=Column(BigInteger), default=0)

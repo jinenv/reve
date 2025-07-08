@@ -1,6 +1,6 @@
 {
-  "description": "Strategic ability system with reasonable damage scaling - 12-tier system",
-  "version": "3.0",
+  "description": "Strategic ability system with tier-based progression and advanced effects",
+  "version": "4.0",
   
   "tier_power_scaling": {
     "1": {"basic": 105, "ultimate": 140, "passive": 5},
@@ -17,148 +17,261 @@
     "12": {"basic": 140, "ultimate": 255, "passive": 30}
   },
 
-  "generated_abilities": {
+  "universal_element_abilities": {
     "inferno": {
       "1": {
-        "basic": {"name": "Ember Strike", "description": "Deal {power}% ATK fire damage", "type": "damage", "power": 105, "cooldown": 0},
-        "ultimate": {"name": "Blazing Rage", "description": "Deal {power}% ATK fire damage and gain 15% ATK for 3 turns", "type": "damage_buff", "power": 140, "cooldown": 4},
+        "basic": {"name": "Ember Strike", "description": "Deal {power}% ATK fire damage", "type": "damage", "power": 105, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Blazing Rage", "description": "Deal {power}% ATK fire damage and ignite the enemy", "type": "damage_buff", "power": 140, "cooldown": 4, "effects": ["burn"]},
         "passive": {"name": "Blazing Spirit", "description": "+{power}% damage when below 50% HP", "type": "conditional", "power": 5}
       },
       "2": {
-        "basic": {"name": "Flame Strike", "description": "Deal {power}% ATK fire damage", "type": "damage", "power": 107, "cooldown": 0},
-        "ultimate": {"name": "Burning Fury", "description": "Deal {power}% ATK fire damage and gain 18% ATK for 3 turns", "type": "damage_buff", "power": 145, "cooldown": 4},
+        "basic": {"name": "Flame Strike", "description": "Deal {power}% ATK fire damage", "type": "damage", "power": 107, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Burning Fury", "description": "Deal {power}% ATK fire damage and apply burning fury", "type": "damage_buff", "power": 145, "cooldown": 4, "effects": ["burn", "attack_boost"]},
         "passive": {"name": "Burning Spirit", "description": "+{power}% damage when below 50% HP", "type": "conditional", "power": 6}
       },
+      "3": {
+        "basic": {"name": "Fire Bolt", "description": "Deal {power}% ATK fire damage with chance to burn", "type": "damage", "power": 110, "cooldown": 0, "effects": ["burn"]},
+        "ultimate": {"name": "Flame Burst", "description": "Deal {power}% ATK fire damage and weaken enemy defenses", "type": "damage_debuff", "power": 150, "cooldown": 4, "effects": ["burn", "weakened"]},
+        "passive": {"name": "Fire Mastery", "description": "+{power}% fire damage", "type": "element_bonus", "power": 8}
+      },
+      "4": {
+        "basic": {"name": "Searing Strike", "description": "Deal {power}% ATK fire damage with burning effect", "type": "damage_dot", "power": 112, "cooldown": 0, "effects": ["burn"]},
+        "ultimate": {"name": "Infernal Wrath", "description": "Deal {power}% ATK fire damage and mark target for vulnerability", "type": "damage_debuff", "power": 155, "cooldown": 4, "effects": ["burn", "vulnerability_mark"]},
+        "passive": {"name": "Heat Aura", "description": "Enemies take {power}% burn damage per turn", "type": "aura_dot", "power": 10}
+      },
       "5": {
-        "basic": {"name": "Infernal Strike", "description": "Deal {power}% ATK fire damage with burn (10% ATK/turn for 2 turns)", "type": "damage_dot", "power": 115, "cooldown": 0},
-        "ultimate": {"name": "Inferno Blast", "description": "Deal {power}% ATK fire damage to all enemies", "type": "aoe", "power": 165, "cooldown": 5},
-        "passive": {"name": "Scorching Aura", "description": "Enemies take {power}% of your ATK as burn damage per turn", "type": "aura_dot", "power": 12}
-      },
-      "10": {
-        "basic": {"name": "Volcanic Strike", "description": "Deal {power}% ATK fire damage with 30% chance to stun", "type": "damage_stun", "power": 130, "cooldown": 0},
-        "ultimate": {"name": "Apocalyptic Inferno", "description": "Deal {power}% ATK to all enemies and set battlefield ablaze (+25% fire damage for 5 turns)", "type": "field_change", "power": 225, "cooldown": 6},
-        "passive": {"name": "Solar Dominance", "description": "All fire damage increased by {power}%, immune to burn", "type": "element_mastery", "power": 25}
-      },
-      "12": {
-        "basic": {"name": "Singularity Flame", "description": "Deal {power}% ATK true fire damage", "type": "true_damage", "power": 140, "cooldown": 0},
-        "ultimate": {"name": "Inferno Singularity", "description": "Deal {power}% ATK fire damage to all enemies", "type": "aoe_damage", "power": 255, "cooldown": 6},
-        "passive": {"name": "Fire Mastery", "description": "+{power}% fire damage and burn immunity", "type": "element_mastery", "power": 30}
+        "basic": {"name": "Infernal Strike", "description": "Deal {power}% ATK fire damage with burn and vulnerability", "type": "damage_dot", "power": 115, "cooldown": 0, "effects": ["burn", "vulnerability_mark"]},
+        "ultimate": {"name": "Inferno Blast", "description": "Deal {power}% ATK fire damage and apply elemental weakness", "type": "aoe_debuff", "power": 165, "cooldown": 5, "effects": ["burn", "elemental_weakness"]},
+        "passive": {"name": "Scorching Aura", "description": "Enemies take {power}% burn damage and become vulnerable", "type": "aura_debuff", "power": 12}
       }
     },
-
+    
     "verdant": {
       "1": {
-        "basic": {"name": "Nature's Touch", "description": "Deal {power}% ATK nature damage", "type": "damage", "power": 105, "cooldown": 0},
-        "ultimate": {"name": "Healing Bloom", "description": "Heal for 25% max HP and remove debuffs", "type": "heal_cleanse", "power": 25, "cooldown": 5},
-        "passive": {"name": "Natural Harmony", "description": "Regenerate {power}% max HP per turn", "type": "regen", "power": 5}
+        "basic": {"name": "Thorn Strike", "description": "Deal {power}% ATK nature damage", "type": "damage", "power": 105, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Nature's Blessing", "description": "Deal {power}% ATK nature damage and regenerate health", "type": "damage_heal", "power": 140, "cooldown": 4, "effects": ["regeneration"]},
+        "passive": {"name": "Nature Bond", "description": "+{power}% healing effectiveness", "type": "heal_bonus", "power": 5}
+      },
+      "2": {
+        "basic": {"name": "Vine Lash", "description": "Deal {power}% ATK nature damage", "type": "damage", "power": 107, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Verdant Growth", "description": "Deal {power}% ATK nature damage and boost defenses", "type": "damage_buff", "power": 145, "cooldown": 4, "effects": ["regeneration", "defense_boost"]},
+        "passive": {"name": "Life Force", "description": "+{power}% damage when above 75% HP", "type": "conditional", "power": 6}
+      },
+      "3": {
+        "basic": {"name": "Poison Barb", "description": "Deal {power}% ATK nature damage with poison", "type": "damage_dot", "power": 110, "cooldown": 0, "effects": ["poison"]},
+        "ultimate": {"name": "Toxic Bloom", "description": "Deal {power}% ATK nature damage and apply poison", "type": "damage_dot", "power": 150, "cooldown": 4, "effects": ["poison", "weakened"]},
+        "passive": {"name": "Toxic Immunity", "description": "Immune to poison, +{power}% poison damage", "type": "immunity_bonus", "power": 8}
+      },
+      "4": {
+        "basic": {"name": "Root Strike", "description": "Deal {power}% ATK nature damage and slow enemy", "type": "damage_debuff", "power": 112, "cooldown": 0, "effects": ["poison"]},
+        "ultimate": {"name": "Entangle", "description": "Deal {power}% ATK nature damage and mark for vulnerability", "type": "damage_control", "power": 155, "cooldown": 4, "effects": ["poison", "vulnerability_mark"]},
+        "passive": {"name": "Growth Spurt", "description": "Regenerate and gain +{power}% damage", "type": "regen_damage", "power": 10}
       },
       "5": {
-        "basic": {"name": "Thorn Flourish", "description": "Deal {power}% ATK nature damage and heal for 15% damage dealt", "type": "damage_lifesteal", "power": 115, "cooldown": 0},
-        "ultimate": {"name": "Forest Sanctuary", "description": "Heal all allies for 35% max HP and grant +20% DEF for 3 turns", "type": "mass_heal_buff", "power": 35, "cooldown": 5},
-        "passive": {"name": "Ancient Growth", "description": "Gain +{power}% max HP and DEF", "type": "stat_boost", "power": 12}
-      },
-      "10": {
-        "basic": {"name": "World Tree Strike", "description": "Deal {power}% ATK nature damage and heal lowest HP ally for 20% max HP", "type": "damage_smart_heal", "power": 130, "cooldown": 0},
-        "ultimate": {"name": "Genesis Garden", "description": "Heal all allies for 50% max HP and grant regeneration (10% HP/turn for 5 turns)", "type": "mass_heal_regen", "power": 50, "cooldown": 6},
-        "passive": {"name": "Primordial Life", "description": "All healing +{power}%, immune to instant death", "type": "life_mastery", "power": 25}
-      },
-      "12": {
-        "basic": {"name": "Genesis Touch", "description": "Deal {power}% ATK nature damage and heal all allies for 25% max HP", "type": "damage_mass_heal", "power": 140, "cooldown": 0},
-        "ultimate": {"name": "Life Singularity", "description": "Heal all allies to full HP", "type": "mass_full_heal", "power": 100, "cooldown": 8},
-        "passive": {"name": "Nature Mastery", "description": "+{power}% healing and nature damage", "type": "life_mastery", "power": 30}
+        "basic": {"name": "Verdant Assault", "description": "Deal {power}% ATK nature damage with poison and siphon", "type": "damage_drain", "power": 115, "cooldown": 0, "effects": ["poison", "power_siphon"]},
+        "ultimate": {"name": "Forest Lord's Wrath", "description": "Deal {power}% ATK nature damage and apply elemental mastery", "type": "nature_mastery", "power": 165, "cooldown": 5, "effects": ["poison", "elemental_resonance"]},
+        "passive": {"name": "Ancient Wisdom", "description": "Siphon enemy power and regenerate team", "type": "drain_heal", "power": 12}
       }
     },
-
+    
     "tempest": {
       "1": {
-        "basic": {"name": "Wind Slash", "description": "Deal {power}% ATK air damage", "type": "damage", "power": 105, "cooldown": 0},
-        "ultimate": {"name": "Lightning Bolt", "description": "Deal {power}% ATK electric damage with +1 speed for 2 turns", "type": "damage_speed", "power": 140, "cooldown": 3},
-        "passive": {"name": "Swift Winds", "description": "+{power}% speed and energy regeneration", "type": "speed_energy", "power": 5}
+        "basic": {"name": "Lightning Bolt", "description": "Deal {power}% ATK electric damage", "type": "damage", "power": 105, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Thunder Strike", "description": "Deal {power}% ATK electric damage with stunning effect", "type": "damage_stun", "power": 140, "cooldown": 4, "effects": ["attack_boost"]},
+        "passive": {"name": "Static Charge", "description": "+{power}% critical hit chance", "type": "crit_bonus", "power": 5}
+      },
+      "2": {
+        "basic": {"name": "Shock Wave", "description": "Deal {power}% ATK electric damage", "type": "damage", "power": 107, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Lightning Fury", "description": "Deal {power}% ATK electric damage and boost speed", "type": "damage_buff", "power": 145, "cooldown": 4, "effects": ["attack_boost"]},
+        "passive": {"name": "Storm Heart", "description": "+{power}% damage in combat", "type": "combat_bonus", "power": 6}
+      },
+      "3": {
+        "basic": {"name": "Chain Lightning", "description": "Deal {power}% ATK electric damage with chain effect", "type": "damage_chain", "power": 110, "cooldown": 0, "effects": ["attack_boost"]},
+        "ultimate": {"name": "Thunder Crash", "description": "Deal {power}% ATK electric damage and weaken enemy", "type": "damage_debuff", "power": 150, "cooldown": 4, "effects": ["weakened"]},
+        "passive": {"name": "Lightning Reflexes", "description": "+{power}% counter chance", "type": "counter_bonus", "power": 8}
+      },
+      "4": {
+        "basic": {"name": "Storm Strike", "description": "Deal {power}% ATK electric damage with vulnerability", "type": "damage_debuff", "power": 112, "cooldown": 0, "effects": ["vulnerability_mark"]},
+        "ultimate": {"name": "Tempest Rage", "description": "Deal {power}% ATK electric damage and mark weakness", "type": "damage_weakness", "power": 155, "cooldown": 4, "effects": ["vulnerability_mark", "elemental_weakness"]},
+        "passive": {"name": "Storm Mastery", "description": "Lightning attacks apply vulnerability", "type": "mastery_debuff", "power": 10}
       },
       "5": {
-        "basic": {"name": "Storm Strike", "description": "Deal {power}% ATK electric damage with 25% chance to reduce enemy cooldowns by 1", "type": "damage_disrupt", "power": 115, "cooldown": 0},
-        "ultimate": {"name": "Thunder Cyclone", "description": "Deal {power}% ATK electric damage to all enemies", "type": "aoe", "power": 165, "cooldown": 4},
-        "passive": {"name": "Electric Mastery", "description": "Attacks have {power}% chance to chain to random enemy for 50% damage", "type": "chain_lightning", "power": 12}
-      },
-      "10": {
-        "basic": {"name": "Hurricane Force", "description": "Deal {power}% ATK air damage and reduce all enemy speeds by 15% for 2 turns", "type": "damage_slow", "power": 130, "cooldown": 0},
-        "ultimate": {"name": "Atmospheric Dominion", "description": "Deal {power}% ATK to all enemies and gain Storm Field (+25% electric damage, enemies -20% speed for 5 turns)", "type": "weather_control", "power": 225, "cooldown": 5},
-        "passive": {"name": "Storm Lord", "description": "All abilities have cooldowns reduced by {power}%, immune to speed debuffs", "type": "cooldown_mastery", "power": 25}
-      },
-      "12": {
-        "basic": {"name": "Storm Singularity", "description": "Deal {power}% ATK electric damage with 50% chance to stun", "type": "damage_stun", "power": 140, "cooldown": 0},
-        "ultimate": {"name": "Lightning Mastery", "description": "Deal {power}% ATK electric damage to all enemies", "type": "aoe_damage", "power": 255, "cooldown": 6},
-        "passive": {"name": "Wind Mastery", "description": "+{power}% speed and electric damage", "type": "speed_mastery", "power": 30}
+        "basic": {"name": "Thunder Lord's Strike", "description": "Deal {power}% ATK electric damage with overcharge effect", "type": "damage_overcharge", "power": 115, "cooldown": 0, "effects": ["vulnerability_mark", "overcharge"]},
+        "ultimate": {"name": "Storm God's Wrath", "description": "Deal {power}% ATK electric damage and prepare devastating counter", "type": "storm_mastery", "power": 165, "cooldown": 5, "effects": ["overcharge", "counter_stance"]},
+        "passive": {"name": "Lightning Lord", "description": "Overcharge effects and perfect counters", "type": "mastery_counter", "power": 12}
       }
     },
-
+    
     "abyssal": {
       "1": {
-        "basic": {"name": "Water Splash", "description": "Deal {power}% ATK water damage", "type": "damage", "power": 105, "cooldown": 0},
-        "ultimate": {"name": "Tidal Wave", "description": "Deal {power}% ATK water damage and gain 20% max HP for 3 turns", "type": "damage_hp_buff", "power": 140, "cooldown": 4},
-        "passive": {"name": "Flowing Spirit", "description": "+{power}% max HP and water resistance", "type": "hp_resist", "power": 5}
+        "basic": {"name": "Tidal Strike", "description": "Deal {power}% ATK water damage", "type": "damage", "power": 105, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Crushing Wave", "description": "Deal {power}% ATK water damage and boost defenses", "type": "damage_buff", "power": 140, "cooldown": 4, "effects": ["defense_boost"]},
+        "passive": {"name": "Fluid Form", "description": "+{power}% damage reduction", "type": "defense_bonus", "power": 5}
+      },
+      "2": {
+        "basic": {"name": "Water Burst", "description": "Deal {power}% ATK water damage", "type": "damage", "power": 107, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Abyssal Tide", "description": "Deal {power}% ATK water damage and shield team", "type": "damage_shield", "power": 145, "cooldown": 4, "effects": ["defense_boost"]},
+        "passive": {"name": "Deep Current", "description": "+{power}% damage vs burning enemies", "type": "situational", "power": 6}
+      },
+      "3": {
+        "basic": {"name": "Pressure Strike", "description": "Deal {power}% ATK water damage with defensive boost", "type": "damage_buff", "power": 110, "cooldown": 0, "effects": ["defense_boost"]},
+        "ultimate": {"name": "Maelstrom", "description": "Deal {power}% ATK water damage and counter next attack", "type": "damage_counter", "power": 150, "cooldown": 4, "effects": ["counter_stance"]},
+        "passive": {"name": "Ocean's Protection", "description": "+{power}% counter damage", "type": "counter_bonus", "power": 8}
+      },
+      "4": {
+        "basic": {"name": "Depth Charge", "description": "Deal {power}% ATK water damage with counter preparation", "type": "damage_setup", "power": 112, "cooldown": 0, "effects": ["counter_stance"]},
+        "ultimate": {"name": "Tsunami Force", "description": "Deal {power}% ATK water damage and siphon enemy power", "type": "damage_drain", "power": 155, "cooldown": 4, "effects": ["counter_stance", "power_siphon"]},
+        "passive": {"name": "Tidal Mastery", "description": "Counter attacks siphon enemy power", "type": "mastery_drain", "power": 10}
       },
       "5": {
-        "basic": {"name": "Maelstrom Strike", "description": "Deal {power}% ATK water damage with 30% chance to pull enemy (force them to target you)", "type": "damage_taunt", "power": 115, "cooldown": 0},
-        "ultimate": {"name": "Abyssal Depths", "description": "Deal {power}% ATK water damage to all enemies and gain Depth Shield (absorb next 3 attacks)", "type": "aoe_shield", "power": 165, "cooldown": 5},
-        "passive": {"name": "Ocean's Embrace", "description": "Gain {power}% of damage taken as healing over next 3 turns", "type": "delayed_heal", "power": 12}
-      },
-      "10": {
-        "basic": {"name": "Leviathan's Wrath", "description": "Deal {power}% ATK water damage scaling with missing HP (+2% per 1% HP missing)", "type": "scaling_damage", "power": 130, "cooldown": 0},
-        "ultimate": {"name": "Oceanic Dominion", "description": "Deal {power}% ATK to all enemies and flood battlefield (water attacks +50% damage for 5 turns)", "type": "field_buff", "power": 225, "cooldown": 6},
-        "passive": {"name": "Abyssal Lord", "description": "Water mastery: +{power}% max HP, all water effects doubled", "type": "water_mastery", "power": 25}
-      },
-      "12": {
-        "basic": {"name": "Depth Mastery", "description": "Deal {power}% ATK water damage scaling with current HP", "type": "scaling_damage", "power": 140, "cooldown": 0},
-        "ultimate": {"name": "Abyssal Singularity", "description": "Deal {power}% ATK water damage to all enemies and gain shield (absorb next 5 attacks)", "type": "aoe_shield", "power": 255, "cooldown": 8},
-        "passive": {"name": "Water Mastery", "description": "+{power}% max HP and water damage", "type": "tank_mastery", "power": 30}
+        "basic": {"name": "Leviathan's Strike", "description": "Deal {power}% ATK water damage with power drain and counter", "type": "damage_mastery", "power": 115, "cooldown": 0, "effects": ["power_siphon", "counter_stance"]},
+        "ultimate": {"name": "Abyssal Lord's Dominion", "description": "Deal {power}% ATK water damage and activate temporal mastery", "type": "mastery_time", "power": 165, "cooldown": 5, "effects": ["power_siphon", "temporal_shift"]},
+        "passive": {"name": "Ocean Lord", "description": "Masters time and power through deep ocean wisdom", "type": "time_mastery", "power": 12}
       }
     },
-
+    
     "umbral": {
       "1": {
-        "basic": {"name": "Shadow Strike", "description": "Deal {power}% ATK dark damage", "type": "damage", "power": 105, "cooldown": 0},
-        "ultimate": {"name": "Dark Rage", "description": "Deal {power}% ATK dark damage and gain +30% ATK/-15% DEF for 3 turns", "type": "glass_cannon", "power": 140, "cooldown": 4},
-        "passive": {"name": "Shadow Form", "description": "+{power}% ATK but take +{power2}% damage", "type": "risk_reward", "power": 8, "power2": 3}
+        "basic": {"name": "Shadow Strike", "description": "Deal {power}% ATK dark damage", "type": "damage", "power": 105, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Dark Embrace", "description": "Deal {power}% ATK dark damage and drain enemy", "type": "damage_drain", "power": 140, "cooldown": 4, "effects": ["weakened"]},
+        "passive": {"name": "Shadow Veil", "description": "+{power}% evasion chance", "type": "evasion_bonus", "power": 5}
+      },
+      "2": {
+        "basic": {"name": "Void Strike", "description": "Deal {power}% ATK dark damage", "type": "damage", "power": 107, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Soul Drain", "description": "Deal {power}% ATK dark damage and weaken enemy", "type": "damage_debuff", "power": 145, "cooldown": 4, "effects": ["weakened"]},
+        "passive": {"name": "Dark Energy", "description": "+{power}% damage vs weakened enemies", "type": "situational", "power": 6}
+      },
+      "3": {
+        "basic": {"name": "Shadow Bolt", "description": "Deal {power}% ATK dark damage and weaken enemy", "type": "damage_debuff", "power": 110, "cooldown": 0, "effects": ["weakened"]},
+        "ultimate": {"name": "Umbral Curse", "description": "Deal {power}% ATK dark damage and burn enemy resources", "type": "damage_burn", "power": 150, "cooldown": 4, "effects": ["mana_burn"]},
+        "passive": {"name": "Life Drain", "description": "Attacks restore health equal to {power}% damage", "type": "lifesteal", "power": 8}
+      },
+      "4": {
+        "basic": {"name": "Soul Rend", "description": "Deal {power}% ATK dark damage and burn mana", "type": "damage_burn", "power": 112, "cooldown": 0, "effects": ["mana_burn"]},
+        "ultimate": {"name": "Void Mastery", "description": "Deal {power}% ATK dark damage and enter berserker state", "type": "damage_berserk", "power": 155, "cooldown": 4, "effects": ["mana_burn", "berserker_rage"]},
+        "passive": {"name": "Shadow Mastery", "description": "Mana burn triggers berserker rage", "type": "mastery_rage", "power": 10}
       },
       "5": {
-        "basic": {"name": "Void Strike", "description": "Deal {power}% ATK true dark damage (ignores shields)", "type": "shield_pierce", "power": 115, "cooldown": 0},
-        "ultimate": {"name": "Eclipse", "description": "Deal {power}% ATK dark damage to all enemies and gain Shadow Field (all dark damage +40% for 4 turns)", "type": "aoe_field", "power": 165, "cooldown": 5},
-        "passive": {"name": "Void Touched", "description": "Extreme glass cannon: +{power}% ATK but -{power2}% DEF and HP", "type": "extreme_risk", "power": 15, "power2": 8}
-      },
-      "10": {
-        "basic": {"name": "Entropy Strike", "description": "Deal {power}% ATK dark damage with 40% chance to inflict Decay (-20% ATK for 3 turns)", "type": "damage_debuff", "power": 130, "cooldown": 0},
-        "ultimate": {"name": "Nihility Embrace", "description": "Deal {power}% ATK true dark damage to all and gain Void Form (next 3 attacks ignore all defenses)", "type": "true_aoe_pierce", "power": 225, "cooldown": 6},
-        "passive": {"name": "Void Mastery", "description": "Ultimate glass cannon: +{power}% ATK, cannot be healed but immune to debuffs", "type": "void_master", "power": 25}
-      },
-      "12": {
-        "basic": {"name": "Void Mastery", "description": "Deal {power}% ATK true dark damage", "type": "true_damage", "power": 140, "cooldown": 0},
-        "ultimate": {"name": "Shadow Singularity", "description": "Deal {power}% ATK dark damage to all enemies with +50% critical chance", "type": "aoe_critical", "power": 255, "cooldown": 6},
-        "passive": {"name": "Darkness Mastery", "description": "+{power}% ATK but -{power2}% DEF (ultimate glass cannon)", "type": "extreme_glass", "power": 35, "power2": 15}
+        "basic": {"name": "Umbral Lord's Touch", "description": "Deal {power}% ATK dark damage with mana burn and rage", "type": "damage_mastery", "power": 115, "cooldown": 0, "effects": ["mana_burn", "berserker_rage"]},
+        "ultimate": {"name": "Void Lord's Dominion", "description": "Deal {power}% ATK dark damage and achieve perfect resonance", "type": "void_mastery", "power": 165, "cooldown": 5, "effects": ["berserker_rage", "elemental_resonance"]},
+        "passive": {"name": "Void Master", "description": "Berserker rage enhances elemental resonance", "type": "mastery_resonance", "power": 12}
       }
     },
-
+    
     "radiant": {
       "1": {
-        "basic": {"name": "Light Ray", "description": "Deal {power}% ATK light damage", "type": "damage", "power": 105, "cooldown": 0},
-        "ultimate": {"name": "Divine Blessing", "description": "Heal all allies for 30% max HP and cleanse debuffs", "type": "mass_heal_cleanse", "power": 30, "cooldown": 5},
-        "passive": {"name": "Radiant Aura", "description": "Balanced bonuses: +{power}% to all stats", "type": "balanced", "power": 5}
+        "basic": {"name": "Light Ray", "description": "Deal {power}% ATK holy damage", "type": "damage", "power": 105, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Divine Blessing", "description": "Deal {power}% ATK holy damage and heal team", "type": "damage_heal", "power": 140, "cooldown": 4, "effects": ["regeneration"]},
+        "passive": {"name": "Holy Aura", "description": "+{power}% healing power", "type": "heal_bonus", "power": 5}
+      },
+      "2": {
+        "basic": {"name": "Sacred Strike", "description": "Deal {power}% ATK holy damage", "type": "damage", "power": 107, "cooldown": 0, "effects": []},
+        "ultimate": {"name": "Radiant Burst", "description": "Deal {power}% ATK holy damage and boost team", "type": "damage_buff", "power": 145, "cooldown": 4, "effects": ["attack_boost", "regeneration"]},
+        "passive": {"name": "Divine Grace", "description": "+{power}% team damage", "type": "team_bonus", "power": 6}
+      },
+      "3": {
+        "basic": {"name": "Purifying Light", "description": "Deal {power}% ATK holy damage and boost team", "type": "damage_buff", "power": 110, "cooldown": 0, "effects": ["attack_boost"]},
+        "ultimate": {"name": "Holy Judgment", "description": "Deal {power}% ATK holy damage and achieve resonance", "type": "damage_resonance", "power": 150, "cooldown": 4, "effects": ["elemental_resonance"]},
+        "passive": {"name": "Light Bearer", "description": "+{power}% elemental resonance power", "type": "resonance_bonus", "power": 8}
+      },
+      "4": {
+        "basic": {"name": "Divine Wrath", "description": "Deal {power}% ATK holy damage with resonance", "type": "damage_resonance", "power": 112, "cooldown": 0, "effects": ["elemental_resonance"]},
+        "ultimate": {"name": "Celestial Harmony", "description": "Deal {power}% ATK holy damage and prepare perfect counter", "type": "damage_perfect", "power": 155, "cooldown": 4, "effects": ["elemental_resonance", "perfect_counter"]},
+        "passive": {"name": "Celestial Mastery", "description": "Resonance triggers perfect counters", "type": "mastery_perfect", "power": 10}
       },
       "5": {
-        "basic": {"name": "Sacred Strike", "description": "Deal {power}% ATK light damage and heal weakest ally for 20% max HP", "type": "damage_smart_heal", "power": 115, "cooldown": 0},
-        "ultimate": {"name": "Celestial Harmony", "description": "Deal {power}% ATK light damage to all enemies and grant all allies +25% all stats for 3 turns", "type": "aoe_mass_buff", "power": 165, "cooldown": 5},
-        "passive": {"name": "Divine Balance", "description": "All abilities +{power}% effective, fusion success +{power2}%", "type": "harmony", "power": 12, "power2": 5}
-      },
-      "10": {
-        "basic": {"name": "Transcendent Ray", "description": "Deal {power}% ATK light damage with perfect accuracy and 25% chance to blind enemy (miss next attack)", "type": "perfect_blind", "power": 130, "cooldown": 0},
-        "ultimate": {"name": "Divine Transcendence", "description": "Grant all allies Ascension: +40% all stats and immunity to debuffs for 4 turns", "type": "mass_transcend", "power": 40, "cooldown": 6},
-        "passive": {"name": "Celestial Mastery", "description": "Perfect balance: +{power}% all stats, enhanced fusion rates for all allies", "type": "perfection", "power": 25}
-      },
-      "12": {
-        "basic": {"name": "Divine Mastery", "description": "Deal {power}% ATK light damage and cleanse all debuffs from allies", "type": "damage_cleanse", "power": 140, "cooldown": 0},
-        "ultimate": {"name": "Radiant Singularity", "description": "Heal all allies for 75% max HP and deal {power}% ATK light damage to all enemies", "type": "heal_aoe_damage", "power": 255, "cooldown": 8},
-        "passive": {"name": "Light Mastery", "description": "+{power}% to all stats (perfect balance)", "type": "balanced_mastery", "power": 30}
+        "basic": {"name": "Radiant Lord's Judgment", "description": "Deal {power}% ATK holy damage with resonance and perfect counter", "type": "damage_mastery", "power": 115, "cooldown": 0, "effects": ["elemental_resonance", "perfect_counter"]},
+        "ultimate": {"name": "Celestial God's Decree", "description": "Deal {power}% ATK holy damage and achieve divine mastery", "type": "divine_mastery", "power": 165, "cooldown": 5, "effects": ["perfect_counter", "overcharge"]},
+        "passive": {"name": "Divine Master", "description": "Perfect counters trigger overcharge effects", "type": "mastery_overcharge", "power": 12}
       }
+    }
+  },
+
+  "custom_esprit_abilities": {
+    "description": "Unique abilities for specific Esprits (Tier 6+)",
+    "esprits": {
+      "Flameheart": {
+        "basic": {"name": "Heart Burn", "description": "Deal {power}% ATK fire damage that burns the soul", "power": 118, "cooldown": 0, "effects": ["burn", "vulnerability_mark", "power_siphon"]},
+        "ultimate": {"name": "Soul Incinerate", "description": "Deal {power}% ATK fire damage and enter flame mastery", "power": 175, "cooldown": 5, "effects": ["burn", "berserker_rage", "elemental_weakness"]},
+        "passive": {"name": "Eternal Flame", "description": "Burns spread vulnerability and trigger berserker rage", "power": 15}
+      },
+      "Thornguard": {
+        "basic": {"name": "Toxic Embrace", "description": "Deal {power}% ATK nature damage that poisons and weakens", "power": 118, "cooldown": 0, "effects": ["poison", "mana_burn", "counter_stance"]},
+        "ultimate": {"name": "Forest Lord's Dominion", "description": "Deal {power}% ATK nature damage and command the battlefield", "power": 175, "cooldown": 5, "effects": ["poison", "power_siphon", "temporal_shift"]},
+        "passive": {"name": "Ancient Protector", "description": "Poison effects siphon power and prepare temporal shifts", "power": 15}
+      },
+      "Stormcaller": {
+        "basic": {"name": "Lightning Mastery", "description": "Deal {power}% ATK electric damage with perfect precision", "power": 118, "cooldown": 0, "effects": ["vulnerability_mark", "overcharge", "elemental_resonance"]},
+        "ultimate": {"name": "Storm God's Fury", "description": "Deal {power}% ATK electric damage and achieve storm mastery", "power": 175, "cooldown": 5, "effects": ["overcharge", "perfect_counter", "elemental_weakness"]},
+        "passive": {"name": "Thunder Lord", "description": "Overcharge effects enhance resonance and trigger perfect counters", "power": 15}
+      },
+      "Tidecaller": {
+        "basic": {"name": "Abyssal Mastery", "description": "Deal {power}% ATK water damage with deep ocean power", "power": 118, "cooldown": 0, "effects": ["power_siphon", "counter_stance", "temporal_shift"]},
+        "ultimate": {"name": "Leviathan's Wrath", "description": "Deal {power}% ATK water damage and control time itself", "power": 175, "cooldown": 5, "effects": ["temporal_shift", "power_siphon", "perfect_counter"]},
+        "passive": {"name": "Ocean Master", "description": "Time manipulation enhances power siphon and perfect counters", "power": 15}
+      },
+      "Voidwalker": {
+        "basic": {"name": "Void Mastery", "description": "Deal {power}% ATK dark damage that drains all resources", "power": 118, "cooldown": 0, "effects": ["mana_burn", "berserker_rage", "power_siphon"]},
+        "ultimate": {"name": "Umbral Lord's Decree", "description": "Deal {power}% ATK dark damage and achieve void mastery", "power": 175, "cooldown": 5, "effects": ["berserker_rage", "elemental_resonance", "temporal_shift"]},
+        "passive": {"name": "Void Lord", "description": "Berserker rage enhances resonance and enables temporal mastery", "power": 15}
+      },
+      "Lightbringer": {
+        "basic": {"name": "Divine Mastery", "description": "Deal {power}% ATK holy damage with celestial perfection", "power": 118, "cooldown": 0, "effects": ["elemental_resonance", "perfect_counter", "overcharge"]},
+        "ultimate": {"name": "Celestial Emperor's Will", "description": "Deal {power}% ATK holy damage and achieve divine perfection", "power": 175, "cooldown": 5, "effects": ["perfect_counter", "overcharge", "elemental_weakness"]},
+        "passive": {"name": "Divine Emperor", "description": "Perfect counters trigger overcharge and elemental mastery", "power": 15}
+      }
+    }
+  },
+
+  "support_skills": {
+    "description": "Element-based support skills for team combat",
+    "inferno_support": {
+      "name": "Flame Boost",
+      "description": "Ignites team fighting spirit, boosting attack power",
+      "power": 100,
+      "cooldown": 3,
+      "duration": 2,
+      "effects": ["attack_boost"]
+    },
+    "verdant_support": {
+      "name": "Nature's Blessing",
+      "description": "Channels healing energy and protective barriers",
+      "power": 100,
+      "cooldown": 4,
+      "duration": 3,
+      "effects": ["regeneration", "defense_boost"]
+    },
+    "tempest_support": {
+      "name": "Lightning Speed",
+      "description": "Electrifies the next attack with devastating precision",
+      "power": 100,
+      "cooldown": 3,
+      "duration": 1,
+      "effects": ["overcharge"]
+    },
+    "abyssal_support": {
+      "name": "Tidal Barrier",
+      "description": "Summons protective waters and counter-attack stance",
+      "power": 100,
+      "cooldown": 4,
+      "duration": 2,
+      "effects": ["counter_stance", "defense_boost"]
+    },
+    "umbral_support": {
+      "name": "Shadow Energy",
+      "description": "Draws power from darkness and enters berserker state",
+      "power": 100,
+      "cooldown": 5,
+      "duration": 2,
+      "effects": ["mana_burn", "berserker_rage"]
+    },
+    "radiant_support": {
+      "name": "Holy Light",
+      "description": "Divine light that enhances team resonance",
+      "power": 100,
+      "cooldown": 4,
+      "duration": 2,
+      "effects": ["elemental_resonance", "regeneration"]
     }
   }
 }
