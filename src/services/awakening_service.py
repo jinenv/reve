@@ -298,8 +298,11 @@ class AwakeningService(BaseService):
         async def _operation():
             cls._validate_player_id(player_id)
             
-            if len(esprit_ids) > 10:
-                raise ValueError("Cannot preview more than 10 awakenings at once")
+            awakening_config = ConfigManager.get("awakening_system") or {}
+            max_bulk_preview = awakening_config.get("limits", {}).get("max_bulk_preview", 10)
+
+            if len(esprit_ids) > max_bulk_preview:
+                raise ValueError(f"Cannot preview more than {max_bulk_preview} awakenings at once")
             
             async with DatabaseService.get_session() as session:
                 previews = []

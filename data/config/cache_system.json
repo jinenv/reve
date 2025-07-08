@@ -12,5 +12,12 @@
     "collection_stats": "collection_stats:{player_id}",
     "fusion_rates": "fusion_rates:{tier}",
     "config_data": "config:{config_name}"
+  },
+  "cleanup": {
+    "player_data_max_age_hours": 24,
+    "collection_max_age_hours": 12,
+    "power_max_age_hours": 6,
+    "temp_max_age_hours": 2,
+    "session_max_age_hours": 8
   }
 }

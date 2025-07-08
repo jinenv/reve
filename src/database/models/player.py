@@ -139,7 +139,8 @@ class Player(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "select", "cascade": "all, delete-orphan"}
     )
     # --- Gacha System ---
-    reve_cooldown_expires: Optional[datetime] = Field(default=None)
+    reve_charges: int = Field(default=5)  # Current charges (0-5)
+    last_reve_charge_time: Optional[datetime] = Field(default=None)  # Last regeneration timestamp
 
     # ✅ ASYNC-COMPATIBLE HELPER METHOD
     def get_class_bonuses_sync(self) -> Dict[str, float]:
@@ -281,24 +282,15 @@ class Player(SQLModel, table=True):
             "completion_percent": 0.0
         }
     
-    # --- SIMPLE GACHA LOGIC ---
-    def is_reve_ready(self) -> bool:
-        """Check if player can use /reve"""
-        if self.reve_cooldown_expires is None:
-            return True
-        return datetime.utcnow() >= self.reve_cooldown_expires
+    # --- Reve Charges Helper Methods ---
+    def get_reve_charges_display(self) -> str:
+        """Get a simple display string for reve charges (e.g., '3/5')"""
+        # Use ReveService for full functionality, this is just a quick display helper
+        return f"{self.reve_charges}/5"
     
-    def get_reve_cooldown_remaining(self) -> Optional[timedelta]:
-        """Get remaining cooldown time, None if ready"""
-        if self.reve_cooldown_expires is None:
-            return None
-        
-        remaining = self.reve_cooldown_expires - datetime.utcnow()
-        return remaining if remaining.total_seconds() > 0 else None
-    
-    def set_reve_cooldown(self, cooldown_minutes: int = 25) -> None:
-        """Set reve cooldown from now"""
-        self.reve_cooldown_expires = datetime.utcnow() + timedelta(minutes=cooldown_minutes)
+    def is_reve_available(self) -> bool:
+        """Quick check if player has any reve charges available"""
+        return (self.reve_charges or 0) > 0
 
     # === BUSINESS LOGIC MOVED TO SERVICES ===
     
@@ -320,6 +312,11 @@ class Player(SQLModel, table=True):
     # Quest and progression moved to QuestService & ProgressionService:
     # - complete_quest() → QuestService.complete_quest()
     # - unlock_area() → ProgressionService.unlock_area()
+    
+    # Reve system moved to ReveService:
+    # - get_reve_charges() → ReveService.get_charges_info()
+    # - consume_reve_charge() → ReveService.attempt_single_pull()
+    # - calculate_reve_regeneration() → ReveService._calculate_current_charges()
     
     # ALL COMPLEX BUSINESS LOGIC NOW LIVES IN SERVICES
     # This model is now a pure data container with only simple calculations

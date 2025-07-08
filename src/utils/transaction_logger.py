@@ -63,7 +63,9 @@ class TransactionType(Enum):
     REWARD_DISTRIBUTED = "reward_distributed"
     CLASS_SELECTED = "class_selected"
     CLASS_BONUS_APPLIED = "class_bonus_applied"
-
+    REVE_SINGLE_PULL = "reve_single_pull"
+    REVE_CHARGES_REGENERATED = "reve_charges_regenerated"  
+    
 class TransactionLogger:
     """Handles structured logging of all game state changes"""
     

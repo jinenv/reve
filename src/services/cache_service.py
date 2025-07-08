@@ -1107,6 +1107,10 @@ class CacheService(BaseService):
         """Calculate intelligent TTL based on key pattern and usage"""
         key_str = str(key)
         
+        # Get cleanup config with fallbacks
+        cache_config = ConfigManager.get("cache_system") or {}
+        cleanup_config = cache_config.get("cleanup", {})
+
         if ":player:" in key_str:
             return 24 * 3600  # 24 hours for player data
         elif ":collection:" in key_str:

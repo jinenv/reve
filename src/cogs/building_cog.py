@@ -4,9 +4,7 @@ from disnake.ext import commands
 from typing import Literal
 from sqlalchemy import select
 
-# SOURCE: src/services/building_service.py
 from src.services.building_service import BuildingService
-# SOURCE: src/services/player_service.py  
 from src.services.player_service import PlayerService
 from src.database.models.player import Player
 from src.utils.database_service import DatabaseService
