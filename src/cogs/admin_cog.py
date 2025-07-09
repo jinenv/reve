@@ -1037,7 +1037,7 @@ class AdminCog(commands.Cog):
         awakening: int = commands.Param(default=0, min_value=0, max_value=5, description="Awakening level (stars)"),
         quantity: int = commands.Param(default=1, min_value=1, max_value=999, description="Stack quantity")
     ):
-        """Generate a test esprit card image"""
+        """Generate a test esprit card image using the new EspritGenerator"""
         await inter.response.defer()
         
         try:
@@ -1058,24 +1058,33 @@ class AdminCog(commands.Cog):
                     )
                     return await inter.edit_original_response(embed=embed)
                 
-                # Create esprit card data
+                # Create esprit card data matching the new generator's expected format
                 esprit_card_data = {
                     "name": esprit_base.name,
                     "element": esprit_base.element,
                     "tier": esprit_base.base_tier,
-                    "awakening": awakening,
+                    "base_tier": esprit_base.base_tier,
+                    "rarity": esprit_base.tier_name,  # tier name (common, rare, etc.)
+                    "awakening_level": awakening,
                     "quantity": quantity,
-                    "image_url": esprit_base.image_url,
-                    "sprite_path": esprit_base.image_url,
-                    "attack": esprit_base.base_atk,
-                    "defense": esprit_base.base_def,
-                    "hp": esprit_base.base_hp
+                    "base_atk": esprit_base.base_atk,
+                    "base_def": esprit_base.base_def,
+                    "base_hp": esprit_base.base_hp
                 }
                 
-                # Generate esprit card
+                # Generate esprit card using the new EspritGenerator
                 try:
-                    from src.utils.esprit_generator import generate_esprit_card
-                    esprit_file = await generate_esprit_card(esprit_card_data, f"admin_esprit_test_{esprit_base.name}.png")
+                    from src.utils.esprit_generator import EspritGenerator
+                    
+                    # Initialize the generator
+                    generator = EspritGenerator()
+                    
+                    # Generate the card image
+                    card_image = await generator.render_esprit_card(esprit_card_data)
+                    
+                    # Convert to Discord file
+                    filename = f"admin_test_{esprit_base.name.lower().replace(' ', '_')}.png"
+                    esprit_file = await generator.to_discord_file(card_image, filename)
                     
                     if esprit_file:
                         embed = disnake.Embed(
@@ -1083,10 +1092,15 @@ class AdminCog(commands.Cog):
                             description=(
                                 f"**Name:** {esprit_base.name}\n"
                                 f"**Element:** {esprit_base.element}\n"
-                                f"**Tier:** {esprit_base.base_tier}\n"
-                                f"**Awakening:** {'⭐' * awakening if awakening > 0 else 'None'}\n"
+                                f"**Tier:** {esprit_base.base_tier} ({esprit_base.tier_name})\n"
+                                f"**Awakening:** {'⭐' * awakening if awakening > 0 else 'Base Level'}\n"
                                 f"**Quantity:** {quantity:,}\n"
-                                f"**Stats:** ATK {esprit_base.base_atk}, DEF {esprit_base.base_def}, HP {esprit_base.base_hp}"
+                                f"**Stats:** ATK {esprit_base.base_atk:,}, DEF {esprit_base.base_def:,}, HP {esprit_base.base_hp:,}\n\n"
+                                f"✨ **New Generator Features:**\n"
+                                f"• 400x600 card size\n"
+                                f"• Element frames from assets\n"
+                                f"• A/B background variants\n"
+                                f"• Portrait sprite support"
                             ),
                             color=EmbedColors.SUCCESS
                         )
@@ -1096,15 +1110,15 @@ class AdminCog(commands.Cog):
                     else:
                         embed = disnake.Embed(
                             title="❌ Image Generation Failed",
-                            description="Esprit card generation returned None. Check image generation service.",
+                            description="Esprit card generation returned None. Check logs for details.",
                             color=EmbedColors.ERROR
                         )
                         await inter.edit_original_response(embed=embed)
                         
-                except ImportError:
+                except ImportError as ie:
                     embed = disnake.Embed(
                         title="❌ Esprit Generator Not Available",
-                        description="Esprit generation module not found. Ensure `src.utils.esprit_generator` exists.",
+                        description=f"Failed to import EspritGenerator: {str(ie)}",
                         color=EmbedColors.ERROR
                     )
                     await inter.edit_original_response(embed=embed)
@@ -1112,7 +1126,7 @@ class AdminCog(commands.Cog):
                     logger.error(f"Esprit card generation error: {img_error}", exc_info=True)
                     embed = disnake.Embed(
                         title="❌ Image Generation Error",
-                        description=f"Failed to generate esprit card: {str(img_error)[:100]}",
+                        description=f"Failed to generate esprit card: {str(img_error)[:200]}",
                         color=EmbedColors.ERROR
                     )
                     await inter.edit_original_response(embed=embed)
@@ -1121,7 +1135,7 @@ class AdminCog(commands.Cog):
             logger.error(f"View esprit error: {e}", exc_info=True)
             embed = disnake.Embed(
                 title="❌ Command Failed",
-                description="Failed to process esprit view command.",
+                description=f"Failed to process esprit view command: {str(e)[:100]}",
                 color=EmbedColors.ERROR
             )
             await inter.edit_original_response(embed=embed)
